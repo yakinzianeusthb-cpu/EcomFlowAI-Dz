@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { configApi, contactApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import PageHeader from './PageHeader';
+import '../i18n/contact';
 
 const SUBJECTS = [
   'Demande générale',
@@ -15,7 +17,7 @@ const SUBJECTS = [
 export default function ContactUs() {
   const { user } = useAuth();
   const toast = useToast();
-  const { t } = useLanguage();
+  const { t, tf } = useLanguage();
 
   const [config, setConfig] = useState<{ adminEmail: string; adminTelegram: string; whatsappNumber: string } | null>(null);
 
@@ -38,44 +40,41 @@ export default function ContactUs() {
 
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !message.trim()) {
-      toast.error('Veuillez remplir tous les champs.');
+      toast.error(t('ctcVeuillezRemplirTousChamps', 'Veuillez remplir tous les champs.'));
       return;
     }
     if (message.trim().length < 10) {
-      toast.error('Le message doit contenir au moins 10 caractères.');
+      toast.error(t('ctcLeMessageDoitContenir', 'Le message doit contenir au moins 10 caractères.'));
       return;
     }
     setSending(true);
     try {
       await contactApi.send({ name: name.trim(), email: email.trim(), subject, message: message.trim() });
       setSent(true);
-      toast.success('Message envoyé ! Nous te répondrons rapidement.');
+      toast.success(t('ctcMessageEnvoyeNousTe', 'Message envoyé ! Nous te répondrons rapidement.'));
       setTimeout(() => setSent(false), 3000);
       setMessage('');
     } catch (err: any) {
-      toast.error(err?.message || "Erreur lors de l'envoi.");
+      toast.error(err?.message || t('ctcErreurLorsLEnvoi', "Erreur lors de l'envoi."));
     } finally {
       setSending(false);
     }
   };
 
   const whatsappUrl = config?.whatsappNumber
-    ? `https://wa.me/${config.whatsappNumber}?text=${encodeURIComponent('Bonjour, j\'ai une question concernant EcomFlow AI.')}`
+    ? `https://wa.me/${config.whatsappNumber}?text=${encodeURIComponent(t('ctcWhatsappHello', "Bonjour, j'ai une question concernant EcomFlow AI."))}`
     : null;
   const telegramUrl = config?.adminTelegram
     ? `https://t.me/${config.adminTelegram}`
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-          <MessageCircle size={24} className="text-dz-emerald" />
-          Contact & Support
-        </h1>
-        <p className="text-white/40 text-sm mt-1">Nous sommes là pour t'aider. Écris-nous ou contacte-nous directement.</p>
-      </div>
+    <div className="max-w-4xl space-y-8">
+      <PageHeader
+        icon={MessageCircle}
+        title={t('menuContact', 'Contact & support')}
+        subtitle={t('ctcNousSommesTAider', "Nous sommes là pour t'aider. Écris-nous ou contacte-nous directement.")}
+      />
 
       {/* Contact info cards */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -84,18 +83,20 @@ export default function ContactUs() {
           href={whatsappUrl || '#'}
           target="_blank"
           rel="noopener noreferrer"
-          className={`surface-card p-5 flex flex-col items-center gap-3 transition-all hover:border-[#25D366]/40 ${!whatsappUrl ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}
+          aria-disabled={!whatsappUrl}
+          tabIndex={whatsappUrl ? undefined : -1}
+          className={`surface-card p-5 flex flex-col items-center gap-3 transition-all hover:border-[#25D366]/40 ${!whatsappUrl ? 'pointer-events-none border-dashed [&_svg]:opacity-50 [&_svg]:grayscale' : 'cursor-pointer'}`}
         >
           <div className="w-12 h-12 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 flex items-center justify-center">
             <MessageCircle size={22} className="text-[#25D366]" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-white">WhatsApp</p>
-            <p className="text-[11px] text-white/35 mt-0.5">
-              {config?.whatsappNumber ? `+${config.whatsappNumber}` : 'Non configuré'}
+            <p className="text-sm font-semibold text-fg">WhatsApp</p>
+            <p className="text-xs text-fg-faint mt-0.5">
+              {config?.whatsappNumber ? `+${config.whatsappNumber}` : t('ctcNonConfigure', 'Non configuré')}
             </p>
           </div>
-          {whatsappUrl && <ExternalLink size={12} className="text-white/20" />}
+          {whatsappUrl && <ExternalLink size={12} className="text-fg-faint" />}
         </a>
 
         {/* Telegram */}
@@ -103,18 +104,20 @@ export default function ContactUs() {
           href={telegramUrl || '#'}
           target="_blank"
           rel="noopener noreferrer"
-          className={`surface-card p-5 flex flex-col items-center gap-3 transition-all hover:border-[#0088CC]/40 ${!telegramUrl ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}
+          aria-disabled={!telegramUrl}
+          tabIndex={telegramUrl ? undefined : -1}
+          className={`surface-card p-5 flex flex-col items-center gap-3 transition-all hover:border-[#0088CC]/40 ${!telegramUrl ? 'pointer-events-none border-dashed [&_svg]:opacity-50 [&_svg]:grayscale' : 'cursor-pointer'}`}
         >
           <div className="w-12 h-12 rounded-2xl bg-[#0088CC]/10 border border-[#0088CC]/20 flex items-center justify-center">
             <Send size={22} className="text-[#0088CC]" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-white">Telegram</p>
-            <p className="text-[11px] text-white/35 mt-0.5">
-              {config?.adminTelegram ? `@${config.adminTelegram}` : 'Non configuré'}
+            <p className="text-sm font-semibold text-fg">Telegram</p>
+            <p className="text-xs text-fg-faint mt-0.5">
+              {config?.adminTelegram ? `@${config.adminTelegram}` : t('ctcNonConfigure', 'Non configuré')}
             </p>
           </div>
-          {telegramUrl && <ExternalLink size={12} className="text-white/20" />}
+          {telegramUrl && <ExternalLink size={12} className="text-fg-faint" />}
         </a>
 
         {/* Email */}
@@ -123,9 +126,9 @@ export default function ContactUs() {
             <Mail size={22} className="text-dz-gold" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-white">Email</p>
-            <p className="text-[11px] text-white/35 mt-0.5 break-all">
-              {config?.adminEmail || 'Non configuré'}
+            <p className="text-sm font-semibold text-fg">{t('fpStepEmail', 'Email')}</p>
+            <p className="text-xs text-fg-faint mt-0.5 break-all">
+              {config?.adminEmail || t('ctcNonConfigure', 'Non configuré')}
             </p>
           </div>
         </div>
@@ -133,73 +136,77 @@ export default function ContactUs() {
 
       {/* Contact form */}
       <div className="surface-card p-6 sm:p-8">
-        <h2 className="text-lg font-bold text-white mb-1">Envoyer un message</h2>
-        <p className="text-white/35 text-sm mb-6">Remplis le formulaire ci-dessous et nous te répondrons par email.</p>
+        <h2 className="text-lg font-bold text-fg mb-1">{t('ctcEnvoyerMessage', 'Envoyer un message')}</h2>
+        <p className="text-fg-faint text-sm mb-6">{t('ctcRemplisFormulaireCiDessous', 'Remplis le formulaire ci-dessous et nous te répondrons par email.')}</p>
 
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block mb-1.5">Nom</label>
+              <label htmlFor="contact-name" className="text-xs text-fg-muted block mb-1.5">{t('ctcName', 'Nom')}</label>
               <input
+                id="contact-name"
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Ton nom"
-                className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all"
+                placeholder={t('ctcTonNom', 'Ton nom')}
+                className="w-full bg-fg/[0.02] border border-fg/10 rounded-xl px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all"
                 maxLength={120}
               />
             </div>
             <div>
-              <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block mb-1.5">Email</label>
+              <label htmlFor="contact-email" className="text-xs text-fg-muted block mb-1.5">{t('fpStepEmail', 'Email')}</label>
               <input
+                id="contact-email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="ton@email.com"
-                className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all"
+                className="w-full bg-fg/[0.02] border border-fg/10 rounded-xl px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all"
                 maxLength={128}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block mb-1.5">Sujet</label>
+            <label htmlFor="contact-subject" className="text-xs text-fg-muted block mb-1.5">{t('ctcSujet', 'Sujet')}</label>
             <select
+              id="contact-subject"
               value={subject}
               onChange={e => setSubject(e.target.value)}
-              className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all"
+              className="w-full bg-fg/[0.02] border border-fg/10 rounded-xl px-3.5 py-2.5 text-sm text-fg focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all"
             >
               {SUBJECTS.map(s => (
-                <option key={s} value={s} className="bg-[#121411]">{s}</option>
+                <option key={s} value={s} className="bg-[#121411]">{tf(s)}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block mb-1.5">Message</label>
+            <label htmlFor="contact-message" className="text-xs text-fg-muted block mb-1.5">{t('ctcMessage', 'Message')}</label>
             <textarea
+              id="contact-message"
               value={message}
               onChange={e => setMessage(e.target.value)}
-              placeholder="Décris ton problème ou ta question…"
+              placeholder={t('ctcDecrisProblemeQuestion', 'Décris ton problème ou ta question…')}
               rows={5}
-              className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all resize-none"
+              className="w-full bg-fg/[0.02] border border-fg/10 rounded-xl px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 transition-all resize-none"
               maxLength={5000}
             />
-            <p className="text-[10px] text-white/20 mt-1 text-right">{message.length}/5000</p>
+            <p className="text-xs text-fg-faint mt-1 text-end">{message.length}/5000</p>
           </div>
 
           <button
             type="button"
             onClick={handleSubmit}
             disabled={sending || sent}
-            className="w-full sm:w-auto px-6 py-3 bg-linear-to-r from-dz-gold to-dz-emerald text-black font-bold text-sm rounded-xl flex items-center justify-center gap-2 hover:shadow-[0_4px_20px_rgba(201,164,92,0.3)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 bg-primary text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 hover:shadow-[0_4px_20px_rgba(201,164,92,0.3)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
           >
             {sending ? (
-              <><Loader2 size={16} className="animate-spin" /> Envoi…</>
+              <><Loader2 size={16} className="animate-spin" /> {t('ctcEnvoi', 'Envoi…')}</>
             ) : sent ? (
-              <><Check size={16} /> Envoyé !</>
+              <><Check size={16} /> {t('ctcEnvoye', 'Envoyé !')}</>
             ) : (
-              <><Send size={16} /> Envoyer le message</>
+              <><Send size={16} /> {t('ctcEnvoyerMessage2', 'Envoyer le message')}</>
             )}
           </button>
         </div>

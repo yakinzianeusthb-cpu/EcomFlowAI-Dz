@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { preferencesApi, authApi, OtpChallenge } from '../services/api';
+import { useLanguage } from './LanguageContext';
 
 export type PlanId = 'monthly' | 'quarterly' | 'lifetime' | 'custom';
 
@@ -8,6 +9,8 @@ export interface AuthUser {
   email: string;
   name: string;
   avatar?: string;
+  /** Profile picture as returned by /api/auth/me (Prisma column). */
+  avatarUrl?: string | null;
   isAdmin?: boolean;
   plan: PlanId | null;
   planStatus: 'pending' | 'active' | null;
@@ -48,7 +51,11 @@ async function syncPrefsToLocal() {
   try {
     const preferences = await preferencesApi.get();
     if (!preferences) return;
-    if (preferences.theme) localStorage.setItem('theme', preferences.theme);
+    if (preferences.theme) {
+      localStorage.setItem('theme', preferences.theme);
+      // Tell mounted toggles/the document class to follow the server-side preference right away.
+      window.dispatchEvent(new Event('dz_theme_changed'));
+    }
     if (preferences.language) localStorage.setItem('dzads_language', preferences.language);
     if (preferences.toolsOrder) localStorage.setItem('dzads_tools_order', JSON.stringify(preferences.toolsOrder));
     if (preferences.dashboardConfig) localStorage.setItem('dashboard_config', JSON.stringify(preferences.dashboardConfig));
@@ -63,22 +70,39 @@ async function syncPrefsToLocal() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMock, setIsMock] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
+      // index.html starts the session check before this bundle runs; consume that result once.
+      const w = window as unknown as { __dzMe?: Promise<{ ok: boolean; data?: any }> };
+      const early = w.__dzMe;
+      w.__dzMe = undefined;
+      let ok: boolean;
+      let data: any = null;
+      if (early) {
+        const result = await early;
+        ok = result.ok;
+        data = result.data;
+      } else {
+        const res = await fetch('/api/auth/me');
+        ok = res.ok;
+        if (ok) data = await res.json();
+      }
+      if (ok) {
         setUser(data.user);
         setIsMock(Boolean(data.isMock));
+        // Remember that this browser has a session so the next visit can prefetch the app code early.
+        try { localStorage.setItem('dz_returning', '1'); } catch { /* ignore */ }
         // Sync server preferences → localStorage on login.
         if (data.user) syncPrefsToLocal();
       } else {
         setUser(null);
         setIsMock(false);
+        try { localStorage.removeItem('dz_returning'); } catch { /* ignore */ }
       }
     } catch {
       setUser(null);
@@ -105,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const verifyOtp = useCallback(async (email: string, code: string) => {
+    preferencesApi.invalidate();
     const data = await authApi.verifyOtp(email, code);
     setUser(data.user);
     setIsMock(false);
@@ -123,6 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setIsMock(false);
+    preferencesApi.invalidate();
+    try { localStorage.removeItem('dz_returning'); } catch { /* ignore */ }
     // Clear local preference cache on logout.
     localStorage.removeItem('dzads_last_generated_image');
     localStorage.removeItem('dzads_last_generated_script');
@@ -131,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('dashboard_widget_order');
     localStorage.removeItem('dzads_lp_sessions');
     localStorage.removeItem('dzads_lp_last_active_id');
+    localStorage.removeItem('dzads_lp_whatsapp'); // the order WhatsApp number of the landing publisher
     localStorage.removeItem('ecommerce_expert_sessions');
     localStorage.removeItem('ecommerce_expert_last_active_session_id');
     localStorage.removeItem('dzads_settings');
@@ -145,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Impossible de sélectionner ce plan.');
+      throw new Error(data.error || t('coImpossibleSelectionnerCePlan', 'Impossible de sélectionner ce plan.'));
     }
     const data = await res.json();
     setUser(data.user);

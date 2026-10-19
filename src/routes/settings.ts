@@ -2,6 +2,12 @@ import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { encryptSecret, maskSecret } from "../lib/crypto";
 import { requireAuth, SessionPayload } from "../lib/session";
+import {
+  buildSettingsWrite,
+  DEFAULT_WORKSPACE_NAME,
+  SECRET_FIELDS,
+  SettingsValidationError,
+} from "../lib/settingsWrite";
 
 const router = Router();
 
@@ -15,28 +21,9 @@ const DEFAULT_SETTINGS = {
   snapAdsToken: "",
   snapAccountId: "",
   geminiApiKey: "",
-  workspaceName: "E-com DZ Workspace",
+  workspaceName: DEFAULT_WORKSPACE_NAME,
   customApiToken: "",
 };
-
-// Fields that hold secrets — encrypted at rest, never returned in full.
-const SECRET_FIELDS = [
-  "facebookAdsToken",
-  "tiktokAdsToken",
-  "googleAdsDeveloperToken",
-  "snapAdsToken",
-  "geminiApiKey",
-  "customApiToken",
-] as const;
-
-// Non-secret identifier fields.
-const IDENTIFIER_FIELDS = [
-  "facebookAccountId",
-  "tiktokAccountId",
-  "googleAdsCustomerId",
-  "snapAccountId",
-  "workspaceName",
-] as const;
 
 /** Masks every secret field so raw tokens never reach the browser. */
 function toMasked<T extends Record<string, any>>(settings: T) {
@@ -61,43 +48,33 @@ router.get("/api/settings", requireAuth, async (req, res) => {
 
 // PUT /api/settings — upsert the user's settings (userId is the unique key).
 // Secret fields are encrypted before storage; an empty/absent value preserves
-// the existing secret instead of overwriting it with a blank.
+// the existing secret instead of overwriting it with a blank, and a field that
+// is not in the request is left untouched (see lib/settingsWrite.ts).
 router.put("/api/settings", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
-  const b = req.body || {};
-  const existing = await prisma.apiSettings.findUnique({
-    where: { userId: user.sub },
-  });
-
-  const createData: Record<string, any> = { userId: user.sub };
-  const updateData: Record<string, any> = {};
-
-  for (const f of SECRET_FIELDS) {
-    const value = b[f];
-    if (value != null && value !== "") {
-      const enc = encryptSecret(String(value));
-      createData[f] = enc;
-      updateData[f] = enc;
-    } else if (existing?.[f]) {
-      // Leave a blank untouched — keep the currently stored secret.
-      updateData[f] = existing[f];
+  try {
+    const existing = await prisma.apiSettings.findUnique({
+      where: { userId: user.sub },
+    });
+    const { createData, updateData } = buildSettingsWrite({
+      userId: user.sub,
+      body: req.body || {},
+      existing: existing as Record<string, unknown> | null,
+      encrypt: encryptSecret,
+    });
+    const settings = await prisma.apiSettings.upsert({
+      where: { userId: user.sub },
+      create: createData as any,
+      update: updateData as any,
+    });
+    res.json(toMasked(settings));
+  } catch (err) {
+    if (err instanceof SettingsValidationError) {
+      return res.status(400).json({ error: err.message });
     }
+    console.error("Save settings error:", err);
+    res.status(500).json({ error: "Erreur serveur." });
   }
-
-  for (const f of IDENTIFIER_FIELDS) {
-    const value = b[f];
-    const v = value == null ? null : String(value) || null;
-    createData[f] = v;
-    updateData[f] = v;
-  }
-  if (createData.workspaceName == null) createData.workspaceName = "E-com DZ Workspace";
-
-  const settings = await prisma.apiSettings.upsert({
-    where: { userId: user.sub },
-    create: createData as any,
-    update: updateData as any,
-  });
-  res.json(toMasked(settings));
 });
 
 export const settingsRouter = router;

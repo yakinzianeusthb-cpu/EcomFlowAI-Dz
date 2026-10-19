@@ -7,10 +7,13 @@ import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
+import TextWithSlots from '../components/TextWithSlots';
 
 export default function RegisterPage() {
   const { register, login } = useAuth();
   const { t } = useLanguage();
+  useDocumentMeta({ title: t('metaTitleRegister', 'Créer un compte — EcomFlow AI') });
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
@@ -61,7 +64,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title={t('authRegisterTitle', 'Créer un compte')}
-      subtitle={t('authRegisterSubtitle', 'Commence gratuitement et débloque les 12 outils IA.')}
+      subtitle={t('authRegisterSubtitle', 'Le compte est gratuit. Ensuite, tu choisis un plan et tu ajoutes ta clé Gemini pour générer.')}
       footer={
         <p>
           {t('authHaveAccount', 'Déjà un compte ?')}{' '}
@@ -80,7 +83,7 @@ export default function RegisterPage() {
         key={shakeKey}
       >
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+          <label className="block text-xs text-fg-muted mb-1.5">
             {t('authName', 'Nom complet')}
           </label>
           <input
@@ -95,7 +98,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+          <label className="block text-xs text-fg-muted mb-1.5">
             {t('authEmail', 'Adresse email')}
           </label>
           <input
@@ -111,7 +114,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+          <label className="block text-xs text-fg-muted mb-1.5">
             {t('authPassword', 'Mot de passe')}
           </label>
           <div className="relative">
@@ -121,12 +124,13 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('authPwPlaceholder', 'At least 8 characters')}
-              className={`input-dz pr-10 ${errors.password ? 'border-rose-500/60' : ''}`}
+              className={`input-dz pe-10 ${errors.password ? 'border-rose-500/60' : ''}`}
             />
             <button
               type="button"
               onClick={() => setShowPw((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors cursor-pointer"
+              className="absolute end-3 top-1/2 -translate-y-1/2 text-fg-faint hover:text-fg transition-colors cursor-pointer"
+              aria-label={showPw ? t('authHidePw', 'Masquer') : t('authShowPw', 'Afficher')}
               tabIndex={-1}
             >
               {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -137,7 +141,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+          <label className="block text-xs text-fg-muted mb-1.5">
             {t('authConfirmPassword', 'Confirmer le mot de passe')}
           </label>
           <input
@@ -166,14 +170,28 @@ export default function RegisterPage() {
           {submitting ? t('authPleaseWait', 'Envoi du code…') : t('authRegisterBtn', 'Créer mon compte')}
         </button>
 
-        <p className="text-center text-[11px] text-white/25">
-          {t('authTerms', 'En créant un compte, tu acceptes les conditions d\'utilisation.')}
+        <p className="text-center text-xs text-fg-faint">
+          <TextWithSlots
+            text={t('authTerms', 'En créant un compte, tu acceptes les {terms} et la {privacy}.')}
+            slots={{
+              terms: (
+                <Link to="/terms" target="_blank" className="font-medium text-fg-muted underline underline-offset-2 hover:text-fg">
+                  {t('legalTermsLink', "conditions d'utilisation")}
+                </Link>
+              ),
+              privacy: (
+                <Link to="/privacy" target="_blank" className="font-medium text-fg-muted underline underline-offset-2 hover:text-fg">
+                  {t('legalPrivacyLink', 'politique de confidentialité')}
+                </Link>
+              ),
+            }}
+          />
         </p>
 
-        <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-widest text-white/25">
-          <span className="h-px flex-1 bg-white/10" />
+        <div className="flex items-center gap-3 text-xs text-fg-faint">
+          <span className="h-px flex-1 bg-fg/10" />
           {t('authOr', 'ou')}
-          <span className="h-px flex-1 bg-white/10" />
+          <span className="h-px flex-1 bg-fg/10" />
         </div>
 
         <button

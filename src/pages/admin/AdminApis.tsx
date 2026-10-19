@@ -3,6 +3,8 @@ import { Key, Settings, Globe, Trash2, Edit2, X, Loader2, Check, Mail, Zap } fro
 import { adminApi, type ApiSettingsRow, type PlatformConfig } from '../../services/admin';
 import { AdminCard, EmptyState, Field, LoadingBlock, Modal, inputCls } from './AdminUI';
 import { cn } from '../../lib/utils';
+import { useLanguage } from '../../context/LanguageContext';
+import '../../i18n/admin';
 
 const API_ROWS: { key: string; label: string; group: string }[] = [
   { key: 'facebookAdsToken', label: 'FB Ads Token', group: 'Facebook' },
@@ -25,6 +27,7 @@ function maskKey(k?: string | null) {
 }
 
 export default function AdminApis() {
+  const { t, tf } = useLanguage();
   const [rows, setRows] = useState<ApiSettingsRow[]>([]);
   const [config, setConfig] = useState<PlatformConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +52,7 @@ export default function AdminApis() {
   return (
     <div className="space-y-6">
       {/* Platform config */}
-      <AdminCard title="Configuration de la plateforme" icon={Settings}>
+      <AdminCard title={t('admConfigurationPlateforme', 'Configuration de la plateforme')} icon={Settings}>
         {loading || !config ? (
           <LoadingBlock />
         ) : (
@@ -61,14 +64,14 @@ export default function AdminApis() {
             ].map(item => (
               <div key={item.label} className={cn(
                 'rounded-xl border p-3.5 transition-all',
-                item.active ? 'bg-dz-emerald/5 border-dz-emerald/30' : 'bg-white/[0.02] border-white/[0.06]'
+                item.active ? 'bg-dz-emerald/5 border-dz-emerald/30' : 'bg-fg/[0.02] border-fg/[0.06]'
               )}>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <item.icon size={14} className={item.active ? 'text-dz-emerald' : 'text-white/30'} />
-                  <span className="text-[12px] font-semibold text-white">{item.label}</span>
+                  <item.icon size={14} className={item.active ? 'text-dz-emerald' : 'text-fg-faint'} />
+                  <span className="text-[12px] font-semibold text-fg">{item.label}</span>
                 </div>
-                <p className={cn('text-[11px]', item.active ? 'text-dz-emerald' : 'text-white/30')}>
-                  {item.active ? 'Configuré' : item.sub || 'Non configuré'}
+                <p className={cn('text-xs', item.active ? 'text-dz-emerald' : 'text-fg-faint')}>
+                  {item.active ? t('admConfigure', 'Configuré') : item.sub || t('ctcNonConfigure', 'Non configuré')}
                 </p>
               </div>
             ))}
@@ -77,46 +80,46 @@ export default function AdminApis() {
       </AdminCard>
 
       {/* Per-user API table */}
-      <AdminCard title="API par utilisateur" icon={Key}>
+      <AdminCard title={t('admApiParUtilisateur', 'API par utilisateur')} icon={Key}>
         {loading ? (
           <LoadingBlock />
         ) : rows.length === 0 ? (
-          <EmptyState icon={Key} title="Aucun utilisateur" />
+          <EmptyState icon={Key} title={t('admAucunUtilisateur', 'Aucun utilisateur')} />
         ) : (
           <div className="overflow-x-auto -mx-5 sm:-mx-6">
-            <table className="w-full text-left text-[13px] min-w-[600px]">
+            <table className="w-full text-start text-[13px] min-w-[600px]">
               <thead>
-                <tr className="text-[10px] font-mono uppercase tracking-wider text-white/30 border-b border-white/[0.06]">
-                  <th className="px-5 sm:px-6 py-3">Utilisateur</th>
-                  <th className="px-4 py-3">Intégrations connectées</th>
-                  <th className="px-4 py-3">Actions</th>
+                <tr className="text-xs text-fg-faint border-b border-fg/[0.06]">
+                  <th className="px-5 sm:px-6 py-3">{t('admRoleUser', 'Utilisateur')}</th>
+                  <th className="px-4 py-3">{t('admIntegrationsConnectees', 'Intégrations connectées')}</th>
+                  <th className="px-4 py-3">{t('admActions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(u => {
                   const c = connected(u);
                   return (
-                    <tr key={u.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                    <tr key={u.id} className="border-b border-fg/[0.04] hover:bg-fg/[0.02] transition-colors">
                       <td className="px-5 sm:px-6 py-3">
-                        <p className="font-semibold text-white">{u.name}</p>
-                        <p className="text-[11px] text-white/35">{u.email}</p>
+                        <p className="font-semibold text-fg">{u.name}</p>
+                        <p className="text-xs text-fg-faint">{u.email}</p>
                       </td>
                       <td className="px-4 py-3">
                         {c.length === 0 ? (
-                          <span className="text-[12px] text-white/25">Aucune</span>
+                          <span className="text-[12px] text-fg-faint">{t('admAucune', 'Aucune')}</span>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
                             {c.slice(0, 6).map(r => (
-                              <span key={r.key} className="text-[10px] font-mono px-2 py-0.5 rounded bg-dz-emerald/10 text-dz-emerald border border-dz-emerald/20">
-                                {r.group}
+                              <span key={r.key} className="text-xs px-2 py-0.5 rounded bg-dz-emerald/10 text-dz-emerald border border-dz-emerald/20">
+                                {tf(r.group)}
                               </span>
                             ))}
-                            {c.length > 6 && <span className="text-[10px] text-white/30">+{c.length - 6}</span>}
+                            {c.length > 6 && <span className="text-xs text-fg-faint">+{c.length - 6}</span>}
                           </div>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setEditUser(u)} className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"><Edit2 size={15} /></button>
+                        <button onClick={() => setEditUser(u)} aria-label={t('admEdit', 'Modifier')} className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-fg/10 transition-colors cursor-pointer"><Edit2 size={15} /></button>
                       </td>
                     </tr>
                   );
@@ -128,7 +131,7 @@ export default function AdminApis() {
       </AdminCard>
 
       {/* Edit modal */}
-      <Modal open={editUser !== null} onClose={() => setEditUser(null)} title={`API — ${editUser?.name ?? ''}`} wide>
+      <Modal open={editUser !== null} onClose={() => setEditUser(null)} title={t('admApiOf', 'API — {name}', { name: editUser?.name ?? '' })} wide>
         {editUser && <EditApiSettings user={editUser} onDone={() => { setEditUser(null); load(); }} />}
       </Modal>
     </div>
@@ -136,6 +139,7 @@ export default function AdminApis() {
 }
 
 function EditApiSettings({ user, onDone }: { user: ApiSettingsRow; onDone: () => void }) {
+  const { t, tf } = useLanguage();
   const [form, setForm] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
     for (const r of API_ROWS) {
@@ -155,12 +159,12 @@ function EditApiSettings({ user, onDone }: { user: ApiSettingsRow; onDone: () =>
       await adminApi.updateApiSettings(user.id, form as any);
       onDone();
     } catch (err: any) {
-      setError(err?.message || 'Erreur.');
+      setError(err?.message || t('admErreur', 'Erreur.'));
     } finally { setSaving(false); }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Supprimer les API keys de ${user.name} ?`)) return;
+    if (!window.confirm(t('admDeleteKeysConfirm', 'Supprimer les API keys de {name} ?', { name: user.name }))) return;
     try { await adminApi.deleteApiSettings(user.id); onDone(); } catch (err) { console.error(err); }
   };
 
@@ -170,28 +174,28 @@ function EditApiSettings({ user, onDone }: { user: ApiSettingsRow; onDone: () =>
   }, {});
 
   return (
-    <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+    <div className="space-y-5 max-h-[60vh] overflow-y-auto pe-1">
       {Object.entries(grouped).map(([group, fields]) => (
         <div key={group}>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-white/35 mb-3">{group}</p>
+          <p className="text-xs text-fg-faint mb-3">{tf(group)}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fields.map(f => (
-              <Field key={f.key} label={f.label} hint={f.key.includes('Token') || f.key.includes('ApiKey') ? `actuel: ${maskKey(user.apiSettings?.[f.key as keyof typeof user.apiSettings]) || '—'}` : undefined}>
-                <input value={form[f.key]} onChange={e => update(f.key, e.target.value)} className={inputCls} placeholder={f.key.includes('Token') || f.key.includes('ApiKey') ? 'Laisser vide pour garder l\'actuel' : ''} />
+              <Field key={f.key} label={f.label} hint={f.key.includes('Token') || f.key.includes('ApiKey') ? t('admCurrentValue', 'actuel : {value}', { value: maskKey(user.apiSettings?.[f.key as keyof typeof user.apiSettings]) || '—' }) : undefined}>
+                <input value={form[f.key]} onChange={e => update(f.key, e.target.value)} className={inputCls} placeholder={f.key.includes('Token') || f.key.includes('ApiKey') ? t('admLaisserVideGarderL', "Laisser vide pour garder l'actuel") : ''} />
               </Field>
             ))}
           </div>
         </div>
       ))}
       {error && <p className="text-[12px] text-rose-400">{error}</p>}
-      <div className="flex gap-2 pt-2 border-t border-white/[0.06]">
+      <div className="flex gap-2 pt-2 border-t border-fg/[0.06]">
         <button onClick={submit} disabled={saving} className="btn-dz-primary flex-1 disabled:opacity-50">
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Enregistrer
         </button>
-        <button onClick={handleDelete} className="btn-dz-danger px-4">
+        <button onClick={handleDelete} aria-label={t('delete', 'Supprimer')} className="btn-dz-danger px-4">
           <Trash2 size={14} />
         </button>
-        <button onClick={onDone} className="btn-dz-secondary px-4"><X size={14} /></button>
+        <button onClick={onDone} aria-label={t('admCancelForm', 'Fermer le formulaire')} className="btn-dz-secondary px-4"><X size={14} /></button>
       </div>
     </div>
   );

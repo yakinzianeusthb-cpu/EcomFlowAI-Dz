@@ -2,8 +2,12 @@ import crypto from "crypto";
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { createRateLimiter } from "../lib/rateLimit";
+import { publicCache } from "../lib/cache";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { sendOtpEmail, sendContactEmail } from "../lib/email";
+import { isPlanActive } from "../lib/access";
+import { isEmailAddress } from "../lib/emailAddress";
+import { metaConfig } from "../lib/meta";
 import { issueOtp, verifyOtpCode, OtpRateLimitedError } from "../lib/otp";
 import {
   clearSessionCookie,
@@ -50,8 +54,15 @@ const registerLimiter = createRateLimiter({
 const otpVerifyLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  keyFn: (req) => `${ipKey(req)}|${String(req.body?.email || "").toLowerCase()}`,
+  keyFn: (req) => `${ipKey(req)}|${String(req.body?.email || "").toLowerCase().slice(0, 254)}`,
   message: "Trop de codes essayés. Réessaie dans 15 minutes.",
+});
+// Each contact message is an e-mail to the admin: a few per hour per account is plenty.
+const contactLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  keyFn: (req) => (req.user as SessionPayload | undefined)?.sub ?? ipKey(req),
+  message: "Trop de messages envoyés. Réessaie dans une heure.",
 });
 const resendLimiter = createRateLimiter({
   windowMs: 60 * 1000,
@@ -188,7 +199,6 @@ router.get("/api/auth/google/callback", async (req, res) => {
 // Email / password authentication with 6-digit OTP verification
 // ---------------------------------------------------------------------------
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function rateLimitError(err: unknown): boolean {
   return err instanceof OtpRateLimitedError;
@@ -211,7 +221,7 @@ router.post("/api/auth/register", registerLimiter, async (req, res) => {
     if (!displayName) {
       return res.status(400).json({ error: "Le nom est requis." });
     }
-    if (!EMAIL_RE.test(normalizedEmail)) {
+    if (!isEmailAddress(normalizedEmail)) {
       return res.status(400).json({ error: "Adresse email invalide." });
     }
     if (typeof password !== "string" || password.length < 8) {
@@ -432,10 +442,11 @@ router.post("/api/auth/plan", requireAuth, async (req, res) => {
 
   const current = await prisma.user.findUnique({
     where: { id: session.sub },
-    select: { planStatus: true },
+    select: { planStatus: true, planExpiresAt: true },
   });
-  // Never downgrade/lock an already-active subscription by re-selecting.
-  if (current?.planStatus === "active") {
+  // Never downgrade/lock a live subscription by re-selecting. A plan that has run out is not live,
+  // so its owner can pick a plan again to renew.
+  if (isPlanActive(current)) {
     return res.status(400).json({ error: "Un plan est déjà actif." });
   }
 
@@ -457,22 +468,25 @@ router.post("/api/auth/logout", (req, res) => {
 });
 
 // GET /api/config — public config (admin payment contacts), DB-backed with env fallback.
-router.get("/api/config", async (_req, res) => {
+// metaPublishing says whether this site has a Meta app configured (the home page only mentions publishing then).
+router.get("/api/config", publicCache(), async (_req, res) => {
+  const metaPublishing = metaConfig().missing.length === 0;
   try {
     const cfg = await prisma.platformConfig.findUnique({ where: { id: 'singleton' } });
     res.json({
       adminEmail: cfg?.adminEmail || ADMIN_EMAIL,
       adminTelegram: cfg?.adminTelegram || ADMIN_TELEGRAM,
       whatsappNumber: cfg?.whatsappNumber || "",
+      metaPublishing,
     });
   } catch (err) {
     console.error("Get config error:", err);
-    res.json({ adminEmail: ADMIN_EMAIL, adminTelegram: ADMIN_TELEGRAM, whatsappNumber: "" });
+    res.json({ adminEmail: ADMIN_EMAIL, adminTelegram: ADMIN_TELEGRAM, whatsappNumber: "", metaPublishing });
   }
 });
 
 // POST /api/contact — send a contact form message to the admin by email.
-router.post("/api/contact", requireAuth, async (req, res) => {
+router.post("/api/contact", requireAuth, contactLimiter, async (req, res) => {
   try {
     const b = req.body || {};
     const name = typeof b.name === "string" ? b.name.trim() : "";
@@ -483,7 +497,7 @@ router.post("/api/contact", requireAuth, async (req, res) => {
     if (!name || name.length > 120) {
       return res.status(400).json({ error: "Nom invalide." });
     }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 128) {
+    if (!email || email.length > 128 || !isEmailAddress(email)) {
       return res.status(400).json({ error: "Email invalide." });
     }
     if (!subject || subject.length > 120) {

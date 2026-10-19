@@ -149,8 +149,120 @@ model User {
   lpSessions         LpSession[]
   productCatalog     ProductCatalog[]
   userPreferences    UserPreferences?
+  projects           Project[]
+  assets             Asset[]
+  projectOutputs     ProjectOutput[]
+  brandKit           BrandKit?
+  metaConnection     MetaConnection?
 
   @@map("users")
+}
+
+/// A campaign: one product, its brief and photos, and everything generated from them.
+model Project {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  name        String
+  productName String          @default("") @map("product_name")
+  description String          @default("")
+  audience    String          @default("")
+  /// sales | leads | traffic | awareness
+  objective   String          @default("sales")
+  tone        String          @default("")
+  /// facebook, instagram, tiktok, snapchat, web
+  platforms   String[]        @default([])
+  /// language of the generated copy: ar | fr | en
+  language    String          @default("ar")
+  price       String          @default("")
+  /// draft | archived
+  status      String          @default("draft")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets      Asset[]
+  outputs     ProjectOutput[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("projects")
+}
+
+/// A stored file (product photo, logo, ad creative, exported page). Served only to its owner.
+model Asset {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  projectId String?  @map("project_id")
+  /// product | logo | creative | ai_image | landing | other
+  kind      String
+  name      String
+  mimeType  String   @map("mime_type")
+  size      Int
+  width     Int?
+  height    Int?
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([projectId])
+  @@map("assets")
+}
+
+/// One generated version of a campaign output (landing page, video script, ad pack, Meta campaign).
+model ProjectOutput {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  /// landing | video | ads | meta_campaign
+  kind      String
+  version   Int
+  data      Json
+  /// bytes of data as sent, counted against the account's storage quota
+  size      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, kind, version])
+  @@index([projectId, kind])
+  @@map("project_outputs")
+}
+
+/// The brand context reused by every generation.
+model BrandKit {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  brandName    String   @default("") @map("brand_name")
+  logoAssetId  String?  @map("logo_asset_id")
+  colors       String[] @default([])
+  headingFont  String   @default("") @map("heading_font")
+  bodyFont     String   @default("") @map("body_font")
+  tone         String   @default("")
+  audience     String   @default("")
+  instructions String   @default("")
+  styles       String[] @default([])
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("brand_kits")
+}
+
+/// A Meta (Facebook) login granted through OAuth. The token is encrypted at rest and never sent to the browser.
+model MetaConnection {
+  id           String    @id @default(uuid())
+  userId       String    @unique @map("user_id")
+  metaUserId   String    @map("meta_user_id")
+  metaUserName String    @default("") @map("meta_user_name")
+  accessToken  String    @map("access_token")
+  expiresAt    DateTime? @map("expires_at")
+  scopes       String[]  @default([])
+  adAccountId  String?   @map("ad_account_id")
+  pageId       String?   @map("page_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("meta_connections")
 }
 
 model PaymentMethod {

@@ -12,7 +12,7 @@ function getSegmentColor(score: number): string {
   if (score <= 1) return 'bg-rose-500';
   if (score === 2) return 'bg-amber-500';
   if (score === 3) return 'bg-lime-500';
-  return 'bg-dz-emerald';
+  return 'bg-primary';
 }
 
 export default function PasswordStrengthMeter({ password, className = '' }: PasswordStrengthMeterProps) {
@@ -32,26 +32,26 @@ export default function PasswordStrengthMeter({ password, className = '' }: Pass
   let label: React.ReactNode = null;
   if (score === 1) {
     label = (
-      <p className="mt-1.5 flex flex-col gap-0.5 text-[11px] font-mono">
+      <p className="mt-1.5 flex flex-col gap-0.5 text-xs">
         <span className="text-rose-400">{t('pwWeak', 'Faible')}</span>
-        <span className="text-white/30">{t('pwHint', 'Mélange majuscules, minuscules, chiffres et symboles.')}</span>
+        <span className="text-fg-faint">{t('pwHint', 'Mélange majuscules, minuscules, chiffres et symboles.')}</span>
       </p>
     );
   } else if (score === 2) {
     label = (
-      <p className="mt-1.5 text-[11px] font-mono text-amber-400">
+      <p className="mt-1.5 text-xs text-amber-400">
         {t('pwMedium', 'Moyen')}
       </p>
     );
   } else if (score === 3) {
     label = (
-      <p className="mt-1.5 text-[11px] font-mono text-lime-400">
+      <p className="mt-1.5 text-xs text-lime-400">
         {t('pwStrong', 'Fort')}
       </p>
     );
   } else if (score === 4) {
     label = (
-      <p className="mt-1.5 text-[11px] font-mono text-dz-emerald">
+      <p className="mt-1.5 text-xs text-dz-emerald">
         {t('pwVeryStrong', 'Très fort')}
       </p>
     );
@@ -63,7 +63,7 @@ export default function PasswordStrengthMeter({ password, className = '' }: Pass
         {SEGMENTS.map((i) => (
           <span
             key={i}
-            className={`h-1 flex-1 rounded-full transition-all ${i < score ? segmentColor : 'bg-white/10'}`}
+            className={`h-1 flex-1 rounded-full transition-all ${i < score ? segmentColor : 'bg-fg/10'}`}
           />
         ))}
       </div>

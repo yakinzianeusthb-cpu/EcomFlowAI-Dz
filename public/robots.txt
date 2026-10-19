@@ -1,0 +1,5 @@
+# Without this file the SPA fallback answers /robots.txt with the HTML app, which crawlers report as invalid.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin

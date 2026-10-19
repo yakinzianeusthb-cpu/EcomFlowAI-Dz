@@ -1,255 +1,260 @@
 import { useEffect, useState } from 'react';
-import { Megaphone, Flame, ExternalLink, MessageCircle, PlaySquare } from 'lucide-react';
-import { contentApi, type Announcement, type HotDeal, type Guide } from '../services/admin';
+import { ExternalLink, Flame, Megaphone, MessageCircle, Play, PlaySquare } from 'lucide-react';
+import { contentApi, type Announcement, type Guide, type HotDeal } from '../services/admin';
 import { configApi } from '../services/api';
-import { cn } from '../lib/utils';
+import { cn, stripLeadingEmoji } from '../lib/utils';
+import { hasActivePlan } from '../lib/access';
+import { visibleAnnouncements } from '../lib/dashboardContent';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const KIND_STYLES: Record<string, string> = {
-  info: 'border-sky-400/25',
-  warning: 'border-amber-400/25',
-  success: 'border-emerald-400/25',
-  promo: 'border-dz-gold/30',
+const KIND_ACCENT: Record<string, string> = {
+  info: 'bg-primary',
+  warning: 'bg-warning',
+  success: 'bg-success',
+  promo: 'bg-accent',
 };
 
-const KIND_DOT: Record<string, string> = {
-  info: 'bg-sky-400',
-  warning: 'bg-amber-400',
-  success: 'bg-emerald-400',
-  promo: 'bg-dz-gold',
-};
+function WidgetHeader({ icon: Icon, title, count }: { icon: typeof Megaphone; title: string; count?: number }) {
+  return (
+    <div className="mb-4 flex items-center gap-2.5">
+      <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary-ink">
+        <Icon size={16} />
+      </span>
+      <h2 className="text-[15px] font-semibold text-fg">{title}</h2>
+      {count != null && count > 1 && <span className="text-xs text-fg-faint tabular-nums">{count}</span>}
+    </div>
+  );
+}
 
-/** Default announcement fallback for 7 days free trial. */
-const DEFAULT_FREE_TRIAL_ANNOUNCEMENT: Announcement = {
-  id: 'default-free-7-days',
-  title: "🎁 Offre Spéciale : 7 Jours d'Essai Gratuit !",
-  message: "Profitez de 7 jours d'accès gratuit et illimité à tous nos outils IA e-commerce pour tester et booster vos ventes dès aujourd'hui. Pour en profiter, contactez-nous sur WhatsApp !",
-  emoji: '🎁',
-  kind: 'promo',
-  active: true,
-  startsAt: null,
-  expiresAt: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
+/** Built-in announcement: shown first to people without a plan, then whatever the admin published. */
+const FREE_TRIAL_ID = 'default-free-7-days';
 
-/** Announcements widget — renders announcements or default free 7 days announcement. */
 export function AnnouncementsWidget() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [items, setItems] = useState<Announcement[]>([]);
-  const [whatsappNumber, setWhatsappNumber] = useState<string>('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    contentApi
-      .announcements()
-      .then(d => {
-        if (!cancelled) {
-          setItems(d);
-        }
-      })
-      .catch(() => {});
-
-    configApi
-      .get()
-      .then(cfg => {
-        if (!cancelled && cfg?.whatsappNumber) {
-          setWhatsappNumber(cfg.whatsappNumber);
-        }
-      })
-      .catch(() => {});
-
+    contentApi.announcements().then((d) => !cancelled && setItems(d)).catch(() => {});
+    configApi.get().then((cfg) => !cancelled && cfg?.whatsappNumber && setWhatsappNumber(cfg.whatsappNumber)).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
-  // Always show the free 7-day announcement first, then any admin announcements below it.
-  const freeTrialItem: Announcement = {
-    ...DEFAULT_FREE_TRIAL_ANNOUNCEMENT,
-    title: t('freeTrialAnnouncementTitle', DEFAULT_FREE_TRIAL_ANNOUNCEMENT.title),
-    message: t('freeTrialAnnouncementMessage', DEFAULT_FREE_TRIAL_ANNOUNCEMENT.message),
+  const freeTrial: Announcement = {
+    id: FREE_TRIAL_ID,
+    title: t('freeTrialAnnouncementTitle', "Offre spéciale : 7 jours d'essai gratuit !"),
+    message: t(
+      'freeTrialAnnouncementMessage',
+      "Profitez de 7 jours d'accès gratuit et illimité à tous nos outils IA e-commerce. Pour en profiter, contactez-nous sur WhatsApp !",
+    ),
+    emoji: '',
+    kind: 'promo',
+    active: true,
+    startsAt: null,
+    expiresAt: null,
+    createdAt: '',
+    updatedAt: '',
   };
-  const displayItems = [freeTrialItem, ...items];
+  const displayItems = visibleAnnouncements(items, { hasPlan: hasActivePlan(user), freeTrial });
+  if (displayItems.length === 0) return null;
+
+  const openContact = () => window.dispatchEvent(new CustomEvent('nav-change', { detail: 'contact' }));
+  const waUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(t('shlTrialWhatsapp', "Bonjour, je souhaite réclamer mon offre de 7 jours d'essai gratuit."))}`;
 
   return (
-    <section className="surface-card p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Megaphone size={15} className="text-dz-emerald" />
-        <h3 className="font-display font-semibold text-[15px] text-white">{t('dashWidgetAnnouncements', 'Annonces')}</h3>
-      </div>
-      <div className="space-y-2.5">
-        {displayItems.map(a => {
-          const isWhatsAppAnnouncement = a.message.toLowerCase().includes('whatsapp') || a.id.includes('free-7-days');
-          const waUrl = whatsappNumber
-            ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Bonjour, je souhaite réclamer mon offre de 7 jours d'essai gratuit.")}`
-            : '#';
-
+    <section className="ui-card p-5">
+      <WidgetHeader icon={Megaphone} title={t('dashWidgetAnnouncements', 'Annonces')} />
+      <ul className="space-y-3">
+        {displayItems.map((a) => {
+          const withWhatsApp = a.id === FREE_TRIAL_ID || a.message.toLowerCase().includes('whatsapp');
           return (
-            <div key={a.id} className={cn('rounded-xl border bg-white/[0.02] p-3.5', KIND_STYLES[a.kind] || KIND_STYLES.info)}>
-              <div className="flex items-center gap-2 mb-1">
-                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', KIND_DOT[a.kind] || KIND_DOT.info)} />
-                <p className="text-[13px] font-semibold text-white">{a.emoji} {a.title}</p>
+            <li key={a.id} className="rounded-xl border border-line bg-surface-2 p-4">
+              <div className="flex items-start gap-2.5">
+                <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', KIND_ACCENT[a.kind] ?? KIND_ACCENT.info)} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-fg">{stripLeadingEmoji(a.title)}</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">{a.message}</p>
+                  {withWhatsApp &&
+                    (whatsappNumber ? (
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-[13px] font-semibold text-[#06310f] transition-opacity hover:opacity-90"
+                      >
+                        <MessageCircle size={15} />
+                        {t('contactUsOnWhatsApp', 'Contactez-nous sur WhatsApp')}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openContact}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-fg transition-colors hover:bg-surface-3"
+                      >
+                        <MessageCircle size={15} />
+                        {t('contactUsOnWhatsApp', 'Contactez-nous sur WhatsApp')}
+                      </button>
+                    ))}
+                </div>
               </div>
-              <p className="text-[12px] text-white/50 leading-relaxed">{a.message}</p>
-
-              {isWhatsAppAnnouncement && (
-                <a
-                  href={waUrl}
-                  {...(whatsappNumber ? { target: '_blank', rel: 'noopener noreferrer' } : { onClick: (e) => { if (!whatsappNumber) { e.preventDefault(); window.dispatchEvent(new CustomEvent('nav-change', { detail: 'contact' })); } } })}
-                  className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1.5 rounded-lg bg-[#25D366]/10 border border-[#25D366]/30 text-[#25D366] text-[12px] font-semibold hover:bg-[#25D366]/20 transition-colors cursor-pointer"
-                >
-                  <MessageCircle size={14} />
-                  {t('contactUsOnWhatsApp', 'Contactez-nous sur WhatsApp')}
-                </a>
-              )}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
 
-/** Hot deals widget — renders nothing when there's nothing to show. */
 export function HotDealsWidget() {
   const { t } = useLanguage();
   const [items, setItems] = useState<HotDeal[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    contentApi
-      .hotDeals()
-      .then(d => { if (!cancelled) setItems(d); })
-      .catch(() => {});
+    contentApi.hotDeals().then((d) => !cancelled && setItems(d)).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
   if (items.length === 0) return null;
 
   return (
-    <section className="surface-card p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Flame size={15} className="text-orange-400" />
-        <h3 className="font-display font-semibold text-[15px] text-white">{t('dashWidgetHotDeals', 'Offres chaudes')}</h3>
-      </div>
-      <div className="space-y-2.5">
-        {items.map(d => {
-          const Wrapper = d.link ? 'a' : 'div';
+    <section className="ui-card p-5">
+      <WidgetHeader icon={Flame} title={t('dashWidgetHotDeals', 'Offres chaudes')} />
+      <ul className="space-y-2.5">
+        {items.map((d) => {
+          const Row = d.link ? 'a' : 'div';
           return (
-            <Wrapper
-              key={d.id}
-              {...(d.link ? { href: d.link, target: '_blank', rel: 'noopener noreferrer' } : {})}
-              className="flex items-start gap-3 rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 hover:bg-white/[0.05] transition-colors"
-            >
-              <span className="text-2xl leading-none shrink-0">{d.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-[13px] font-semibold text-white">{d.title}</p>
-                  {d.badge && (
-                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/25">
-                      {d.badge}
-                    </span>
-                  )}
-                </div>
-                {d.description && <p className="text-[11px] text-white/45 leading-relaxed mt-0.5">{d.description}</p>}
-                <div className="flex items-center gap-1.5 mt-1">
-                  {d.price && <span className="text-[12px] font-mono text-dz-dinar font-semibold">{d.price}</span>}
-                  {d.link && <ExternalLink size={10} className="text-white/25 ml-auto" />}
-                </div>
-              </div>
-            </Wrapper>
+            <li key={d.id}>
+              <Row
+                {...(d.link ? { href: d.link, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                className={cn('flex items-start gap-3 rounded-xl border border-line bg-surface-2 p-3.5', d.link && 'transition-colors hover:border-line-strong hover:bg-surface-3')}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-surface text-xl">{d.emoji}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-fg">{d.title}</span>
+                    {d.badge && <span className="rounded-md bg-accent/15 px-1.5 py-0.5 text-xs font-semibold text-accent-ink">{d.badge}</span>}
+                  </span>
+                  {d.description && <span className="mt-0.5 block text-[13px] leading-relaxed text-fg-muted">{d.description}</span>}
+                  {d.price && <span className="mt-1 block text-sm font-semibold tabular-nums text-accent-ink">{d.price}</span>}
+                </span>
+                {d.link && <ExternalLink size={14} className="mt-1 shrink-0 text-fg-faint" />}
+              </Row>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
 
-function parseYouTubeEmbedUrl(url: string): string | null {
-  if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  if (match && match[2].length === 11) {
-    return `https://www.youtube.com/embed/${match[2]}`;
-  }
-  return null;
+const YOUTUBE_ID = /(?:youtu\.be\/|\/v\/|\/u\/\w\/|\/embed\/|watch\?v=|&v=)([\w-]{11})/;
+export const parseYouTubeId = (url: string): string | null => url?.match(YOUTUBE_ID)?.[1] ?? null;
+
+/**
+ * Thumbnail first, player on demand. Embedding three YouTube iframes up front costs several MB
+ * and a lot of CPU on the dashboard; this loads the real player only when somebody presses play.
+ */
+function VideoCard({ guide, wide = false }: { guide: Guide; wide?: boolean }) {
+  const { t } = useLanguage();
+  const id = parseYouTubeId(guide.youtubeUrl);
+  const [playing, setPlaying] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+
+  return (
+    // a lone guide sits beside its text instead of leaving half the row empty
+    <article className={cn('ui-card flex flex-col overflow-hidden', wide && 'sm:flex-row')}>
+      <div className={cn('relative aspect-video overflow-hidden border-b border-line bg-surface-3', wide && 'sm:w-[45%] sm:shrink-0 sm:border-b-0 sm:border-e')}>
+        {id && playing ? (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`}
+            title={guide.title}
+            className="absolute inset-0 size-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : id ? (
+          <button
+            type="button"
+            onClick={() => setPlaying(true)}
+            aria-label={`${t('watchOnYouTube', 'Regarder la vidéo')} : ${guide.title}`}
+            className="group absolute inset-0 size-full"
+          >
+            {!thumbFailed && (
+              <img
+                src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={() => setThumbFailed(true)}
+                className="size-full object-cover"
+              />
+            )}
+            <span className="absolute inset-0 grid place-items-center bg-black/25 transition-colors group-hover:bg-black/35">
+              <span className="grid size-12 place-items-center rounded-full bg-white/95 text-[#17161a] shadow-lg transition-transform group-hover:scale-105">
+                <Play size={20} className="ms-0.5" fill="currentColor" />
+              </span>
+            </span>
+          </button>
+        ) : (
+          <a
+            href={guide.youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute inset-0 grid place-items-center text-fg-muted hover:text-fg"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <PlaySquare size={22} /> {t('watchOnYouTube', 'Regarder la vidéo')}
+            </span>
+          </a>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="text-sm font-semibold leading-snug text-fg">{guide.title}</h3>
+        {guide.description && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-fg-muted">{guide.description}</p>}
+        {guide.youtubeUrl && (
+          <a
+            href={guide.youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-auto inline-flex items-center gap-1.5 pt-3 text-[13px] font-medium text-primary-ink hover:underline"
+          >
+            <ExternalLink size={13} />
+            {t('openYouTubeLink', 'Ouvrir dans YouTube')}
+          </a>
+        )}
+      </div>
+    </article>
+  );
 }
 
-/** Video Guides widget — renders video tutorials uploaded by admin. */
-export function GuidesWidget() {
+export function GuidesWidget({ className }: { className?: string }) {
   const { t } = useLanguage();
   const [items, setItems] = useState<Guide[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    contentApi
-      .guides()
-      .then(d => { if (!cancelled) setItems(d); })
-      .catch(() => {});
+    contentApi.guides().then((d) => !cancelled && setItems(d)).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
   if (items.length === 0) return null;
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="p-1.5 bg-red-500/20 rounded-lg shrink-0">
-          <PlaySquare className="text-red-400 size-4" />
+    <section className={className}>
+      <WidgetHeader icon={PlaySquare} title={t('dashGuidesTitle', 'Guides & tutoriels vidéo')} count={items.length} />
+      {items.length === 1 ? (
+        <VideoCard guide={items[0]} wide />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+          {items.map((g) => (
+            <VideoCard key={g.id} guide={g} />
+          ))}
         </div>
-        <h2 className="font-display font-semibold text-[15px] text-white">{t('dashGuidesTitle', 'Guides & Tutoriels Vidéo')}</h2>
-        <div className="flex-1 h-px bg-white/[0.06]" />
-        <span className="text-[10px] font-mono text-white/25">{items.length} {t('guidesCountLabel', 'tutoriels')}</span>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map(g => {
-          const embedUrl = parseYouTubeEmbedUrl(g.youtubeUrl);
-          return (
-            <div key={g.id} className="surface-card rounded-2xl overflow-hidden border border-white/10 flex flex-col">
-              <div className="aspect-video bg-black/60 relative overflow-hidden border-b border-white/[0.08]">
-                {embedUrl ? (
-                  <iframe
-                    src={embedUrl}
-                    title={g.title}
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : (
-                  <a
-                    href={g.youtubeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full h-full flex items-center justify-center gap-2 text-white/60 hover:text-white transition-colors"
-                  >
-                    <PlaySquare size={32} className="text-red-500" />
-                    <span className="text-xs font-semibold">{t('watchOnYouTube', 'Regarder la vidéo')}</span>
-                  </a>
-                )}
-              </div>
-              <div className="p-4 flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-display font-bold text-sm text-white mb-1.5 leading-snug">{g.title}</h3>
-                  {g.description && (
-                    <p className="text-[12px] text-white/50 leading-relaxed line-clamp-2">{g.description}</p>
-                  )}
-                </div>
-                {g.youtubeUrl && (
-                  <a
-                    href={g.youtubeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-mono text-dz-gold hover:underline mt-3 pt-2 border-t border-white/[0.06]"
-                  >
-                    <ExternalLink size={12} />
-                    {t('openYouTubeLink', 'Ouvrir dans YouTube')}
-                  </a>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      )}
     </section>
   );
 }

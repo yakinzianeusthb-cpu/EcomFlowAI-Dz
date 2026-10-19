@@ -3,21 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Loader2, Menu, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import LanguageSwitcher from './components/LanguageSwitcher';
-import { useLanguage } from './context/LanguageContext';
-import { cn } from './lib/utils';
-import { preferencesApi } from './services/api';
-import { Loader2, Sun, Moon } from 'lucide-react';
-import { useAuth, PlanId } from './context/AuthContext';
-import PlanCheckout from './components/PlanCheckout';
+import ThemeToggle from './components/ThemeToggle';
 import LockedTool from './components/LockedTool';
+import ErrorBoundary from './components/ErrorBoundary';
+import { useLanguage } from './context/LanguageContext';
+import { useAuth, type PlanId } from './context/AuthContext';
+import { cn } from './lib/utils';
 import { isToolPaid, hasActivePlan } from './lib/access';
+import { TAB_PATHS, TAB_TITLES, projectPath, tabFromPath, type NavItem } from './lib/nav';
+import { useDocumentMeta } from './lib/useDocumentMeta';
 
-// Lazy load components
+// Lazy load tools: each one is its own chunk.
 const DashboardHome = lazy(() => import('./components/DashboardHome'));
+const ProjectsHub = lazy(() => import('./components/projects/ProjectsHub'));
+const AdsStudioPage = lazy(() => import('./components/ads/AdsStudioPage'));
+const BrandKitPage = lazy(() => import('./components/brand/BrandKitPage'));
+const AssetLibrary = lazy(() => import('./components/assets/AssetLibrary'));
 const VideoAdGenerator = lazy(() => import('./components/VideoAdGenerator'));
 const LandingPageGenerator = lazy(() => import('./components/LandingPageGenerator'));
 const LandingAssembler = lazy(() => import('./components/LandingAssembler'));
@@ -32,264 +38,304 @@ const TelegramProductScout = lazy(() => import('./components/TelegramProductScou
 const ContentCalendar = lazy(() => import('./components/ContentCalendar'));
 const ContactUs = lazy(() => import('./components/ContactUs'));
 
-type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar' | 'contact';
+// The plan dialog (and the animation library it uses) is only needed once somebody opens it.
+const PlanCheckout = lazy(() => import('./components/PlanCheckout'));
+
+// Pages people open most; fetched quietly while the dashboard is being read so the first click is instant.
+const WARM_UP_TOOLS = [
+  () => import('./components/projects/ProjectsHub'),
+  () => import('./components/VideoAdGenerator'),
+  () => import('./components/LandingPageGenerator'),
+];
+
+const WARM_UP_DELAY_MS = 3500;
+const DRAWER_ANIMATION_MS = 200;
+
+// Screens that show data other screens change (campaigns, files, brand kit): mounted fresh on each visit instead of
+// kept alive, so they never show yesterday's list. Tools holding work in progress stay alive between visits.
+const FRESH_ON_VISIT = new Set<NavItem>(['dashboard', 'ads', 'brand', 'assets']);
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Off-canvas navigation for screens below `lg`. The sidebar is only mounted while the drawer is visible. */
+function MobileDrawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+  const { isRTL, t } = useLanguage();
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
+  const panel = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const raf = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    setVisible(false);
+    const timer = window.setTimeout(() => setMounted(false), DRAWER_ANIMATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  // a modal menu: focus moves in, Tab stays inside, and focus returns to the menu button on close
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const focusables = () => Array.from(panel.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
+    const raf = requestAnimationFrame(() => focusables()[0]?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose();
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+      opener?.focus?.();
+    };
+  }, [open, onClose]);
+
+  if (!mounted) return null;
+
+  return (
+    <div className="fixed inset-0 z-40 lg:hidden">
+      <div
+        onClick={onClose}
+        aria-hidden="true"
+        className={cn('absolute inset-0 bg-black/55 transition-opacity duration-200', visible ? 'opacity-100' : 'opacity-0')}
+      />
+      <aside
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('menuToolsText', 'Navigation')}
+        className={cn(
+          'absolute inset-y-0 start-0 w-72 max-w-[85vw] border-e border-line bg-surface shadow-2xl transition-transform duration-200 ease-out',
+          visible ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full',
+        )}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('coFermerMenu', 'Fermer le menu')}
+          className="absolute end-3 top-3 z-10 grid size-8 place-items-center rounded-lg text-fg-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <X size={18} />
+        </button>
+        {children}
+      </aside>
+    </div>
+  );
+}
 
 export default function AppShell() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<NavItem>('dashboard');
-  const [visitedTabs, setVisitedTabs] = useState<Set<NavItem>>(new Set(['dashboard']));
-  const mainRef = useRef<HTMLElement>(null);
-
   const { user, isMock } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { tab: activeTab, projectId } = tabFromPath(location.pathname);
+  const [visitedTabs, setVisitedTabs] = useState<Set<NavItem>>(() => new Set<NavItem>([activeTab]));
+  const [navOpen, setNavOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutLoaded, setCheckoutLoaded] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const closeNav = useCallback(() => setNavOpen(false), []);
 
-  const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('theme') !== 'light';
-  });
+  const setActiveTab = useCallback((tab: NavItem) => navigate(TAB_PATHS[tab]), [navigate]);
+  const newCampaign = useCallback(() => navigate(projectPath('new')), [navigate]);
 
   useEffect(() => {
-    const handleNavChange = (e: any) => {
-      if (e.detail) setActiveTab(e.detail);
+    // other screens ask for a page with an event, so they do not need the router
+    const onNavChange = (e: Event) => {
+      const detail = (e as CustomEvent<NavItem>).detail;
+      if (detail && detail in TAB_PATHS) navigate(TAB_PATHS[detail]);
     };
-    const handleOpenCheckout = () => setCheckoutOpen(true);
-    window.addEventListener('nav-change', handleNavChange);
-    window.addEventListener('dz_open_checkout', handleOpenCheckout);
+    const onOpenCheckout = () => {
+      setCheckoutPlan(null);
+      setCheckoutLoaded(true);
+      setCheckoutOpen(true);
+    };
+    window.addEventListener('nav-change', onNavChange);
+    window.addEventListener('dz_open_checkout', onOpenCheckout);
     return () => {
-      window.removeEventListener('nav-change', handleNavChange);
-      window.removeEventListener('dz_open_checkout', handleOpenCheckout);
+      window.removeEventListener('nav-change', onNavChange);
+      window.removeEventListener('dz_open_checkout', onOpenCheckout);
     };
-  }, []);
+  }, [navigate]);
 
   // After login, resume a plan chosen on the landing page.
   useEffect(() => {
-    if (user) {
-      const intent = sessionStorage.getItem('dz_plan_intent') as PlanId | null;
-      if (intent) {
-        sessionStorage.removeItem('dz_plan_intent');
-        setCheckoutPlan(intent);
-        setCheckoutOpen(true);
-      }
+    if (!user) return;
+    const intent = sessionStorage.getItem('dz_plan_intent') as PlanId | null;
+    if (intent) {
+      sessionStorage.removeItem('dz_plan_intent');
+      setCheckoutPlan(intent);
+      setCheckoutLoaded(true);
+      setCheckoutOpen(true);
     }
   }, [user]);
 
+  // Warm up the main pages a few seconds after the dashboard is up, so it never competes with the
+  // dashboard's own assets (skipped on data-saver / very slow connections).
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
-
-  useEffect(() => {
-    // Listen to theme changes from other components (like Settings.tsx)
-    const handleStorageChange = () => {
-      const storedTheme = localStorage.getItem('theme');
-      setIsDark(storedTheme !== 'light');
-    };
-    window.addEventListener('storage', handleStorageChange);
-    // Also support a custom event just in case
-    const handleThemeToggleCustom = (e: any) => {
-      if (e.detail !== undefined) {
-        setIsDark(e.detail);
-      }
-    };
-    window.addEventListener('dz_theme_changed', handleThemeToggleCustom);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('dz_theme_changed', handleThemeToggleCustom);
-    };
-  }, []);
-
-  const handleThemeToggle = (checked: boolean) => {
-    setIsDark(checked);
-    if (checked) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-    // Dispatch event to keep other mounts updated
-    window.dispatchEvent(new CustomEvent('dz_theme_changed', { detail: checked }));
-    // Dual-write: persist the theme to the server API (fire-and-forget)
-    preferencesApi.update({ theme: checked ? 'dark' : 'light' }).catch(() => {});
-  };
+    if (!hasActivePlan(user)) return;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')) return;
+    const warm = () => WARM_UP_TOOLS.forEach((load) => void load().catch(() => {}));
+    const timer = window.setTimeout(() => {
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+      if (idle) idle(warm, { timeout: 3000 });
+      else warm();
+    }, WARM_UP_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [user]);
 
   useEffect(() => {
-    setVisitedTabs(prev => new Set(prev).add(activeTab));
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
   }, [activeTab]);
 
-  const components = useMemo<Record<NavItem, React.ReactNode>>(() => ({
-    dashboard: <DashboardHome />,
-    video: <VideoAdGenerator />,
-    landing: <LandingPageGenerator />,
-    assembler: <LandingAssembler />,
-    images: <ProductImageGen />,
-    calculator: <MarginCalculator />,
-    trends: <MarketTrends />,
-    settings: <Settings />,
-    darja: <DarjaAdGenerator />,
-    analyzer: <ProductAnalyzer />,
-    catalog: <ProductCatalog />,
-    scout: <TelegramProductScout />,
-    calendar: <ContentCalendar />,
-    contact: <ContactUs />,
-  }), []);
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [location.pathname]);
+
+  // Screens kept alive between visits so work in progress survives (the campaign pages reload from the server instead).
+  const components = useMemo<Partial<Record<NavItem, ReactNode>>>(
+    () => ({
+      dashboard: <DashboardHome />,
+      video: <VideoAdGenerator />,
+      landing: <LandingPageGenerator />,
+      ads: <AdsStudioPage />,
+      brand: <BrandKitPage />,
+      assets: <AssetLibrary />,
+      assembler: <LandingAssembler />,
+      images: <ProductImageGen />,
+      calculator: <MarginCalculator />,
+      trends: <MarketTrends />,
+      settings: <Settings />,
+      darja: <DarjaAdGenerator />,
+      analyzer: <ProductAnalyzer />,
+      catalog: <ProductCatalog />,
+      scout: <TelegramProductScout />,
+      calendar: <ContentCalendar />,
+      contact: <ContactUs />,
+    }),
+    [],
+  );
+
+  const openPlans = () => {
+    setCheckoutPlan(null);
+    setCheckoutLoaded(true);
+    setCheckoutOpen(true);
+  };
+  const title = t(TAB_TITLES[activeTab].key, TAB_TITLES[activeTab].fallback);
+  useDocumentMeta({ title: `${title} — EcomFlow AI` });
+  const needsPlan = !user?.plan || !hasActivePlan(user);
 
   return (
-    <div className="flex h-screen bg-[#0b0c0a] font-sans antialiased overflow-hidden relative">
-      {/* Background decorative elements - Stationary & GPU friendly to eliminate repaints during scrolling */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" style={{ transform: 'translate3d(0,0,0)' }}>
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-dz-emerald/[0.05] rounded-full blur-[130px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-dz-gold/[0.05] rounded-full blur-[130px]" />
-        <div className="absolute top-[30%] right-[15%] w-[35%] h-[40%] bg-dz-gold/[0.04] rounded-full blur-[110px]" />
-        <div className="absolute bottom-[20%] left-[10%] w-[30%] h-[30%] bg-dz-amber/[0.03] rounded-full blur-[90px]" />
+    <div className="flex h-dvh overflow-hidden bg-bg text-fg">
+      <a
+        href="#app-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-white"
+      >
+        {t('skipToContent', 'Aller au contenu')}
+      </a>
 
-        {/* Abstract pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.015] bg-grid-white bg-[size:40px_40px]"></div>
-      </div>
+      {/* Desktop sidebar */}
+      <aside aria-label={t('coNavigationPrincipale', 'Navigation principale')} className="hidden w-64 shrink-0 border-e border-line lg:block">
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onNewCampaign={newCampaign} />
+      </aside>
 
-      <div className="relative z-10 flex w-full h-full">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Mobile drawer */}
+      <MobileDrawer open={navOpen} onClose={closeNav}>
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onNewCampaign={newCampaign} onNavigate={closeNav} />
+      </MobileDrawer>
 
-        <main
-          ref={mainRef}
-          className="flex-1 overflow-y-auto relative p-2 sm:p-4 md:p-8"
-        >
-          <div className="max-w-none mx-auto relative glass-main p-3 sm:p-6 md:p-10 min-h-[calc(100vh-4rem)]">
-            {(!user.plan || user.planStatus !== 'active') && (
-              <div className="mb-3 sm:mb-5 flex items-center justify-between gap-3 rounded-2xl border border-dz-dinar/30 bg-dz-dinar/[0.06] px-4 py-2.5">
-                <p className="text-[11px] sm:text-xs text-white/70 flex items-center gap-2">
-                  {user.planStatus === 'pending' ? (
-                    <>⏳ Paiement <span className="text-dz-dinar font-semibold">en attente d'approbation</span> — un admin va vérifier ta preuve et activer ton accès.</>
-                  ) : (
-                    <>✨ Aucun plan actif — <span className="text-dz-dinar font-semibold">abonne-toi</span> pour débloquer les 12 outils IA.</>
-                  )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-label={t('coOuvrirMenu', 'Ouvrir le menu')}
+            aria-expanded={navOpen}
+            className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-surface text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg lg:hidden"
+          >
+            <Menu size={18} />
+          </button>
+          {/* on wide screens the sidebar and the page heading already say where you are */}
+          <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-fg lg:invisible">{title}</p>
+          {isMock && (
+            <span className="rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning-ink">DEV</span>
+          )}
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </header>
+
+        <main id="app-main" ref={mainRef} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+            {needsPlan && (
+              <div className="ui-tint-accent mb-6 flex flex-col gap-3 rounded-[var(--radius-md)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-fg">
+                  {user?.planStatus === 'pending'
+                    ? t('planBannerPending', "Paiement en attente d'approbation : un admin vérifie ta preuve et active ton accès.")
+                    : user?.planStatus === 'active'
+                      ? t('planBannerExpired', 'Ton abonnement a expiré : renouvelle-le pour retrouver les outils IA.')
+                      : t('planBannerNone', 'Aucun plan actif : abonne-toi pour débloquer les outils IA.')}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => { setCheckoutPlan(null); setCheckoutOpen(true); }}
-                  className="shrink-0 rounded-lg bg-dz-dinar/20 border border-dz-dinar/40 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-dz-dinar hover:bg-dz-dinar/30 transition-colors cursor-pointer"
-                >
-                  Voir les plans
+                <button type="button" onClick={openPlans} className="btn-dz-accent !min-h-9 shrink-0 !px-4 !py-1.5 !text-[13px]">
+                  {t('sidebarSubUpgrade', 'Voir les plans')}
                 </button>
               </div>
             )}
 
-            {/* Global Top Navigation / Header Bar */}
-            <div className="flex flex-col gap-2 sm:gap-4 border-b border-white/10 pb-2 sm:pb-4 mb-3 sm:mb-6" id="app-global-topbar">
-              {/* Row 1: Active Tab Title & Controls */}
-              <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
-                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                  <span className="text-[10px] sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-1.5 sm:gap-2 font-arabic">
-                    <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-dz-emerald opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-dz-emerald"></span>
-                    </span>
-                    {activeTab === 'images' && t('tabImages', '📸 Studio Photos Produit E-Com')}
-                    {activeTab === 'dashboard' && t('tabDashboard', '📊 Dashboard Ventes & KPI E-Commerce')}
-                    {activeTab === 'video' && t('tabVideo', '🎬 Générateur de Créatifs Pubs Vidéo')}
-                    {activeTab === 'landing' && t('tabLanding', '⚡ Tunnel de Vente & Copywriting LP')}
-                    {activeTab === 'assembler' && t('tabAssembler', '🍱 Constructeur de Landing Page E-Com')}
-                    {activeTab === 'calculator' && t('tabCalculator', '🧮 Calculateur de Marge COD & Profit')}
-                    {activeTab === 'trends' && t('tabTrends', '📈 Détecteur de Produits Gagnants (Winning Products)')}
-                    {activeTab === 'settings' && t('tabSettings', '⚙️ Configuration Boutique & Pixels')}
-                    {activeTab === 'darja' && t('tabDarja', '📝 Générateur d\'Annonces Darja')}
-                    {activeTab === 'analyzer' && t('tabAnalyzer', '🤖 Consultant Expert IA (Analyse Produit)')}
-                    {activeTab === 'catalog' && t('tabCatalog', '📦 Catalogue & Gestion Produits')}
-                    {activeTab === 'scout' && t('tabScout', '🔍 Scout de Produits Telegram')}
-                    {activeTab === 'calendar' && t('tabCalendar', '🗓️ Calendrier de Contenu E-Com')}
-                    {activeTab === 'contact' && t('tabContact', '💬 Contact & Support')}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
-                  {/* Language Switcher Component */}
-                  <LanguageSwitcher />
-
-                  {/* Dev mode badge — visible when using the mock Google login */}
-                  {isMock && (
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[8px] font-mono font-bold uppercase tracking-widest select-none">
-                      DEV
-                    </span>
-                  )}
-
-                  {/* Sleek Dynamic Slide-Toggle for Dark/Light Mode */}
-                  <div className="flex items-center gap-0.5 sm:gap-2 bg-black/30 p-0.5 sm:p-1.5 rounded-lg sm:rounded-2xl border border-white/5 select-none shrink-0" id="global-theme-toggle">
-                    <button
-                      type="button"
-                      onClick={() => handleThemeToggle(false)}
-                      className={cn(
-                        "p-0.5 sm:p-2 px-1 sm:px-2.5 rounded sm:rounded-xl transition-all flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider cursor-pointer",
-                        !isDark
-                          ? "bg-linear-to-r from-dz-amber to-dz-gold text-white shadow-md font-black shadow-dz-amber/20"
-                          : "text-white/40 hover:text-white/80"
-                      )}
-                      title="Activer mode clair"
-                    >
-                      <Sun className="size-2.5 sm:size-3.5" />
-                      <span>{t('lightMode', 'Clair')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleThemeToggle(true)}
-                      className={cn(
-                        "p-0.5 sm:p-2 px-1 sm:px-2.5 rounded sm:rounded-xl transition-all flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider cursor-pointer",
-                        isDark
-                          ? "bg-linear-to-r from-dz-gold to-dz-emerald text-white shadow-md font-black shadow-dz-emerald/20"
-                          : "text-white/40 hover:text-white/80"
-                      )}
-                      title="Activer mode sombre"
-                    >
-                      <Moon className="size-2.5 sm:size-3.5" />
-                      <span>{t('darkMode', 'Sombre')}</span>
-                    </button>
+            <ErrorBoundary resetKey={location.pathname}>
+              <Suspense
+                fallback={
+                  <div className="grid min-h-[50vh] place-items-center">
+                    <Loader2 className="size-7 animate-spin text-primary-ink" aria-label={t('coChargement', 'Chargement')} />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <Suspense fallback={
-              <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-                <Loader2 className="w-10 h-10 text-dz-emerald animate-spin" />
-                <p className="text-white/40 text-sm font-black uppercase tracking-widest">Chargement de l'outil...</p>
-              </div>
-            }>
-              {Object.entries(components).map(([key, component]) => {
-                const isVisible = activeTab === key;
-                const wasVisited = visitedTabs.has(key as NavItem);
-
-                // Paid (AI) tool but no active plan: never mount the tool —
-                // show the locked screen instead.
-                if (isToolPaid(key) && !hasActivePlan(user)) {
-                  return isVisible ? (
-                    <div key={key} className="w-full">
-                      <LockedTool
-                        tab={key}
-                        onSubscribe={() => { setCheckoutPlan(null); setCheckoutOpen(true); }}
-                      />
-                    </div>
-                  ) : null;
                 }
+              >
+                {activeTab === 'projects' && <ProjectsHub key={projectId ?? 'list'} projectId={projectId} />}
+                {(Object.entries(components) as [NavItem, ReactNode][]).map(([key, component]) => {
+                  const isVisible = activeTab === key;
 
-                if (!wasVisited && !isVisible) return null;
+                  // Paid tool without an active plan: never mount it, show the locked screen instead.
+                  if (isToolPaid(key) && !hasActivePlan(user)) {
+                    return isVisible ? (
+                      <div key={key} className="w-full">
+                        <LockedTool tab={key} onSubscribe={openPlans} />
+                      </div>
+                    ) : null;
+                  }
 
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      "w-full",
-                      isVisible ? "block" : "hidden pointer-events-none"
-                    )}
-                  >
-                    {component}
-                  </div>
-                );
-              })}
-            </Suspense>
+                  // Keep visited tools mounted (hidden) so their in-progress work survives tab switches.
+                  if (!isVisible && (FRESH_ON_VISIT.has(key) || !visitedTabs.has(key))) return null;
+
+                  return (
+                    <div key={key} className={cn('w-full', !isVisible && 'hidden')} hidden={!isVisible}>
+                      {component}
+                    </div>
+                  );
+                })}
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </main>
       </div>
 
-      <PlanCheckout open={checkoutOpen} initialPlan={checkoutPlan} onClose={() => setCheckoutOpen(false)} />
+      {checkoutLoaded && (
+        <Suspense fallback={null}>
+          <PlanCheckout open={checkoutOpen} initialPlan={checkoutPlan} onClose={() => setCheckoutOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

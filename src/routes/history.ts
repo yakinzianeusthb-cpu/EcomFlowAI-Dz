@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, SessionPayload } from "../lib/session";
+import { SAVED_WORK_ERRORS, SAVED_WORK_LIMITS, jsonBytes, validTitle } from "../lib/savedWork";
 
 const router = Router();
 
@@ -17,12 +18,18 @@ router.get("/api/history", requireAuth, async (req, res) => {
   res.json(history);
 });
 
-// POST /api/history — create a history entry.
+// POST /api/history — create a history entry (only the newest entries are kept).
 router.post("/api/history", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
   const b = req.body || {};
   if (!b.type || !b.title) {
     return res.status(400).json({ error: "type et title sont requis." });
+  }
+  if (typeof b.type !== "string" || b.type.length > 60 || !validTitle(b.title) || (b.previewText != null && (typeof b.previewText !== "string" || b.previewText.length > 5000))) {
+    return res.status(400).json({ error: SAVED_WORK_ERRORS.invalid });
+  }
+  if (jsonBytes(b.payload) + jsonBytes(b.metadata) > SAVED_WORK_LIMITS.historyPayloadBytes) {
+    return res.status(413).json({ error: SAVED_WORK_ERRORS.tooBig });
   }
   const entry = await prisma.generationHistory.create({
     data: {
@@ -34,6 +41,13 @@ router.post("/api/history", requireAuth, async (req, res) => {
       metadata: b.metadata,
     },
   });
+  const older = await prisma.generationHistory.findMany({
+    where: { userId: user.sub },
+    orderBy: { createdAt: "desc" },
+    skip: SAVED_WORK_LIMITS.historyKept,
+    select: { id: true },
+  });
+  if (older.length) await prisma.generationHistory.deleteMany({ where: { userId: user.sub, id: { in: older.map((o) => o.id) } } });
   res.json(entry);
 });
 

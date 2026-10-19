@@ -7,11 +7,13 @@ import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
 import { authApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { cn } from '../lib/utils';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
 
 type Step = 0 | 1 | 2;
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
+  useDocumentMeta({ title: t('metaTitleForgot', 'Mot de passe oublié — EcomFlow AI') });
   const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>(0);
@@ -83,7 +85,7 @@ export default function ForgotPasswordPage() {
       setResetToken(res.resetToken);
       setStep(2);
     } catch (err: any) {
-      setError(err.message || t('fpErrCodeInvalid', 'Code invalide ou expiré.'));
+      setError(err.message || t('authErrCodeInvalid', 'Code invalide ou expiré.'));
       setDigits(Array.from({ length: 6 }, () => ''));
       didAutoSubmit.current = false;
     } finally {
@@ -166,18 +168,18 @@ export default function ForgotPasswordPage() {
           <div key={i} className="flex items-center gap-2">
             <div
               className={cn(
-                'flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold transition-all',
+                'flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold transition-all',
                 i < step
-                  ? 'bg-dz-emerald text-black'
+                  ? 'bg-primary text-white'
                   : i === step
                     ? 'bg-dz-emerald/20 text-dz-emerald border border-dz-emerald/40'
-                    : 'bg-white/5 text-white/25 border border-white/10'
+                    : 'bg-fg/5 text-fg-faint border border-fg/10'
               )}
             >
               {i < step ? '✓' : i + 1}
             </div>
             {i < stepLabels.length - 1 && (
-              <div className={cn('w-6 h-px', i < step ? 'bg-dz-emerald/40' : 'bg-white/10')} />
+              <div className={cn('w-6 h-px', i < step ? 'bg-dz-emerald/40' : 'bg-fg/10')} />
             )}
           </div>
         ))}
@@ -187,11 +189,11 @@ export default function ForgotPasswordPage() {
       {step === 0 && (
         <div className="space-y-4">
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+            <label className="block text-xs text-fg-muted mb-1.5">
               {t('authEmail', 'Adresse email')}
             </label>
             <div className="relative">
-              <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <Mail size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-fg-faint" />
               <input
                 type="email"
                 inputMode="email"
@@ -199,7 +201,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="exemple@email.com"
-                className="input-dz pl-10"
+                className="input-dz ps-10"
                 onKeyDown={(e) => e.key === 'Enter' && handleRequestCode()}
               />
             </div>
@@ -226,15 +228,15 @@ export default function ForgotPasswordPage() {
       {/* Step 1: OTP */}
       {step === 1 && (
         <div className="space-y-5">
-          <p className="text-sm text-white/45 text-center">
+          <p className="text-sm text-fg-muted text-center">
             {t('fpCodeSentTo', 'Code envoyé à')}{' '}
-            <span className="font-bold text-dz-emerald font-mono">{email}</span>
+            <span className="font-bold text-dz-emerald">{email}</span>
           </p>
 
           <OtpInput value={digits} onChange={setDigits} error={!!error} />
 
           {dev && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-[11.5px] text-amber-300 font-mono">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-300">
               {t('authDevHint', 'Mode dév : le code est affiché dans la console du serveur.')}
             </div>
           )}
@@ -255,17 +257,17 @@ export default function ForgotPasswordPage() {
             {submitting ? t('authVerifying', 'Vérification…') : t('fpVerifyBtn', 'Vérifier le code')}
           </button>
 
-          <div className="flex items-center justify-center gap-2 text-[12px] text-white/45">
+          <div className="flex items-center justify-center gap-2 text-[12px] text-fg-muted">
             <span>{t('authNoCode', "Tu n'as rien reçu ?")}</span>
             {cooldown > 0 ? (
-              <span className="font-mono text-white/30">
+              <span className="text-fg-faint">
                 {t('authResendIn', 'Renvoyer dans')} {cooldown}s
               </span>
             ) : (
               <button
                 type="button"
                 onClick={handleResend}
-                className="font-bold text-dz-emerald hover:text-white transition-colors cursor-pointer"
+                className="font-bold text-dz-emerald hover:text-fg transition-colors cursor-pointer"
               >
                 {t('authResend', 'Renvoyer le code')}
               </button>
@@ -275,7 +277,7 @@ export default function ForgotPasswordPage() {
           <button
             type="button"
             onClick={handleChangeEmail}
-            className="w-full text-center text-[11px] text-white/30 hover:text-white/50 transition-colors cursor-pointer"
+            className="w-full text-center text-xs text-fg-faint hover:text-fg-muted transition-colors cursor-pointer"
           >
             {t('fpChangeEmail', "Ce n'est pas mon email — changer")}
           </button>
@@ -286,23 +288,23 @@ export default function ForgotPasswordPage() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+            <label className="block text-xs text-fg-muted mb-1.5">
               {t('fpNewPassword', 'Nouveau mot de passe')}
             </label>
             <div className="relative">
-              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <Lock size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-fg-faint" />
               <input
                 type={showPw ? 'text' : 'password'}
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••"
-                className="input-dz pl-10 pr-10"
+                className="input-dz ps-10 pe-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPw((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors cursor-pointer"
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-fg-faint hover:text-fg transition-colors cursor-pointer"
                 tabIndex={-1}
               >
                 {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -312,18 +314,18 @@ export default function ForgotPasswordPage() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+            <label className="block text-xs text-fg-muted mb-1.5">
               {t('authConfirmPassword', 'Confirmer le mot de passe')}
             </label>
             <div className="relative">
-              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <Lock size={15} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-fg-faint" />
               <input
                 type={showPw ? 'text' : 'password'}
                 autoComplete="new-password"
                 value={confirmPw}
                 onChange={(e) => setConfirmPw(e.target.value)}
                 placeholder="••••••••"
-                className="input-dz pl-10"
+                className="input-dz ps-10"
               />
             </div>
           </div>

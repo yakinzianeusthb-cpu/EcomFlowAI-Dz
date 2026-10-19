@@ -8,7 +8,9 @@
  *                        console so the flow is testable without any email
  *                        account. The response then includes `dev: true`.
  */
-import nodemailer from "nodemailer";
+import { escapeHtml, stripControlChars } from "./html";
+
+// nodemailer is only needed when SMTP is configured, so it is loaded on first use.
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const SMTP_HOST = process.env.SMTP_HOST || "";
@@ -90,6 +92,7 @@ export async function sendOtpEmail(
 
   // 2. SMTP
   if (SMTP_HOST) {
+    const { default: nodemailer } = await import("nodemailer");
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
@@ -117,7 +120,17 @@ export async function sendOtpEmail(
 // Contact form email
 // ---------------------------------------------------------------------------
 
-function contactHtml(fromName: string, fromEmail: string, subject: string, message: string): string {
+/** Subject line of the mail the admin receives. Control characters are stripped so a visitor cannot add headers. */
+export function contactSubject(subject: string, fromName: string): string {
+  return `[EcomFlow AI] ${stripControlChars(subject)} — ${stripControlChars(fromName)}`;
+}
+
+/** Every value comes from the contact form, so all of it is escaped before it reaches the HTML. */
+export function contactHtml(fromName: string, fromEmail: string, subject: string, message: string): string {
+  const name = escapeHtml(fromName);
+  const email = escapeHtml(fromEmail);
+  const safeSubject = escapeHtml(subject);
+  const body = escapeHtml(message);
   return `
   <div style="background:#0b0c0a;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
     <div style="max-width:520px;margin:0 auto;background:#121411;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;color:#e2e8f0;">
@@ -127,10 +140,10 @@ function contactHtml(fromName: string, fromEmail: string, subject: string, messa
         Un utilisateur t'a envoyé un message via EcomFlow AI.
       </p>
       <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:20px;">
-        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">De :</b> ${fromName} &lt;${fromEmail}&gt;</p>
-        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">Sujet :</b> ${subject}</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">De :</b> ${name} &lt;${email}&gt;</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">Sujet :</b> ${safeSubject}</p>
         <p style="margin:0;font-size:13px;color:#94a3b8;"><b style="color:#c9a45c;">Message :</b></p>
-        <p style="margin:8px 0 0;font-size:14px;color:#e2e8f0;white-space:pre-wrap;line-height:1.6;">${message}</p>
+        <p style="margin:8px 0 0;font-size:14px;color:#e2e8f0;white-space:pre-wrap;line-height:1.6;">${body}</p>
       </div>
       <p style="text-align:center;color:#64748b;font-size:11px;margin:0;">
         Envoyé depuis le tableau de bord EcomFlow AI.
@@ -144,7 +157,7 @@ export async function sendContactEmail(
   opts: { fromName: string; fromEmail: string; subject: string; message: string },
 ): Promise<SendResult> {
   const html = contactHtml(opts.fromName, opts.fromEmail, opts.subject, opts.message);
-  const subject = `[EcomFlow AI] ${opts.subject} — ${opts.fromName}`;
+  const subject = contactSubject(opts.subject, opts.fromName);
 
   // 1. Resend
   if (RESEND_API_KEY) {
@@ -165,6 +178,7 @@ export async function sendContactEmail(
 
   // 2. SMTP
   if (SMTP_HOST) {
+    const { default: nodemailer } = await import("nodemailer");
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,

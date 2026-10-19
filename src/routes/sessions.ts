@@ -1,6 +1,14 @@
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, SessionPayload } from "../lib/session";
+import { SAVED_WORK_ERRORS, SAVED_WORK_LIMITS, jsonBytes, validTitle } from "../lib/savedWork";
+
+/** Why a session body cannot be stored (null when it can): its title and the size of its content. */
+function sessionProblem(b: Record<string, unknown>, field: "state" | "messages", maxBytes: number): { status: number; error: string } | null {
+  if (!validTitle(b.title)) return { status: 400, error: SAVED_WORK_ERRORS.invalid };
+  if (b[field] !== undefined && jsonBytes(b[field]) > maxBytes) return { status: 413, error: SAVED_WORK_ERRORS.tooBig };
+  return null;
+}
 
 const router = Router();
 
@@ -20,6 +28,11 @@ router.get("/api/lp-sessions", requireAuth, async (req, res) => {
 router.post("/api/lp-sessions", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
   const b = req.body || {};
+  const problem = sessionProblem(b, "state", SAVED_WORK_LIMITS.lpStateBytes);
+  if (problem) return res.status(problem.status).json({ error: problem.error });
+  if ((await prisma.lpSession.count({ where: { userId: user.sub } })) >= SAVED_WORK_LIMITS.sessionsPerAccount) {
+    return res.status(400).json({ error: SAVED_WORK_ERRORS.tooMany });
+  }
   const session = await prisma.lpSession.create({
     data: { userId: user.sub, title: b.title, state: b.state ?? {} },
   });
@@ -30,6 +43,8 @@ router.post("/api/lp-sessions", requireAuth, async (req, res) => {
 router.put("/api/lp-sessions/:id", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
   const id = req.params.id as string;
+  const problem = sessionProblem(req.body || {}, "state", SAVED_WORK_LIMITS.lpStateBytes);
+  if (problem) return res.status(problem.status).json({ error: problem.error });
   const existing = await prisma.lpSession.findUnique({ where: { id } });
   if (!existing || existing.userId !== user.sub) {
     return res.status(404).json({ error: "Session introuvable." });
@@ -70,6 +85,11 @@ router.get("/api/chat-sessions", requireAuth, async (req, res) => {
 router.post("/api/chat-sessions", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
   const b = req.body || {};
+  const problem = sessionProblem(b, "messages", SAVED_WORK_LIMITS.chatMessagesBytes);
+  if (problem) return res.status(problem.status).json({ error: problem.error });
+  if ((await prisma.chatSession.count({ where: { userId: user.sub } })) >= SAVED_WORK_LIMITS.sessionsPerAccount) {
+    return res.status(400).json({ error: SAVED_WORK_ERRORS.tooMany });
+  }
   const session = await prisma.chatSession.create({
     data: { userId: user.sub, title: b.title, messages: b.messages ?? [] },
   });
@@ -80,6 +100,8 @@ router.post("/api/chat-sessions", requireAuth, async (req, res) => {
 router.put("/api/chat-sessions/:id", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
   const id = req.params.id as string;
+  const problem = sessionProblem(req.body || {}, "messages", SAVED_WORK_LIMITS.chatMessagesBytes);
+  if (problem) return res.status(problem.status).json({ error: problem.error });
   const existing = await prisma.chatSession.findUnique({ where: { id } });
   if (!existing || existing.userId !== user.sub) {
     return res.status(404).json({ error: "Session introuvable." });

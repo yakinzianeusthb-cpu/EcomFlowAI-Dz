@@ -73,10 +73,32 @@ export const settingsApi = {
 // ---------------------------------------------------------------------------
 // User preferences (theme, language, tool order, widget config, last state)
 // ---------------------------------------------------------------------------
+// Several components read the preferences on mount. Share one recent/in-flight request instead of
+// firing a GET per component; updates are merged into the cached copy so later reads stay consistent.
+const PREFS_TTL_MS = 15_000;
+let prefsCache: { at: number; promise: Promise<any> } | null = null;
+
 export const preferencesApi = {
-  get: () => api<any>("/api/preferences"),
-  update: (data: Record<string, any>) =>
-    api("/api/preferences", { method: "PUT", body: JSON.stringify(data) }),
+  get: (): Promise<any> => {
+    if (prefsCache && Date.now() - prefsCache.at < PREFS_TTL_MS) return prefsCache.promise;
+    const promise = api<any>("/api/preferences");
+    prefsCache = { at: Date.now(), promise };
+    promise.catch(() => {
+      if (prefsCache?.promise === promise) prefsCache = null;
+    });
+    return promise;
+  },
+  update: (data: Record<string, any>) => {
+    if (prefsCache) {
+      prefsCache = { at: prefsCache.at, promise: prefsCache.promise.then((prefs) => ({ ...prefs, ...data })) };
+      prefsCache.promise.catch(() => {});
+    }
+    return api("/api/preferences", { method: "PUT", body: JSON.stringify(data) });
+  },
+  /** Drop the cached copy (login/logout) so one user's preferences never reach the next. */
+  invalidate: () => {
+    prefsCache = null;
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -233,7 +255,7 @@ export const chatSessionsApi = {
 // Config (public — admin contacts)
 // ---------------------------------------------------------------------------
 export const configApi = {
-  get: () => api<{ adminEmail: string; adminTelegram: string; whatsappNumber: string }>("/api/config"),
+  get: () => api<{ adminEmail: string; adminTelegram: string; whatsappNumber: string; metaPublishing?: boolean }>("/api/config"),
 };
 
 // ---------------------------------------------------------------------------

@@ -80,7 +80,7 @@ export default function OtpInput({
           ? 'border-rose-500/60'
           : d
             ? 'border-dz-emerald/60'
-            : 'border-white/10';
+            : 'border-fg/10';
         return (
           <input
             key={i}
@@ -97,7 +97,7 @@ export default function OtpInput({
             onPaste={(e) => handlePaste(i, e)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             onFocus={(e) => e.target.select()}
-            className={`w-full aspect-square rounded-xl border text-center font-display text-2xl font-bold text-white bg-white/[0.03] transition-all duration-200 outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 disabled:opacity-50 disabled:cursor-not-allowed ${border}`}
+            className={`w-full aspect-square rounded-xl border text-center font-display text-2xl font-bold text-fg bg-fg/[0.03] transition-all duration-200 outline-none focus:border-dz-emerald/70 focus:ring-4 focus:ring-dz-emerald/10 disabled:opacity-50 disabled:cursor-not-allowed ${border}`}
           />
         );
       })}

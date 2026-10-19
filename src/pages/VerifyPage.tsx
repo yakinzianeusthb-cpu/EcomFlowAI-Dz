@@ -6,6 +6,7 @@ import OtpInput from '../components/OtpInput';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
 
 const CODE_LEN = 6;
 const RESEND_COOLDOWN_S = 60;
@@ -13,6 +14,7 @@ const RESEND_COOLDOWN_S = 60;
 export default function VerifyPage() {
   const { verifyOtp, resendOtp } = useAuth();
   const { t } = useLanguage();
+  useDocumentMeta({ title: t('metaTitleVerify', 'Vérifier ton email — EcomFlow AI') });
   const navigate = useNavigate();
 
   const email = sessionStorage.getItem('dz_pending_email') || '';
@@ -98,7 +100,7 @@ export default function VerifyPage() {
       subtitle={
         <span className="flex items-center gap-1.5 flex-wrap">
           {t('authOtpSentTo', 'Code envoyé à')}{' '}
-          <span className="font-bold text-dz-emerald font-mono">{maskEmail}</span>
+          <span className="font-bold text-dz-emerald">{maskEmail}</span>
         </span>
       }
       showBack={false}
@@ -106,7 +108,7 @@ export default function VerifyPage() {
         <button
           type="button"
           onClick={handleChangeEmail}
-          className="text-[12px] text-white/40 hover:text-dz-amber transition-colors cursor-pointer font-semibold"
+          className="text-[12px] text-fg-muted hover:text-dz-amber transition-colors cursor-pointer font-semibold"
         >
           {t('authChangeEmail', "Ce n'est pas mon email — revenir")}
         </button>
@@ -116,7 +118,7 @@ export default function VerifyPage() {
         <OtpInput value={digits} onChange={setDigits} error={!!error} />
 
         {dev && (
-          <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-[11.5px] text-amber-300 font-mono">
+          <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-300">
             <TerminalSquare size={14} className="shrink-0 mt-0.5" />
             <span>{t('authDevHint', 'Mode dév : le code est affiché dans la console du serveur.')}</span>
           </div>
@@ -128,7 +130,7 @@ export default function VerifyPage() {
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-[12.5px] text-emerald-300">
+          <div className="flex items-center gap-2 rounded-xl border border-dz-emerald/30 bg-dz-emerald/10 px-3.5 py-2.5 text-[12.5px] text-dz-emerald">
             <CheckCircle2 size={14} className="shrink-0" />
             {success}
           </div>
@@ -144,17 +146,17 @@ export default function VerifyPage() {
           {submitting ? t('authVerifying', 'Vérification…') : t('authVerifyBtn', 'Vérifier le code')}
         </button>
 
-        <div className="flex items-center justify-center gap-2 text-[12px] text-white/45">
+        <div className="flex items-center justify-center gap-2 text-[12px] text-fg-muted">
           <span>{t('authNoCode', "Tu n'as rien reçu ?")}</span>
           {cooldown > 0 ? (
-            <span className="font-mono text-white/30">
+            <span className="text-fg-faint">
               {t('authResendIn', 'Renvoyer dans')} {cooldown}s
             </span>
           ) : (
             <button
               type="button"
               onClick={handleResend}
-              className="flex items-center gap-1 font-bold text-dz-emerald hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 font-bold text-dz-emerald hover:text-fg transition-colors cursor-pointer"
             >
               <RefreshCw size={12} />
               {t('authResend', 'Renvoyer le code')}
@@ -163,7 +165,7 @@ export default function VerifyPage() {
         </div>
 
         {mode === 'login' && (
-          <p className="text-center text-[11px] text-white/30 font-mono">
+          <p className="text-center text-xs text-fg-faint">
             {t('authLoginOtpNote', 'Code de connexion · valable 10 minutes')}
           </p>
         )}

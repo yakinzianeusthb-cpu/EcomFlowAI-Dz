@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Crown, Flame, Ticket, Zap, type LucideIcon } from 'lucide-react';
 import type { PlanId } from '../context/AuthContext';
 
 /** Server-side plan prices + currency (PlatformConfig singleton). */
@@ -31,7 +32,8 @@ export interface PlanOption {
   accent?: string;
 }
 
-export const PLAN_EMOJI: Record<PlanId, string> = { monthly: '⚡', quarterly: '🔥', lifetime: '👑', custom: '🎟️' };
+/** Icon per plan (replaces the emoji that used to stand in for icons). */
+export const PLAN_ICON: Record<PlanId, LucideIcon> = { monthly: Zap, quarterly: Flame, lifetime: Crown, custom: Ticket };
 
 // Static display copy per plan; price/note are derived from the active pricing.
 const PLAN_META: Record<PlanId, Omit<PlanOption, 'price' | 'note'>> = {
@@ -40,29 +42,25 @@ const PLAN_META: Record<PlanId, Omit<PlanOption, 'price' | 'note'>> = {
     label: '1 Mois',
     tagline: 'Pour tester',
     per: "30 jours d'accès",
-    accent: 'from-dz-emerald/25 to-transparent border-dz-emerald/40',
   },
   quarterly: {
     id: 'quarterly',
     label: '3 Mois',
-    tagline: 'Le plus choisi',
+    tagline: 'Pour lancer',
     per: "90 jours d'accès",
     popular: true,
-    accent: 'from-dz-gold/25 to-transparent border-dz-gold/50',
   },
   lifetime: {
     id: 'lifetime',
     label: 'À Vie',
     tagline: 'Paiement unique',
     per: 'Accès illimité à vie',
-    accent: 'from-dz-dinar/25 to-transparent border-dz-dinar/50',
   },
   custom: {
     id: 'custom',
     label: 'Personnalisé',
     tagline: 'Durée au choix',
     per: 'Accès selon la durée accordée',
-    accent: 'from-dz-emerald/25 to-transparent border-dz-emerald/40',
   },
 };
 
@@ -83,8 +81,14 @@ export function formatPrice(amount: number, pricing: PricingConfig): string {
     : `${grouped} ${pricing.currencySymbol}`;
 }
 
-/** Builds the full plan display list from the active pricing config. */
-export function buildPlans(pricing: PricingConfig): PlanOption[] {
+/** Turns a French display text into the visitor's language (the `tf` of useLanguage). */
+export type DisplayTranslator = (frenchText: string) => string;
+
+/**
+ * Builds the full plan display list from the active pricing config.
+ * Pass `translate` to get the texts in the visitor's language; without it they stay French (as the admin preview wants).
+ */
+export function buildPlans(pricing: PricingConfig, translate: DisplayTranslator = (text) => text): PlanOption[] {
   const priceOf: Record<PlanId, number> = {
     monthly: pricing.monthlyPrice,
     quarterly: pricing.quarterlyPrice,
@@ -93,8 +97,11 @@ export function buildPlans(pricing: PricingConfig): PlanOption[] {
   };
   return (['monthly', 'quarterly', 'lifetime'] as PlanId[]).map((id) => ({
     ...PLAN_META[id],
+    label: translate(PLAN_META[id].label),
+    tagline: translate(PLAN_META[id].tagline),
+    per: translate(PLAN_META[id].per),
     price: formatPrice(priceOf[id], pricing),
-    note: PLAN_NOTE[id],
+    note: translate(PLAN_NOTE[id]),
   }));
 }
 

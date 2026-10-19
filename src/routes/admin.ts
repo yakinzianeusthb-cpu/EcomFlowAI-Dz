@@ -3,6 +3,8 @@ import { prisma } from '../lib/prisma';
 import { encryptSecret, maskSecret } from '../lib/crypto';
 import { requireAuth } from '../lib/session';
 import { requireAdmin } from '../lib/admin';
+import { publicCache } from '../lib/cache';
+import { isPlaceholderGuide } from '../lib/dashboardContent';
 
 const router = Router();
 
@@ -37,7 +39,7 @@ async function getPlatformConfig() {
 /* ------------------------------------------------------------------ */
 
 // GET /api/payment-methods — enabled payment methods for the checkout.
-router.get('/api/payment-methods', async (_req, res) => {
+router.get('/api/payment-methods', publicCache(), async (_req, res) => {
   try {
     const methods = await prisma.paymentMethod.findMany({
       where: { enabled: true },
@@ -51,21 +53,9 @@ router.get('/api/payment-methods', async (_req, res) => {
 });
 
 // GET /api/announcements/active — announcements live right now.
-router.get('/api/announcements/active', async (_req, res) => {
+// The free-trial offer is built into the dashboard, translated; it is no longer created here in French.
+router.get('/api/announcements/active', publicCache(), async (_req, res) => {
   try {
-    const count = await prisma.announcement.count();
-    if (count === 0) {
-      await prisma.announcement.create({
-        data: {
-          title: "🎁 Offre Spéciale : 7 Jours d'Essai Gratuit !",
-          message: "Profitez de 7 jours d'accès gratuit et illimité à tous nos outils IA e-commerce pour tester et booster vos ventes dès aujourd'hui. Pour en profiter, contactez-nous sur WhatsApp !",
-          emoji: "🎁",
-          kind: "promo",
-          active: true,
-        },
-      });
-    }
-
     const now = new Date();
     const items = await prisma.announcement.findMany({
       where: {
@@ -84,7 +74,7 @@ router.get('/api/announcements/active', async (_req, res) => {
 });
 
 // GET /api/hot-deals/active — featured products shown on the dashboard.
-router.get('/api/hot-deals/active', async (_req, res) => {
+router.get('/api/hot-deals/active', publicCache(), async (_req, res) => {
   try {
     const items = await prisma.hotDeal.findMany({
       where: { active: true },
@@ -99,14 +89,14 @@ router.get('/api/hot-deals/active', async (_req, res) => {
 });
 
 // GET /api/guides/active — video guides shown on the client dashboard.
-router.get('/api/guides/active', async (_req, res) => {
+router.get('/api/guides/active', publicCache(), async (_req, res) => {
   try {
     const items = await prisma.guide.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       take: 30,
     });
-    res.json(items);
+    res.json(items.filter((g) => !isPlaceholderGuide(g)));
   } catch (err) {
     console.error('Get active guides error:', err);
     res.status(500).json({ error: 'Erreur serveur.' });
@@ -115,7 +105,7 @@ router.get('/api/guides/active', async (_req, res) => {
 
 // GET /api/platform/pricing — plan prices + currency (public: shown on the
 // marketing landing page and in the checkout).
-router.get('/api/platform/pricing', async (_req, res) => {
+router.get('/api/platform/pricing', publicCache(), async (_req, res) => {
   try {
     const cfg = await getPlatformConfig();
     res.json({

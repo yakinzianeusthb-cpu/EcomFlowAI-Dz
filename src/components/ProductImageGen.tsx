@@ -164,13 +164,13 @@ export default function ProductImageGen() {
           <ImageIcon className="w-6 h-6 text-purple-400" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-white">Photos de Produit IA</h2>
-          <p className="text-gray-400">Générez des visuels professionnels pour vos publicités</p>
+          <h2 className="text-2xl font-bold text-fg">Photos de Produit IA</h2>
+          <p className="text-fg-muted">Générez des visuels professionnels pour vos publicités</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="glass-card p-6 space-y-6">
+        <div className="ui-card p-6 space-y-6">
           {error && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
@@ -179,11 +179,11 @@ export default function ProductImageGen() {
             >
               <button 
                 onClick={() => setError(null)}
-                className="absolute top-2 right-2 opacity-20 hover:opacity-100 transition-opacity"
+                className="absolute top-2 end-2 opacity-20 hover:opacity-100 transition-opacity"
               >
                 <X size={14} />
               </button>
-              <p className="pr-6">{error}</p>
+              <p className="pe-6">{error}</p>
             </motion.div>
           )}
           <PromptField
@@ -196,7 +196,7 @@ export default function ProductImageGen() {
           />
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
+            <label className="block text-xs font-semibold text-fg-faint mb-3 flex items-center gap-2">
               <Palette size={10} className="text-purple-500" />
               Style Visuel
             </label>
@@ -206,21 +206,21 @@ export default function ProductImageGen() {
                   key={s.id}
                   onClick={() => setStyle(s.id)}
                   className={cn(
-                    "p-4 rounded-2xl border text-left transition-all relative overflow-hidden group",
+                    "p-4 rounded-2xl border text-start transition-all relative overflow-hidden group",
                     style === s.id 
-                      ? "bg-purple-600/20 border-purple-500 text-white shadow-xl shadow-purple-500/20" 
-                      : "bg-white/[0.03] border-white/10 text-white/40 hover:bg-white/10 hover:text-white"
+                      ? "bg-purple-600/20 border-purple-500 text-fg shadow-xl shadow-purple-500/20" 
+                      : "bg-fg/[0.03] border-fg/10 text-fg-muted hover:bg-fg/10 hover:text-fg"
                   )}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider">{s.name}</p>
+                    <p className="text-xs font-bold">{s.name}</p>
                     <span className="text-lg">{s.icon}</span>
                   </div>
-                  <p className="text-[10px] opacity-60 leading-tight">{s.desc}</p>
+                  <p className="text-xs opacity-60 leading-tight">{s.desc}</p>
                   {style === s.id && (
                     <motion.div 
                       layoutId="active-bg"
-                      className="absolute inset-0 bg-white/10 pointer-events-none"
+                      className="absolute inset-0 bg-fg/10 pointer-events-none"
                     />
                   )}
                 </button>
@@ -235,35 +235,35 @@ export default function ProductImageGen() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -5 }}
                   className={cn(
-                    "p-4 rounded-xl border relative overflow-hidden transition-all duration-500",
+                    "p-4 rounded-xl border relative overflow-hidden transition-all duration-300",
                     style === 'lifestyle' && "bg-orange-500/10 border-orange-500/20",
                     style === 'minimalist' && "bg-gray-500/10 border-gray-500/20",
-                    style === 'high-tech' && "bg-indigo-500/10 border-indigo-500/20",
+                    style === 'high-tech' && "bg-primary/10 border-dz-emerald/20",
                     style === 'creative' && "bg-pink-500/10 border-pink-500/20"
                   )}
                 >
                   {/* Decorative Mood element */}
                   <div className={cn(
-                    "absolute -right-4 -top-4 w-16 h-16 blur-2xl opacity-40 rounded-full",
+                    "absolute -end-4 -top-4 w-16 h-16 blur-2xl opacity-40 rounded-full",
                     style === 'lifestyle' && "bg-orange-500",
                     style === 'minimalist' && "bg-white",
-                    style === 'high-tech' && "bg-indigo-400",
+                    style === 'high-tech' && "bg-primary",
                     style === 'creative' && "bg-pink-500"
                   )} />
 
                   <div className="flex items-start gap-3 relative z-10">
                     <div className={cn(
-                      "p-2 rounded-lg bg-white/5",
+                      "p-2 rounded-lg bg-fg/5",
                       style === 'lifestyle' && "text-orange-400",
-                      style === 'minimalist' && "text-gray-300",
-                      style === 'high-tech' && "text-indigo-400",
+                      style === 'minimalist' && "text-fg-muted",
+                      style === 'high-tech' && "text-dz-emerald",
                       style === 'creative' && "text-pink-400"
                     )}>
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-white/50 uppercase mb-1 tracking-widest">Guide Style : {currentStyle.name}</p>
-                      <p className="text-xs text-gray-200 leading-relaxed font-medium">{currentStyle.longDesc}</p>
+                      <p className="text-xs font-bold text-fg-muted mb-1">Guide Style : {currentStyle.name}</p>
+                      <p className="text-xs text-fg leading-relaxed font-medium">{currentStyle.longDesc}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -271,12 +271,12 @@ export default function ProductImageGen() {
             </AnimatePresence>
           </div>
 
-          <div className="space-y-4 pt-4 border-t border-white/5">
+          <div className="space-y-4 pt-4 border-t border-fg/5">
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1 bg-purple-500/10 rounded-lg text-purple-400">
                 <Layout size={14} />
               </div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Format de l'image (AI)</label>
+              <label className="text-xs font-semibold text-fg-muted">Format de l'image (AI)</label>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -293,11 +293,11 @@ export default function ProductImageGen() {
                     className={`p-2 rounded-xl flex flex-col items-center gap-1.5 transition-all border ${
                       aspectRatio === ratio.id
                         ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                        : 'bg-fg/5 border-fg/10 text-fg-muted hover:bg-fg/10'
                     }`}
                   >
                     <Icon size={14} />
-                    <span className="text-[9px] font-black">{ratio.id}</span>
+                    <span className="text-xs font-semibold">{ratio.id}</span>
                   </button>
                 );
               })}
@@ -322,7 +322,7 @@ export default function ProductImageGen() {
 
         <div className="flex flex-col items-center justify-center">
           <div className={cn(
-            "relative w-full transition-all duration-500 overflow-hidden",
+            "relative w-full transition-all duration-300 overflow-hidden",
             aspectRatio === '1:1' && 'aspect-square',
             aspectRatio === '16:9' && 'aspect-[16/9]',
             aspectRatio === '4:5' && 'aspect-[4/5]',
@@ -335,14 +335,14 @@ export default function ProductImageGen() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 glass-card flex flex-col items-center justify-center text-center p-8 z-10"
+                  className="absolute inset-0 ui-card flex flex-col items-center justify-center text-center p-8 z-10"
                 >
                   <div className="w-16 h-16 relative mb-4">
                     <div className="absolute inset-0 border-4 border-purple-500/20 rounded-full"></div>
                     <div className="absolute inset-0 border-4 border-t-purple-500 rounded-full animate-spin"></div>
                   </div>
-                  <p className="text-white font-medium">L'IA prépare votre visuel...</p>
-                  <p className="text-xs text-gray-400 mt-2 italic">Format {aspectRatio} en cours...</p>
+                  <p className="text-fg font-medium">L'IA prépare votre visuel...</p>
+                  <p className="text-xs text-fg-muted mt-2 italic">Format {aspectRatio} en cours...</p>
                 </motion.div>
               ) : result ? (
                 <motion.div
@@ -354,13 +354,13 @@ export default function ProductImageGen() {
                   <img
                     src={result}
                     alt={productName}
-                    className="w-full h-full object-cover rounded-2xl border border-white/10"
+                    className="w-full h-full object-cover rounded-2xl border border-fg/10"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
                     <button
                       onClick={handleDownload}
-                      className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:scale-105 transition-transform"
+                      className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold transition-transform"
                     >
                       <Download className="w-5 h-5" />
                       Télécharger HD
@@ -368,9 +368,9 @@ export default function ProductImageGen() {
                   </div>
                 </motion.div>
               ) : (
-                <div className="w-full h-full glass-card border-dashed flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                <div className="w-full h-full ui-card border-dashed flex flex-col items-center justify-center p-8 text-center text-fg-faint">
                   <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
-                  <h3 className="text-gray-400 font-medium mb-1">Format {aspectRatio}</h3>
+                  <h3 className="text-fg-muted font-medium mb-1">Format {aspectRatio}</h3>
                   <p className="text-xs max-w-[200px]">Prêt à générer votre photo parfaite</p>
                 </div>
               )}

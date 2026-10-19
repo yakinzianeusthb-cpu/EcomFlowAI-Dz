@@ -1,419 +1,183 @@
-import { useState, useEffect } from 'react';
-import {
-  LayoutDashboard,
-  Clapperboard,
-  Wand2,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  Layers,
-  GripVertical,
-  ArrowUpDown,
-  Check,
-  RefreshCw,
-  Tag,
-  Coins,
-  Shield,
-  Lock,
-  MessageCircle
-} from 'lucide-react';
+import { Lock, LogOut, MessageCircle, Plus, Settings, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Reorder } from 'framer-motion';
-import { preferencesApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { isToolPaid, hasActivePlan } from '../lib/access';
 import { useCountdown } from '../lib/countdown';
-import ecomflowLogo from '../images/EcomFlow.png';
-
-type NavItem = 'dashboard' | 'video' | 'landing' | 'assembler' | 'trends' | 'images' | 'calculator' | 'settings' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar' | 'contact';
+import { NAV_GROUPS, type NavItem } from '../lib/nav';
+import { BrandLogo } from './BrandMark';
 
 interface SidebarProps {
   activeTab: NavItem;
   setActiveTab: (tab: NavItem) => void;
+  /** Starts a new campaign. */
+  onNewCampaign: () => void;
+  /** Called after a navigation click (used to close the mobile drawer). */
+  onNavigate?: () => void;
 }
 
-const navKeyMap: Record<string, string> = {
-  dashboard: 'menuDashboard',
-  video: 'menuVideo',
-  landing: 'menuLanding',
-  assembler: 'menuAssembler',
-  calculator: 'menuCalculator',
-  settings: 'menuSettings',
-};
+const DAY_MS = 86_400_000;
 
-const defaultNavItems = [
-  { id: 'dashboard', label: 'Dashboard Ventes', icon: LayoutDashboard, color: 'text-white/40' },
-  { id: 'video', label: 'Pubs Vidéo TikTok/FB', icon: Clapperboard, color: 'text-white/40' },
-  { id: 'landing', label: 'Tunnels & Landing Page', icon: Wand2, color: 'text-white/40' },
-  { id: 'assembler', label: 'Constructeur de LP', icon: Layers, color: 'text-white/40' },
-  { id: 'calculator', label: 'Calculateur Marge COD', icon: Coins, color: 'text-white/40' },
-];
+function PlanStatus() {
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const expiresAt = user?.planExpiresAt ? new Date(user.planExpiresAt).getTime() : null;
+  const activeFrom = user?.planActiveFrom ? new Date(user.planActiveFrom).getTime() : null;
+  // Whole days are enough here; ticking once a minute avoids re-rendering the sidebar every second.
+  const countdown = useCountdown(expiresAt, 60_000);
 
-const getStoredNavItems = () => {
-  const stored = localStorage.getItem('dzads_tools_order');
-  if (stored) {
-    try {
-      const ids: string[] = JSON.parse(stored);
-      const ordered = ids
-        .map(id => defaultNavItems.find(item => item.id === id))
-        .filter(Boolean) as typeof defaultNavItems;
-      const missing = defaultNavItems.filter(item => !ids.includes(item.id));
-      return [...ordered, ...missing];
-    } catch (e) {
-      console.error(e);
-    }
+  const isActive = user?.planStatus === 'active';
+  const isLifetime = isActive && user?.plan === 'lifetime' && !expiresAt;
+  const isExpired = isActive && expiresAt != null && expiresAt < Date.now();
+  const totalDays = user?.planDays ?? (user?.plan === 'monthly' ? 30 : user?.plan === 'quarterly' ? 90 : null);
+  const elapsed = totalDays && activeFrom != null ? Math.min(1, (Date.now() - activeFrom) / (totalDays * DAY_MS)) : 0;
+  const openPlans = () => window.dispatchEvent(new CustomEvent('dz_open_checkout'));
+
+  if (isActive && !isExpired) {
+    return (
+      <div className="rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2.5">
+        <div className="flex items-center gap-2 text-xs font-medium text-success-ink">
+          <span className="size-1.5 rounded-full bg-success" />
+          {t('sidebarSubActive', 'Abonnement actif')}
+        </div>
+        <p className="mt-0.5 text-sm font-semibold tabular-nums text-fg">
+          {isLifetime ? t('sidebarSubLifetime', 'Accès à vie') : `${countdown.days} ${t('sidebarSubDaysLeft', 'jours restants')}`}
+        </p>
+        {!isLifetime && totalDays && (
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-fg/10">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(4, (1 - elapsed) * 100)}%` }} />
+          </div>
+        )}
+      </div>
+    );
   }
-  return defaultNavItems;
-};
-
-export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
-  const { t, isRTL } = useLanguage();
-  const toast = useToast();
-  const { user, isMock, logout } = useAuth();
-  // Live countdown for an active subscription (ticks every second).
-  const planCountdown = useCountdown(user?.planExpiresAt ? new Date(user.planExpiresAt).getTime() : null);
-  const [isOpen, setIsOpen] = useState(true);
-  const [isReorderingMode, setIsReorderingMode] = useState(false);
-  const [items, setItems] = useState<typeof defaultNavItems>(getStoredNavItems);
-
-  // Sync the tools order from the server API on mount (localStorage stays as fallback).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const prefs = await preferencesApi.get();
-        if (cancelled) return;
-        const ids = prefs?.toolsOrder;
-        if (Array.isArray(ids) && ids.length > 0) {
-          const ordered = ids
-            .map(id => defaultNavItems.find(item => item.id === id))
-            .filter(Boolean) as typeof defaultNavItems;
-          const missing = defaultNavItems.filter(item => !ids.includes(item.id));
-          setItems([...ordered, ...missing]);
-        }
-      } catch (e) {
-        console.error('Failed to load tools order from API', e);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const handleReorder = (newOrder: typeof defaultNavItems) => {
-    setItems(newOrder);
-    const order = newOrder.map(o => o.id);
-    localStorage.setItem('dzads_tools_order', JSON.stringify(order));
-    preferencesApi.update({ toolsOrder: order }).catch(() => {});
-  };
-
-  const resetOrder = () => {
-    setItems(defaultNavItems);
-    localStorage.removeItem('dzads_tools_order');
-    preferencesApi.update({ toolsOrder: defaultNavItems.map(o => o.id) }).catch(() => {});
-  };
 
   return (
-    <div className={cn(
-      "h-[calc(100vh-1.5rem)] my-3 glass-panel rounded-2xl sm:rounded-3xl text-white transition-all duration-500 flex flex-col z-20 overflow-hidden shrink-0",
-      isRTL ? "mr-2 sm:mr-4 ml-0" : "ml-2 sm:ml-4 mr-0",
-      isOpen ? "w-52 sm:w-60" : "w-16 sm:w-18"
-    )}>
-      <div className="p-3 sm:p-4 flex items-center justify-between pb-3">
-        {isOpen && (
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img src={ecomflowLogo} alt="EcomFlow AI" className="w-9 h-9 rounded-full object-cover shadow-[0_0_12px_rgba(212,164,76,0.12)] border border-white/10 shrink-0" />
-            <div className="flex flex-col min-w-0 truncate">
-              <span className="font-black text-xs sm:text-sm tracking-tight text-transparent bg-clip-text bg-linear-to-r from-white via-slate-100 to-dz-emerald truncate">
-                EcomFlow AI
-              </span>
-              <span className="text-[8px] font-mono text-dz-gold uppercase tracking-wider truncate">
-                AI-Powered Ecommerce Marketing
-              </span>
-            </div>
-          </div>
-        )}
-        <button onClick={() => setIsOpen(!isOpen)} className="p-1.5 hover:bg-white/10 rounded-lg sm:rounded-xl transition-all active:scale-95 cursor-pointer shrink-0">
-          {isOpen ? <X size={16} /> : <Menu size={16} />}
-        </button>
+    <div className="rounded-[var(--radius-md)] border border-line bg-surface-2 p-3">
+      <p className={cn('text-xs font-medium', isExpired ? 'text-danger-ink' : 'text-fg-muted')}>
+        {isExpired ? t('sidebarSubExpired', 'Expiré') : t('sidebarSubNoPlan', 'Aucun abonnement')}
+      </p>
+      <button type="button" onClick={openPlans} className="mt-2 text-[13px] font-semibold text-primary-ink hover:underline">
+        {t('sidebarSubUpgrade', 'Voir les plans')}
+      </button>
+    </div>
+  );
+}
+
+export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavigate }: SidebarProps) {
+  const { t } = useLanguage();
+  const toast = useToast();
+  const { user, logout } = useAuth();
+
+  const go = (tab: NavItem) => {
+    setActiveTab(tab);
+    onNavigate?.();
+  };
+
+  const paidLocked = !hasActivePlan(user);
+  const avatar = user?.avatarUrl ?? user?.avatar;
+
+  const secondary: { id: NavItem; label: string; icon: typeof Settings }[] = [
+    { id: 'settings', label: t('menuSettings', 'Paramètres'), icon: Settings },
+    { id: 'contact', label: t('menuContact', 'Contact & support'), icon: MessageCircle },
+  ];
+
+  return (
+    <div className="flex h-full flex-col bg-surface max-lg:overflow-y-auto">
+      <div className="flex h-14 shrink-0 items-center border-b border-line px-4">
+        <BrandLogo />
       </div>
 
-      {/* Reordering Controls (Only visible when open) */}
-      {isOpen && (
-        <div className="px-3 sm:px-4 pb-2 flex items-center justify-between border-b border-white/5 gap-1.5 select-none">
-          <span className="text-[9px] font-mono tracking-wider text-white/40 uppercase truncate">
-            {isReorderingMode ? t('menuReorderText', "👉 Glisser pour trier") : t('menuToolsText', "Menu Outils")}
-          </span>
-          <div className="flex items-center gap-1 shrink-0">
-            {isReorderingMode && (
-              <button
-                type="button"
-                onClick={resetOrder}
-                className="p-0.5 px-1.5 rounded-md bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/20 text-[8px] font-black uppercase transition-all flex items-center gap-0.5 active:scale-95"
-                title="Réinitialiser l'ordre"
-              >
-                <RefreshCw size={8} />
-                <span>Reset</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setIsReorderingMode(!isReorderingMode)}
-              className={cn(
-                "p-0.5 px-1.5 rounded-md text-[8px] font-black uppercase border transition-all flex items-center gap-0.5 active:scale-95",
-                isReorderingMode 
-                  ? "bg-dz-emerald/20 border-dz-emerald/40 text-dz-emerald" 
-                  : "bg-white/5 border-white/5 hover:bg-white/10 text-white/50 hover:text-white"
-              )}
-              title={isReorderingMode ? "Quitter le tri" : "Réorganiser les outils"}
-            >
-              {isReorderingMode ? <Check size={8} /> : <ArrowUpDown size={8} />}
-              <span>{isReorderingMode ? t('menuDone', "OK") : t('menuOrganize', "Trier")}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isReorderingMode && isOpen ? (
-        <Reorder.Group 
-          axis="y" 
-          values={items} 
-          onReorder={handleReorder}
-          className="flex-1 px-2 py-2 space-y-1 overflow-y-auto scrollbar-hide"
+      <nav aria-label={t('coNavigationPrincipale', 'Navigation principale')} className="flex-1 p-3 lg:overflow-y-auto">
+        <button
+          type="button"
+          onClick={() => {
+            onNewCampaign();
+            onNavigate?.();
+          }}
+          className="btn-dz-primary mb-3 w-full"
         >
-          {items.map((item) => (
-            <Reorder.Item
-              key={item.id}
-              value={item}
-              className={cn(
-                "w-full flex items-center justify-between p-2 rounded-lg transition-all group relative cursor-grab active:cursor-grabbing border bg-white/[0.02] border-dashed border-white/15 text-white/70 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <div className="flex items-center gap-2.5 select-none min-w-0">
-                <item.icon size={15} className={cn("shrink-0", item.color)} />
-                <span className="text-[10px] font-semibold tracking-wide uppercase truncate">{t(navKeyMap[item.id] || '', item.label)}</span>
-              </div>
-              <GripVertical size={13} className="text-white/30 group-hover:text-white/70 shrink-0" />
-            </Reorder.Item>
-          ))}
-        </Reorder.Group>
-      ) : (
-        <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto scrollbar-hide">
-          {items.map((item) => (
+          <Plus size={16} /> {t('navNewCampaign', 'Nouvelle campagne')}
+        </button>
+
+        {NAV_GROUPS.map((group) => (
+          <div key={group.id} className="mb-3 last:mb-0">
+            <p className="eyebrow mb-1.5 px-3">{t(group.labelKey, group.fallback)}</p>
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = activeTab === item.id;
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => go(item.id)}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn('nav-item', active && 'is-active')}
+                    >
+                      <item.icon size={17} className="shrink-0" />
+                      <span className="flex-1 truncate">{t(item.labelKey, item.fallback)}</span>
+                      {paidLocked && isToolPaid(item.id) && <Lock size={13} className="shrink-0 text-fg-faint" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <div className="shrink-0 space-y-2.5 border-t border-line p-3">
+        <div className="space-y-0.5">
+          {secondary.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id as NavItem)}
-              className={cn(
-                "w-full flex items-center gap-2.5 p-2 sm:p-2.5 rounded-xl transition-all group relative cursor-pointer",
-                activeTab === item.id
-                  ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30"
-                  : "text-white/40 border border-transparent hover:bg-white/5 hover:text-white"
-              )}
+              type="button"
+              onClick={() => go(item.id)}
+              aria-current={activeTab === item.id ? 'page' : undefined}
+              className={cn('nav-item', activeTab === item.id && 'is-active')}
             >
-              {activeTab === item.id && (
-                <div className="absolute left-0 w-1 h-5 bg-linear-to-b from-dz-gold to-dz-emerald rounded-r-full" />
-              )}
-              <item.icon size={16} className={cn(
-                "shrink-0 transition-all duration-300 group-hover:scale-110",
-                activeTab === item.id ? "text-dz-emerald scale-105" : cn("opacity-60 group-hover:opacity-100", item.color)
-              )} />
-              {isOpen && (
-                <>
-                  <span className="text-[10.5px] font-bold tracking-wider uppercase select-none truncate text-left font-arabic">{t(navKeyMap[item.id] || '', item.label)}</span>
-                  {isToolPaid(item.id) && !hasActivePlan(user) && (
-                    <Lock size={10} className="shrink-0 text-dz-dinar/70 ml-auto" />
-                  )}
-                </>
-              )}
+              <item.icon size={17} className="shrink-0" />
+              <span className="truncate">{item.label}</span>
             </button>
           ))}
-        </nav>
-      )}
-
-      <div className="p-2 sm:p-3 mt-auto">
-        {user && (
-          <div className="p-2.5 glass-card border-dz-gold/25 mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-dz-emerald/30 to-dz-gold/30 border border-white/10 flex items-center justify-center text-sm font-bold text-white shrink-0 overflow-hidden">
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  (user.name || '?').charAt(0).toUpperCase()
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-bold text-white truncate">{user.name}</p>
-                <p className="text-[10px] text-white/40 truncate font-mono">{user.email}</p>
-              </div>
-            </div>
-            {isOpen && (
-              <div className="mt-2 flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest">
-                <span className={cn(
-                  'px-2 py-0.5 rounded-full border',
-                  user.planStatus === 'active'
-                    ? 'bg-dz-emerald/15 text-dz-emerald border-dz-emerald/30'
-                    : 'bg-dz-dinar/15 text-dz-dinar border-dz-dinar/30'
-                )}>
-                  {user.planStatus === 'active' ? '✓ Plan actif' : user.planStatus === 'pending' ? '⏳ En attente' : 'Sans plan'}
-                </span>
-                {isMock && <span className="text-white/30">démo</span>}
-              </div>
-            )}
-          </div>
-        )}
-        {isOpen && user && (() => {
-          const now = Date.now();
-          // planExpiresAt / planActiveFrom arrive as ISO strings (Prisma DateTime);
-          // normalize to epoch ms so arithmetic below never yields NaN.
-          const planExpiresAt = user.planExpiresAt ? new Date(user.planExpiresAt).getTime() : null;
-          const planActiveFrom = user.planActiveFrom ? new Date(user.planActiveFrom).getTime() : null;
-          const isActive = user.planStatus === 'active';
-          const isLifetime = isActive && user.plan === 'lifetime' && !planExpiresAt;
-          const isExpired = isActive && planExpiresAt != null && planExpiresAt < now;
-          const totalDays = user.planDays ?? (user.plan === 'monthly' ? 30 : user.plan === 'quarterly' ? 90 : null);
-          const elapsed = totalDays && planActiveFrom != null
-            ? Math.min(1, (now - planActiveFrom) / (totalDays * 1000 * 60 * 60 * 24))
-            : 0;
-
-          return (
-            <div className={cn(
-              'p-2.5 glass-card mb-2 hidden md:block transition-all',
-              isExpired ? 'border-rose-500/30' : isActive ? 'border-dz-emerald/30' : 'border-white/10'
-            )}>
-              {isActive && !isExpired ? (
-                <>
-                  <p className="text-[9px] uppercase tracking-widest text-transparent bg-clip-text bg-linear-to-r from-dz-emerald via-dz-gold to-dz-gold font-black mb-1">
-                    {t('sidebarSubActive')}
-                  </p>
-                  <div className="flex justify-between items-end mb-1">
-                    <span className="text-sm font-bold font-mono text-white">
-                      {isLifetime ? '∞' : planCountdown.days}
-                    </span>
-                    <span className="text-[9px] text-white/40">
-                      {isLifetime ? t('sidebarSubLifetime') : t('sidebarSubDaysLeft')}
-                    </span>
-                  </div>
-                  {!isLifetime && (
-                    <p className="font-mono text-[11px] text-dz-emerald tabular-nums tracking-wider mb-1.5">
-                      {String(planCountdown.hours).padStart(2, '0')}:{String(planCountdown.minutes).padStart(2, '0')}:{String(planCountdown.seconds).padStart(2, '0')}
-                    </p>
-                  )}
-                  {!isLifetime && totalDays && (
-                    <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                      <div
-                        className="bg-linear-to-r from-dz-emerald to-dz-gold h-full rounded-full transition-all duration-700"
-                        style={{ width: `${Math.max(5, (1 - elapsed) * 100)}%` }}
-                      />
-                    </div>
-                  )}
-                </>
-              ) : isExpired ? (
-                <>
-                  <p className="text-[9px] uppercase tracking-widest text-rose-400 font-black mb-1">
-                    {t('sidebarSubExpired')}
-                  </p>
-                  <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-change', { detail: 'settings' }))}
-                    className="text-[10px] text-dz-emerald hover:text-dz-gold transition-colors cursor-pointer"
-                  >
-                    {t('sidebarSubUpgrade')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="text-[9px] uppercase tracking-widest text-white/40 font-black mb-1">
-                    {t('sidebarSubNoPlan')}
-                  </p>
-                  <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('nav-change', { detail: 'settings' }))}
-                    className="text-[10px] text-dz-emerald hover:text-dz-gold transition-colors cursor-pointer"
-                  >
-                    {t('sidebarSubUpgrade')}
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })()}
-
-        <div className="space-y-0.5">
-          {/* App Version Icon & Badge */}
-          <button
-            type="button"
-            onClick={() => toast.info(t('latestVersionMsg', 'Vous utilisez la dernière version (v2.4.0) !'))}
-            className="w-full flex items-center justify-between p-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white/70 hover:text-white cursor-pointer group active:scale-95 mb-0.5"
-            title="Version de l'application / رقم التحديث"
-            id="sidebar-app-version-button"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 rounded-lg bg-dz-emerald/10 border border-dz-emerald/30 text-dz-emerald group-hover:scale-110 group-hover:bg-dz-emerald/20 transition-all shrink-0">
-                <Tag size={13} />
-              </div>
-              {isOpen && (
-                <div className="flex flex-col text-left truncate">
-                  <span className="text-[10px] font-bold text-white tracking-wide leading-tight truncate">
-                    {t('appVersion', 'Version v2.4.0')}
-                  </span>
-                  <span className="text-[8px] text-dz-emerald font-semibold flex items-center gap-1 mt-0.5">
-                    <span className="w-1 h-1 rounded-full bg-dz-emerald animate-pulse"></span>
-                    v2.4.0
-                  </span>
-                </div>
-              )}
-            </div>
-            {isOpen && (
-              <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-linear-to-r from-dz-gold/20 to-dz-emerald/20 text-dz-emerald border border-dz-emerald/30 shadow-xs shrink-0">
-                PRO
-              </span>
-            )}
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={cn(
-              "w-full flex items-center gap-2.5 p-2 transition-all rounded-xl active:scale-95 group cursor-pointer",
-              activeTab === 'settings'
-                ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30"
-                : "text-white/30 border border-transparent hover:text-white hover:bg-white/5"
-            )}
-          >
-            <Settings size={16} className={cn("transition-transform group-hover:rotate-45 shrink-0", activeTab === 'settings' ? "text-dz-emerald" : "")} />
-            {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('menuSettings', 'Paramètres')}</span>}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('contact')}
-            className={cn(
-              "w-full flex items-center gap-2.5 p-2 transition-all rounded-xl active:scale-95 group cursor-pointer",
-              activeTab === 'contact'
-                ? "bg-linear-to-r from-dz-gold/15 to-dz-emerald/15 text-white border border-dz-emerald/30"
-                : "text-white/30 border border-transparent hover:text-white hover:bg-white/5"
-            )}
-          >
-            <MessageCircle size={16} className={cn("shrink-0", activeTab === 'contact' ? "text-dz-emerald" : "")} />
-            {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('menuContact', 'Contact & Support')}</span>}
-          </button>
           {user?.isAdmin && (
-            <a
-              href="/admin"
-              className="w-full flex items-center gap-2.5 p-2 text-dz-gold/80 hover:text-dz-gold transition-all rounded-xl hover:bg-dz-gold/10 active:scale-95 group cursor-pointer"
-            >
-              <Shield size={16} className="transition-transform group-hover:-translate-y-0.5 shrink-0" />
-              {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">Admin</span>}
+            <a href="/admin" className="nav-item">
+              <Shield size={17} className="shrink-0" />
+              <span className="truncate">{t('shlAdmin', 'Admin')}</span>
             </a>
           )}
-          <button
-            onClick={async () => {
-              await logout();
-              toast.success('Vous êtes déconnecté(e). À bientôt ! 👋');
-            }}
-            className="w-full flex items-center gap-2.5 p-2 text-rose-500/60 hover:text-rose-400 transition-all rounded-xl hover:bg-rose-500/10 active:scale-95 group cursor-pointer"
-          >
-            <LogOut size={16} className="transition-transform group-hover:-translate-x-1 shrink-0" />
-            {isOpen && <span className="text-[10.5px] font-bold uppercase tracking-wider truncate text-left">{t('logout', 'Déconnexion')}</span>}
-          </button>
         </div>
+
+        <PlanStatus />
+
+        {user && (
+          <div className="flex items-center gap-2.5 px-1">
+            <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-sm)] bg-primary/15 text-sm font-semibold text-primary-ink">
+              {avatar ? (
+                <img src={avatar} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                (user.name || '?').charAt(0).toUpperCase()
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold text-fg">{user.name}</span>
+              <span className="block truncate text-xs text-fg-faint">{user.email}</span>
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                toast.success(t('loggedOutMsg', 'Vous êtes déconnecté(e). À bientôt !'));
+              }}
+              aria-label={t('logout', 'Déconnexion')}
+              title={t('logout', 'Déconnexion')}
+              className="grid size-9 shrink-0 place-items-center rounded-[var(--radius-sm)] text-fg-faint transition-colors hover:bg-danger/10 hover:text-danger-ink"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

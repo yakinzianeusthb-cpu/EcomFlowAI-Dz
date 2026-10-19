@@ -1,6 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
+    <!-- The charset must be declared within the first 1024 bytes, so it comes before every inline script. -->
+    <meta charset="UTF-8" />
     <script>
       // Defensive script to handle read-only window.fetch.
       (function() {
@@ -32,17 +34,46 @@
       })();
     </script>
     <script>
-      // Apply stored theme before React mounts to prevent flash
+      // Start the session check now instead of after the JS bundle has downloaded and run.
+      // AuthContext picks this promise up (window.__dzMe) and falls back to its own fetch if it is missing.
+      (function() {
+        try {
+          window.__dzMe = fetch('/api/auth/me', { credentials: 'same-origin' })
+            .then(function(r) { return r.ok ? r.json().then(function(d) { return { ok: true, data: d }; }) : { ok: false }; })
+            .catch(function() { return { ok: false }; });
+        } catch (e) {}
+      })();
+    </script>
+    <script>
+      // Apply the stored theme, language and text direction before React mounts, to prevent a flash.
+      // The language rule matches LanguageContext: a saved fr/en/ar choice, otherwise Arabic.
       (function() {
         try {
           var t = localStorage.getItem('theme');
           document.documentElement.classList.toggle('dark', t !== 'light');
+          var l = localStorage.getItem('dzads_language');
+          if (l !== 'fr' && l !== 'en') l = 'ar';
+          document.documentElement.lang = l;
+          document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
         } catch (e) {}
       })();
     </script>
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EcomFlow AI — AI-Powered Ecommerce Marketing</title>
+    <!-- The static title and description are what link previews and crawlers see (they do not run the app).
+         They are bilingual because the product's audience reads Arabic and French; the app then sets
+         a title in the visitor's language. -->
+    <title>EcomFlow AI — التسويق الإلكتروني بالذكاء الاصطناعي</title>
+    <meta name="description" content="صفحة هبوط وسيناريو فيديو وإعلانات انطلاقاً من صورة منتج، لبائعي التجارة الإلكترونية في الجزائر. · Landing page, script vidéo et publicités à partir d’une photo produit, pour les vendeurs e-commerce en Algérie." />
+    <meta name="theme-color" content="#0c0c0f" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="EcomFlow AI" />
+    <meta property="og:title" content="EcomFlow AI — التسويق الإلكتروني بالذكاء الاصطناعي" />
+    <meta property="og:description" content="صفحة هبوط وسيناريو فيديو وإعلانات انطلاقاً من صورة منتج، لبائعي التجارة الإلكترونية في الجزائر. · Landing page, script vidéo et publicités à partir d’une photo produit, pour les vendeurs e-commerce en Algérie." />
+    <meta property="og:locale" content="ar_DZ" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
   </head>
   <body>
     <div id="root"></div>
