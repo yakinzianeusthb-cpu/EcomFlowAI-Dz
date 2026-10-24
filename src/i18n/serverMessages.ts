@@ -90,6 +90,16 @@ const FRENCH_SOURCED: Array<[string, string, string]> = [
   ["Méthode de paiement requise.", "Payment method is required.", "طريقة الدفع مطلوبة."],
   ["Méthode de paiement invalide.", "Invalid payment method.", "طريقة الدفع غير صالحة."],
   ["Preuve de paiement requise.", "Proof of payment is required.", "إثبات الدفع مطلوب."],
+  // points (src/lib/credits.ts, src/routes/credits.ts)
+  ["Pas assez de points pour cette action. Recharge tes points.", "Not enough points for this. Top up your points.", "نقاطك لا تكفي لهذا الإجراء. أعد شحن نقاطك."],
+  ["Réglages des points invalides : des nombres entiers, et au moins un pack.", "Invalid points settings: whole numbers, and at least one pack.", "إعدادات النقاط غير صالحة: أعداد صحيحة، وباقة واحدة على الأقل."],
+  ["Pack de points invalide.", "Invalid points pack.", "باقة النقاط غير صالحة."],
+  ["Tu as déjà un achat de points en attente de vérification.", "You already have a points purchase waiting for review.", "لديك بالفعل عملية شراء نقاط في انتظار التحقق."],
+  ["Achat introuvable.", "Purchase not found.", "عملية الشراء غير موجودة."],
+  ["Cet achat a déjà été traité.", "This purchase has already been handled.", "تمت معالجة عملية الشراء هذه بالفعل."],
+  ["Nombre de points invalide.", "Invalid number of points.", "عدد النقاط غير صالح."],
+  ["Aucun compte avec cet email.", "No account with this email.", "لا يوجد حساب بهذا البريد الإلكتروني."],
+  ["Clé Gemini invalide.", "Invalid Gemini key.", "مفتاح Gemini غير صالح."],
 
   // Contact form
   ["Nom invalide.", "Invalid name.", "الاسم غير صالح."],

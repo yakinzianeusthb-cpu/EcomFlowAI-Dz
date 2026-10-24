@@ -26,6 +26,15 @@ describe('attentionItems', () => {
     expect(ids({ ...ok, plan: { active: true, pending: false, expiresAt: null } })).toEqual([]);
   });
 
+  it('points instead of a key: no key warning while points can be bought, a top-up reminder when they run low', () => {
+    const noKey = { ...ok, hasGeminiKey: false };
+    expect(ids({ ...noKey, points: { available: true, balance: 120, lowBelow: 10 } })).toEqual([]);
+    expect(attentionItems({ ...noKey, points: { available: true, balance: 4, lowBelow: 10 } })).toEqual([{ id: 'low-points', balance: 4 }]);
+    expect(ids({ ...noKey, points: { available: false, balance: 0, lowBelow: 10 } })).toEqual(['no-key']);
+    // with their own key, the seller's points do not matter
+    expect(ids({ ...ok, points: { available: true, balance: 0, lowBelow: 10 } })).toEqual([]);
+  });
+
   it('says nothing about the key while it is still unknown', () => {
     expect(ids({ ...ok, hasGeminiKey: null })).toEqual([]);
   });

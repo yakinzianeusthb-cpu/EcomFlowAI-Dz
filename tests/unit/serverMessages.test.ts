@@ -5,6 +5,8 @@ import { languageFromCookies, localizeBody, SERVER_MESSAGES } from '../../src/i1
 import { localizeResponses } from '../../src/lib/localizeResponses';
 import { ASSET_ERRORS } from '../../src/lib/assetRules';
 import { SAVED_WORK_ERRORS } from '../../src/lib/savedWork';
+import { CREDIT_ERRORS } from '../../src/lib/credits';
+import { PROOF_ERRORS } from '../../src/lib/paymentProof';
 
 describe('languageFromCookies', () => {
   it('reads the language the app saved', () => {
@@ -75,7 +77,7 @@ describe('SERVER_MESSAGES', () => {
     const root = path.resolve(__dirname, '../..');
     const files = ['server.ts', 'src/routes/auth.ts', 'src/routes/catalog.ts', 'src/routes/dashboard.ts', 'src/routes/history.ts',
       'src/routes/sessions.ts', 'src/lib/admin.ts', 'src/lib/settingsWrite.ts', 'src/lib/session.ts', 'src/lib/otp.ts', 'src/lib/rateLimit.ts', 'src/lib/planGuard.ts',
-      'src/routes/assets.ts', 'src/routes/preferences.ts'];
+      'src/routes/assets.ts', 'src/routes/preferences.ts', 'src/routes/credits.ts', 'src/lib/paymentProof.ts'];
     const PATTERNS = [
       /\b(?:error|message):\s*(["'])((?:\\.|(?!\1).)+)\1/g,       // { error: "..." }
       /\b[A-Z_]*(?:MSG|MESSAGE)\w*\s*=\s*(["'])((?:\\.|(?!\1).)+)\1/g, // const NO_KEY_MSG = "..."
@@ -99,7 +101,7 @@ describe('SERVER_MESSAGES', () => {
   });
 
   it('covers every validation message of files and saved work', () => {
-    for (const message of [...Object.values(ASSET_ERRORS), ...Object.values(SAVED_WORK_ERRORS)]) {
+    for (const message of [...Object.values(ASSET_ERRORS), ...Object.values(SAVED_WORK_ERRORS), ...Object.values(CREDIT_ERRORS), ...Object.values(PROOF_ERRORS)]) {
       expect(SERVER_MESSAGES[message], message).toBeDefined();
     }
   });

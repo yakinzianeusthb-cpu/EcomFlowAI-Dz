@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { SERVER_MESSAGES } from '../../src/i18n/serverMessages';
 import {
-  GOOGLE_API_BASE, VIDEO_ERRORS, VIDEO_MODEL, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJob, signJob,
+  GOOGLE_API_BASE, VIDEO_ERRORS, VIDEO_MODEL, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJob, readJobDetails, signJob,
 } from '../../src/lib/videoJobs';
 
 const sign = (value: string) => createHmac('sha256', 'test-secret').update(value).digest('base64url');
@@ -35,6 +35,18 @@ describe('video job tokens', () => {
     expect(readJob(signJob('../../etc/passwd', 'user-1', sign), 'user-1', sign)).toBeNull();
     expect(readJob(signJob('files/abc', 'user-1', sign), 'user-1', sign)).toBeNull();
     expect(readJob(signJob('abc?key=x', 'user-1', sign), 'user-1', sign)).toBeNull();
+  });
+
+  it('carries the points paid for a clip made on the platform key, signed with the rest', () => {
+    const paid = { ref: '3f2b9c1e-aaaa-bbbb', points: 64 };
+    expect(readJobDetails(signJob(ID, 'user-1', sign, paid), 'user-1', sign)).toEqual({ id: ID, paid });
+    expect(readJobDetails(signJob(ID, 'user-1', sign), 'user-1', sign)).toEqual({ id: ID, paid: null });
+    // a token whose payment was tampered with fails its signature, and a malformed payment is refused
+    const token = signJob(ID, 'user-1', sign, paid);
+    const richer = Buffer.from(JSON.stringify({ i: ID, u: 'user-1', p: { r: paid.ref, c: 6400 } })).toString('base64url');
+    expect(readJobDetails(`${richer}.${token.split('.')[1]}`, 'user-1', sign)).toBeNull();
+    expect(readJobDetails(signJob(ID, 'user-1', sign, { ref: 'bad ref', points: 5 }), 'user-1', sign)).toBeNull();
+    expect(readJobDetails(signJob(ID, 'user-1', sign, { ref: paid.ref, points: -1 }), 'user-1', sign)).toBeNull();
   });
 });
 

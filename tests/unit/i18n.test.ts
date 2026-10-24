@@ -98,6 +98,7 @@ describe('the dictionary', () => {
     'stock OK', 'Scripts & storyboards', 'Profit & ROAS', 'Image', 'Script', 'sections', 'Sections', 'Section', 'Palette',
     'Mobile', 'app.ecomflow.ai/dashboard', '{count}/5 images', 'Lifestyle', 'Studio', 'Portrait', 'Story', 'Vintage',
     'Advertorial', 'Attention', 'Configuration', 'Message', 'Admin',
+    'Points', 'points', 'Packs', '{points} points', '{count} points', '{count} pts', '{points} points · {price} · {method} · {date}',
     'Mobile (9:16)', 'Retina (4K)', 'TikTok / Instagram',
     'APIs', 'Contacts', 'Plan', 'Plan:', 'Actions', 'Note:', 'Workspace:', 'Email:', 'Telegram (username)', 'Code (unique, slug)',
     'Emoji', 'Type', 'Description', 'Badge', 'Active', 'API — {name}',

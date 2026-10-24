@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, RotateCcw, Sparkles, Square } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/video';
+import '../i18n/credits';
+import { useCredits } from '../services/credits';
 import { buildScenePrompt, type PromptScene } from '../lib/aiVideoPrompt';
 
 /** Google's price for the video model, per filmed second at 720p (about; shown to the seller before filming). */
@@ -25,6 +27,7 @@ interface Props {
 /** Films each scene of the script with Google's video model (needs a Gemini key with billing). */
 export default function AiClipsPanel({ scenes, format, photo, productName, clips, onClip }: Props) {
   const { t, language } = useLanguage();
+  const credits = useCredits();
   const [status, setStatus] = useState<Status[]>(() => scenes.map((_, i) => (clips[i] ? 'done' : 'idle')));
   const [current, setCurrent] = useState<number | null>(null);
   const [banner, setBanner] = useState('');
@@ -80,7 +83,9 @@ export default function AiClipsPanel({ scenes, format, photo, productName, clips
         {ready > 0 && <span className="ms-auto text-xs text-fg-faint">{t('vmAiReady', '{done}/{total} clips prêts', { done: ready, total: scenes.length })}</span>}
       </div>
       <p className="text-sm text-fg-muted mb-4">
-        {t('vmAiIntro', "L'IA filme une vraie vidéo avec musique pour chaque scène (environ 8 s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Il faut une clé Gemini avec facturation : Google facture environ 0,10 $ par seconde filmée, soit environ {cost} $ pour les scènes restantes.", { cost: new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((scenes.length - ready) * SCENE_SECONDS * COST_PER_SECOND) })}
+        {credits?.mode === 'points'
+          ? t('crdVideoIntro', "L'IA filme une vraie vidéo avec musique pour chaque scène (environ 8 s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Avec tes points : {perScene} points par scène, soit {total} points pour les scènes restantes (solde : {balance}).", { perScene: SCENE_SECONDS * credits.settings.videoSecondCost, total: (scenes.length - ready) * SCENE_SECONDS * credits.settings.videoSecondCost, balance: credits.balance })
+          : t('vmAiIntro', "L'IA filme une vraie vidéo avec musique pour chaque scène (environ 8 s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Il faut une clé Gemini avec facturation : Google facture environ 0,10 $ par seconde filmée, soit environ {cost} $ pour les scènes restantes.", { cost: new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((scenes.length - ready) * SCENE_SECONDS * COST_PER_SECOND) })}
       </p>
 
       {banner && <p className="mb-4 rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5 text-sm text-warning-ink" role="alert">{banner}</p>}

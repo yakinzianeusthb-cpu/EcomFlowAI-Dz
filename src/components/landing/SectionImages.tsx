@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { IMAGE_PROVIDER_NAMES, type ImageProvider } from '../../lib/imageProviders';
 import { cn } from '../../lib/utils';
 import '../../i18n/funnels';
+import '../../i18n/credits';
 
 interface Props {
   /** posters with their words drawn in (long-image template), or pictures without text (the other templates) */
@@ -22,15 +23,17 @@ interface Props {
   promptOf: (index: number) => string;
   /** the image service chosen in Paramètres, null while it is read */
   service: ImageProvider | null;
-  /** what `count` images cost on that service, or null when it bills at its own rate */
+  /** what `count` images cost on that service (or in points), or null when it bills at its own rate */
   costOf: (count: number) => string | null;
+  /** set when the seller pays in points on the platform's key: points per image and the balance */
+  points: { each: number; balance: number } | null;
   /** offered once every shown section has its poster */
   onLongImage: (() => void) | null;
   longImageBusy: boolean;
 }
 
 /** The AI images of the page, section by section: make one here (its cost shown), copy its prompt for another tool, redo or remove it. */
-export default function SectionImages({ isPoster, shownIndices, images, running, error, hasPhoto, onGenerate, onRemove, promptOf, service, costOf, onLongImage, longImageBusy }: Props) {
+export default function SectionImages({ isPoster, shownIndices, images, running, error, hasPhoto, onGenerate, onRemove, promptOf, service, costOf, points, onLongImage, longImageBusy }: Props) {
   const { t } = useLanguage();
   const toast = useToast();
   const [copied, setCopied] = useState<number | null>(null);
@@ -74,7 +77,9 @@ export default function SectionImages({ isPoster, shownIndices, images, running,
             : t('lppAiIntro', "L'IA crée une image pour chaque section à partir de ta photo produit. Il faut une clé Gemini avec facturation, ou le service choisi dans Paramètres.")}
       </p>
       <p className="mt-1 text-xs text-fg-muted">{t('lppPromptChoice', 'Pour chaque section : génère l’image ici, ou copie son prompt pour la créer dans un autre outil (ChatGPT, Midjourney…).')}</p>
-      {service && (
+      {points ? (
+        <p className="mt-1 text-xs font-semibold text-fg">{t('crdImageCostLine', 'Coût : {each} points par image · ton solde : {balance} points.', points)}</p>
+      ) : service && (
         <p className="mt-1 text-xs font-semibold text-fg">
           {each
             ? <>{t('lppCostEach', 'Coût : environ')} {price(each)} {t('lppCostEachTail', 'par image, payé sur ta clé {service}.', { service: IMAGE_PROVIDER_NAMES[service] })}</>

@@ -36,26 +36,45 @@ const MAX_IMAGE_BASE64 = 8_000_000; // ≈ 6 MB of image
 /** Interaction ids are opaque; letters, digits, "_" and "-" only, so nothing can be smuggled into the request path. */
 const INTERACTION_ID = /^[A-Za-z0-9_-]{4,256}$/;
 
-/** A token that binds an interaction to the user who started it, so nobody else can poll or download it. */
-export function signJob(interactionId: string, userId: string, sign: Signer): string {
-  const body = Buffer.from(JSON.stringify({ i: interactionId, u: userId })).toString('base64url');
+/** A clip paid in points on the platform's key: the points taken and the charge's reference, for a refund if it fails. */
+export interface PaidJob {
+  ref: string;
+  points: number;
+}
+
+/**
+ * A token that binds an interaction to the user who started it, so nobody else can poll or download it. A clip made
+ * on the platform's key carries `paid`, so it is polled with that key and refunded if Google cannot make it.
+ */
+export function signJob(interactionId: string, userId: string, sign: Signer, paid?: PaidJob): string {
+  const body = Buffer.from(JSON.stringify({ i: interactionId, u: userId, ...(paid ? { p: { r: paid.ref, c: paid.points } } : {}) })).toString('base64url');
   return `${body}.${sign(body)}`;
 }
 
-/** The interaction id in a token, or null when the token is not valid for this user. */
-export function readJob(token: string, userId: string, sign: Signer): string | null {
+const REF = /^[A-Za-z0-9_-]{8,64}$/;
+
+/** The interaction id and payment in a token, or null when the token is not valid for this user. */
+export function readJobDetails(token: string, userId: string, sign: Signer): { id: string; paid: PaidJob | null } | null {
   const [body, signature, extra] = (token ?? '').split('.');
   if (!body || !signature || extra !== undefined) return null;
   const expected = Buffer.from(sign(body));
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
-    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as { i?: unknown; u?: unknown };
+    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as { i?: unknown; u?: unknown; p?: { r?: unknown; c?: unknown } };
     if (data.u !== userId || typeof data.i !== 'string' || !INTERACTION_ID.test(data.i)) return null;
-    return data.i;
+    const p = data.p;
+    const paid = p && typeof p.r === 'string' && REF.test(p.r) && Number.isInteger(p.c) && (p.c as number) >= 0 ? { ref: p.r, points: p.c as number } : null;
+    if (p && !paid) return null;
+    return { id: data.i, paid };
   } catch {
     return null;
   }
+}
+
+/** The interaction id in a token, or null when the token is not valid for this user. */
+export function readJob(token: string, userId: string, sign: Signer): string | null {
+  return readJobDetails(token, userId, sign)?.id ?? null;
 }
 
 /** Checks what the browser sent before anything reaches Google. */

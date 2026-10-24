@@ -8,6 +8,7 @@ import './assembler';
 import './calculator';
 import './campaigns';
 import './checkout';
+import './credits';
 import './contact';
 import './funnels';
 import './home';

@@ -148,7 +148,11 @@ model User {
   paymentProof       String?             @map("payment_proof")
   paymentSubmittedAt DateTime?           @map("payment_submitted_at")
   planDays           Int?                @map("plan_days")
+  /// points for the AI on the platform's Gemini key (see src/lib/credits.ts)
+  credits            Int                 @default(0)
   apiSettings        ApiSettings?
+  creditPurchases    CreditPurchase[]
+  creditEntries      CreditEntry[]
   chatSessions       ChatSession[]
   emailOtps          EmailOtp[]
   generationHistory  GenerationHistory[]
@@ -334,8 +338,51 @@ model PlatformConfig {
   adminEmail       String   @default("")
   adminTelegram    String   @default("")
   whatsappNumber   String   @default("")
+  /// the platform's own Gemini key (encrypted), used for sellers who pay in points instead of bringing a key
+  platformGeminiKey     String? @map("platform_gemini_key")
+  /// points per 5 000 tokens of text, per image, per second of AI video
+  creditTextCost        Int     @default(1) @map("credit_text_cost")
+  creditImageCost       Int     @default(5) @map("credit_image_cost")
+  creditVideoSecondCost Int     @default(8) @map("credit_video_second_cost")
+  /// [{ id, points, price }]; null means the default packs
+  creditPacks           Json?   @map("credit_packs")
 
   @@map("platform_config")
+}
+
+/// A pack of points a seller paid for outside the app; an admin approves it after checking the proof.
+model CreditPurchase {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  packId    String    @map("pack_id")
+  points    Int
+  price     Int
+  method    String
+  proof     String
+  status    String    @default("pending")
+  createdAt DateTime  @default(now()) @map("created_at")
+  decidedAt DateTime? @map("decided_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("credit_purchases")
+}
+
+/// Every change to a seller's points: purchases, admin grants, AI use and refunds (the balance is users.credits).
+model CreditEntry {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  delta     Int
+  reason    String
+  ref       String?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  /// one entry per reason and reference: a purchase is credited once, a call is refunded once
+  @@unique([reason, ref])
+  @@map("credit_entries")
 }
 
 /// Request counts for the sign-in rate limits, shared by every server instance (src/lib/rateLimitStore.ts).

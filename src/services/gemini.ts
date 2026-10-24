@@ -4,6 +4,7 @@
 import { translate } from '../i18n/runtime';
 import { unwrapSingleObject } from '../lib/aiJson';
 import { finalImage } from '../lib/generatedImage';
+import { handleCreditsRefusal, noteCreditsLeft } from './credits';
 
 export const MODEL_NAME = "gemini-3-flash-preview";
 // Image generation model — separate model family (Gemini image, "Nano Banana"), intentionally different.
@@ -333,11 +334,13 @@ async function proxyGenerate(params: {
     try {
       const data = await res.json();
       if (data?.error) message = data.error;
+      handleCreditsRefusal(res.status, data?.code);
     } catch { /* keep default message */ }
     const err = new Error(message) as Error & { status?: number };
     err.status = res.status;
     throw err;
   }
+  noteCreditsLeft(res.headers.get('X-Credits-Left'));
   return res.json();
 }
 

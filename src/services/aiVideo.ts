@@ -4,6 +4,7 @@
  */
 import { translate } from '../i18n/runtime';
 import '../i18n/video';
+import { handleCreditsRefusal, noteCreditsLeft } from './credits';
 
 export class AiVideoError extends Error {
   constructor(message: string, readonly status: number) {
@@ -14,6 +15,7 @@ export class AiVideoError extends Error {
 
 async function readError(res: Response): Promise<AiVideoError> {
   const data = await res.json().catch(() => ({}));
+  handleCreditsRefusal(res.status, data?.code);
   return new AiVideoError(typeof data?.error === 'string' ? data.error : translate('shAiError', 'Erreur IA. Réessaie.'), res.status);
 }
 
@@ -26,6 +28,7 @@ export async function startAiClip(input: { prompt: string; aspectRatio: string; 
     signal: input.signal,
   });
   if (!res.ok) throw await readError(res);
+  noteCreditsLeft(res.headers.get('X-Credits-Left'));
   const data = await res.json();
   return String(data.job);
 }

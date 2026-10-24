@@ -86,6 +86,8 @@ import { formatImageCost } from '../lib/imageCost';
 import { KEEPS_PRODUCT, isAspectRatio, type ImageProvider } from '../lib/imageProviders';
 import { chosenImageProvider } from '../services/imageService';
 import { drawSectionImage } from '../services/sectionImage';
+import { useCredits } from '../services/credits';
+import '../i18n/credits';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/funnels';
 import { DATE_LOCALE, formatDate } from '../i18n/dates';
@@ -1127,7 +1129,10 @@ export default function LandingPageGenerator() {
   };
   const removeSectionPicture = (id: string) =>
     setSectionPictures((prev) => Object.fromEntries(Object.entries(prev).filter(([key]) => key !== id)));
-  const pictureCost = imageService ? formatImageCost(imageService, DATE_LOCALE[uiLanguage]) : null;
+  const credits = useCredits();
+  const pictureCost = credits?.mode === 'points'
+    ? t('crdPts', '{count} pts', { count: credits.settings.imageCost })
+    : imageService ? formatImageCost(imageService, DATE_LOCALE[uiLanguage]) : null;
 
   const deleteSection = (index: number) => {
     if (!lpData) return;

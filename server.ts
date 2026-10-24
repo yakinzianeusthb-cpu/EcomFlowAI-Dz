@@ -13,7 +13,11 @@ import { getCurrentUser, purposeSigner, SessionPayload } from "./src/lib/session
 import { requireAuth } from "./src/lib/requireAuth";
 import { decryptSecret, isEncryptedSecret } from "./src/lib/crypto";
 import { createRateLimiter } from "./src/lib/rateLimit";
-import { createPaidAccessGuard } from "./src/lib/planGuard";
+import { PLAN_REQUIRED_MESSAGE, createPaidAccessGuard } from "./src/lib/planGuard";
+import { canUsePaidTools } from "./src/lib/access";
+import { CREDIT_ERRORS, textCharge, videoCharge } from "./src/lib/credits";
+import { addCreditsOnce, openBill, resolveAiAccess, type AiAccess, type Bill } from "./src/lib/creditStore";
+import { finalImage } from "./src/lib/generatedImage";
 import { localizeResponses } from "./src/lib/localizeResponses";
 import { languageFromCookies, localizeBody } from "./src/i18n/serverMessages";
 import { SAVED_WORK_ERRORS } from "./src/lib/savedWork";
@@ -24,7 +28,7 @@ import {
   providerError, readImage, readReference, type ProviderCall,
 } from "./src/lib/imageProviders";
 import {
-  GOOGLE_API_BASE, VIDEO_ERRORS, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJob, signJob,
+  GOOGLE_API_BASE, VIDEO_ERRORS, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJobDetails, signJob,
 } from "./src/lib/videoJobs";
 import { authRouter } from "./src/routes/auth";
 import { catalogRouter } from "./src/routes/catalog";
@@ -35,6 +39,7 @@ import { sessionsRouter } from "./src/routes/sessions";
 import { settingsRouter } from "./src/routes/settings";
 import adminRouter from "./src/routes/admin";
 import { assetsRouter } from "./src/routes/assets";
+import { creditsRouter } from "./src/routes/credits";
 
 const signVideoJob = purposeSigner("video-job");
 
@@ -135,7 +140,7 @@ if (process.env.VERCEL !== "1") app.use(compression());
 // Request bodies: 1 MB by default. The routes that take images (uploads, AI calls with photos, payment proofs, admin
 // content, saved work) accept up to 10 MB, and only for a signed-in request: an anonymous client can never make the
 // server parse a large body.
-const LARGE_BODY_PATHS = ["/api/ai/", "/api/assets", "/api/user/payment-proof", "/api/admin/", "/api/catalog", "/api/preferences", "/api/lp-sessions", "/api/chat-sessions"];
+const LARGE_BODY_PATHS = ["/api/ai/", "/api/assets", "/api/user/payment-proof", "/api/credits/purchase", "/api/admin/", "/api/catalog", "/api/preferences", "/api/lp-sessions", "/api/chat-sessions"];
 const smallJson = express.json({ limit: "1mb" });
 const largeJson = express.json({ limit: "10mb" });
 app.use((req, res, next) => {
@@ -164,6 +169,7 @@ app.use(sessionsRouter);
 app.use(settingsRouter);
 app.use(adminRouter);
 app.use(assetsRouter);
+app.use(creditsRouter);
 
 async function makeAiClient(apiKey?: string) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -187,24 +193,27 @@ const requirePaidAccess = createPaidAccessGuard((userId) =>
   }),
 );
 
-// Per-user Gemini key resolution. Every account (admin included) uses its own
-// key, stored encrypted in api_settings and set from the Paramètres page.
-// There is no platform-wide key. Returns null when the user has no key
-// configured → the caller responds with NO_KEY_MSG.
-async function resolveGeminiKey(session: SessionPayload): Promise<string | null> {
-  const row = await prisma.user.findUnique({
-    where: { id: session.sub },
-    select: { apiSettings: { select: { geminiApiKey: true } } },
-  });
-  const blob = row?.apiSettings?.geminiApiKey;
-  if (blob && isEncryptedSecret(blob)) {
-    try {
-      return decryptSecret(blob);
-    } catch (err) {
-      console.error("Failed to decrypt user Gemini API key:", err);
-    }
-  }
-  return null;
+// Who pays for a seller's AI (src/lib/creditStore.ts): their own Gemini key, stored encrypted and set from
+// Paramètres, or without one, points spent on the platform's key set in /admin. With neither, NO_KEY_MSG.
+const NO_CREDITS = { error: CREDIT_ERRORS.notEnough, code: "CREDITS_REQUIRED" };
+
+/** The balance after a call paid in points, so the app can show it without asking again. */
+function sendBalance(res: express.Response, bill: Bill | null) {
+  if (bill?.balance != null) res.setHeader("X-Credits-Left", String(bill.balance));
+}
+
+/** Gives back the points of a failed call; a refund that fails is logged, never shown instead of the real error. */
+const refundQuietly = (bill: Bill | null) => bill?.refund().catch((err) => console.error("Credit refund failed:", err));
+
+/** After a text call paid in points: the blocks used beyond the first one, reserved before the call (see textCharge). */
+async function settleText(bill: Bill | null, access: AiAccess, usage: { totalTokenCount?: number } | null | undefined) {
+  if (!bill || access.mode !== "points") return;
+  await bill.topUp(textCharge(usage?.totalTokenCount, access.settings.textCost) - access.settings.textCost, "text");
+}
+
+/** Points pay for the AI, the plan opens the tools: a seller on points needs a live plan too (admins excepted). */
+async function hasLivePlan(userId: string) {
+  return canUsePaidTools(await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true, planStatus: true, planExpiresAt: true } }));
 }
 
 // API routes setup
@@ -213,10 +222,17 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res) => {
+  let bill: Bill | null = null;
   try {
-    const apiKey = await resolveGeminiKey(req.user as SessionPayload);
-    if (!apiKey) return res.status(400).json({ error: NO_KEY_MSG });
-    const ai = await makeAiClient(apiKey);
+    const user = req.user as SessionPayload;
+    const access = await resolveAiAccess(user.sub);
+    if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
+    if (access.mode === "points") {
+      if (!(await hasLivePlan(user.sub))) return res.status(403).json({ error: PLAN_REQUIRED_MESSAGE, code: "PLAN_REQUIRED" });
+      bill = openBill(user.sub, access.free);
+      if (!(await bill.reserve(access.settings.textCost, "text"))) return res.status(402).json(NO_CREDITS);
+    }
+    const ai = await makeAiClient(access.apiKey);
 
     const { Type } = await import("@google/genai");
     const { image, currentName, purchasePrice, sellingPrice } = req.body;
@@ -269,8 +285,11 @@ app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res
     }), logModelFallback);
 
     const result = JSON.parse(response.text || '{}');
+    await settleText(bill, access, response.usageMetadata);
+    sendBalance(res, bill);
     res.json(result);
   } catch (error) {
+    await refundQuietly(bill);
     console.error("AI Generation Error:", error);
     // a wrong key or a used-up quota gets its own message; anything else stays generic
     const { status, error: message } = aiErrorResponse(error);
@@ -283,6 +302,7 @@ app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res
 // performs the actual Gemini call with the user's own stored key and relays
 // the result. Returns NO_KEY_MSG when the user hasn't set a key in Paramètres.
 app.post("/api/ai/generate", requireAuth, requirePaidAccess, aiRateLimiter, async (req, res) => {
+  let bill: Bill | null = null;
   try {
     const { model = MODEL_NAME, contents, config } = req.body || {};
     if (!contents) {
@@ -291,21 +311,34 @@ app.post("/api/ai/generate", requireAuth, requirePaidAccess, aiRateLimiter, asyn
     if (typeof model !== "string" || !ALLOWED_MODELS.has(model)) {
       return res.status(400).json({ error: "Modèle non autorisé." });
     }
-    const apiKey = await resolveGeminiKey(req.user as SessionPayload);
-    if (!apiKey) return res.status(400).json({ error: NO_KEY_MSG });
-    const ai = await makeAiClient(apiKey);
+    const user = req.user as SessionPayload;
+    const access = await resolveAiAccess(user.sub);
+    if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
+    const isImage = IMAGE_MODEL_FALLBACKS.includes(model);
+    if (access.mode === "points") {
+      // an image costs a fixed price; text costs its first block now and the rest once its length is known
+      bill = openBill(user.sub, access.free);
+      const first = isImage ? access.settings.imageCost : access.settings.textCost;
+      if (!(await bill.reserve(first, isImage ? "image" : "text"))) return res.status(402).json(NO_CREDITS);
+    }
+    const ai = await makeAiClient(access.apiKey);
     const models = model === MODEL_NAME ? TEXT_MODEL_FALLBACKS : IMAGE_MODEL_FALLBACKS.includes(model) ? IMAGE_MODEL_FALLBACKS : [model];
     const { result: response } = await generateWithFallback(
       models,
       (candidate) => ai.models.generateContent({ model: candidate, contents, config: sanitizeConfig(config) }),
       logModelFallback,
     );
+    // an image model that answered without an image (a refusal) costs nothing
+    if (isImage && !finalImage(response.candidates)) await refundQuietly(bill);
+    if (!isImage) await settleText(bill, access, response.usageMetadata);
+    sendBalance(res, bill);
     res.json({
       text: response.text ?? "",
       candidates: response.candidates ?? [],
       usageMetadata: response.usageMetadata ?? null,
     });
   } catch (error: any) {
+    await refundQuietly(bill);
     console.error("AI Proxy Error:", error);
     // Every model was tried (see generateWithFallback). Say why in plain words; never pass upstream details on.
     const { status, error: message } = aiErrorResponse(error);
@@ -437,14 +470,25 @@ async function geminiRest(apiKey: string, method: "GET" | "POST", path: string, 
 app.post("/api/ai/video", requireAuth, requirePaidAccess, aiRateLimiter, async (req, res) => {
   const parsed = parseVideoRequest(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+  let bill: Bill | null = null;
   try {
     const user = req.user as SessionPayload;
-    const apiKey = await resolveGeminiKey(user);
-    if (!apiKey) return res.status(400).json({ error: NO_KEY_MSG });
-    const interaction = await geminiRest(apiKey, "POST", "interactions", buildInteractionBody(parsed));
+    const access = await resolveAiAccess(user.sub);
+    if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
+    let points = 0;
+    if (access.mode === "points") {
+      bill = openBill(user.sub, access.free);
+      points = access.free ? 0 : videoCharge(parsed.durationSeconds, access.settings.videoSecondCost);
+      if (!(await bill.reserve(points, "video"))) return res.status(402).json(NO_CREDITS);
+    }
+    const interaction = await geminiRest(access.apiKey, "POST", "interactions", buildInteractionBody(parsed));
     if (typeof interaction?.id !== "string") throw new Error("Gemini returned no interaction id");
-    res.json({ job: signJob(interaction.id, user.sub, signVideoJob) });
+    // a clip on the platform's key is polled with that key, and refunded if Google cannot make it
+    const paid = bill ? { ref: bill.ref, points } : undefined;
+    sendBalance(res, bill);
+    res.json({ job: signJob(interaction.id, user.sub, signVideoJob, paid) });
   } catch (error) {
+    await refundQuietly(bill);
     console.error("AI Video Error:", error);
     if (isQuotaError(error)) return res.status(402).json({ error: VIDEO_ERRORS.quota });
     const { status, error: message } = aiErrorResponse(error);
@@ -458,13 +502,21 @@ app.post("/api/ai/video", requireAuth, requirePaidAccess, aiRateLimiter, async (
  */
 async function loadVideoJob(req: express.Request, res: express.Response) {
   const user = req.user as SessionPayload;
-  const id = readJob(String(req.params.job ?? ""), user.sub, signVideoJob);
-  if (!id) { res.status(404).json({ error: VIDEO_ERRORS.job }); return null; }
-  const apiKey = await resolveGeminiKey(user);
+  const job = readJobDetails(String(req.params.job ?? ""), user.sub, signVideoJob);
+  if (!job) { res.status(404).json({ error: VIDEO_ERRORS.job }); return null; }
+  const access = await resolveAiAccess(user.sub);
+  // the key that started the clip: the platform's for a clip paid in points, otherwise the seller's own
+  const apiKey = job.paid ? (access.mode === "points" ? access.apiKey : null) : access.mode === "own-key" ? access.apiKey : null;
   if (!apiKey) { res.status(400).json({ error: NO_KEY_MSG }); return null; }
-  const state = readInteraction(await geminiRest(apiKey, "GET", `interactions/${id}`));
+  const failed = async () => {
+    // once per clip, whatever the number of polls (see addCreditsOnce)
+    if (job.paid?.points) await addCreditsOnce(user.sub, job.paid.points, "refund", job.paid.ref).catch((err) => console.error("Credit refund failed:", err));
+    return { state: { state: "failed" as const }, apiKey, fileReady: false };
+  };
+  const state = readInteraction(await geminiRest(apiKey, "GET", `interactions/${job.id}`));
+  if (state.state === "failed") return failed();
   if (state.state !== "done" || !state.video.uri) return { state, apiKey, fileReady: state.state === "done" };
-  if (!isGoogleFileUri(state.video.uri, GEMINI_API)) return { state: { state: "failed" as const }, apiKey, fileReady: false };
+  if (!isGoogleFileUri(state.video.uri, GEMINI_API)) return failed();
   const file = await fetch(state.video.uri, { headers: { "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(30_000) })
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null);

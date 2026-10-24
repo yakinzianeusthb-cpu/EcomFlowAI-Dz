@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, CalendarClock, Clapperboard, KeyRound, Lock, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Clapperboard, Coins, KeyRound, Lock, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { hasActivePlan } from '../lib/access';
 import { attentionItems, type AttentionItem } from '../lib/attention';
@@ -11,6 +11,8 @@ import { dashboardApi, settingsApi, type AiUsageSummary } from '../services/api'
 import { AnnouncementsWidget, GuidesWidget, HotDealsWidget } from './DashboardContentWidgets';
 import { Skeleton } from './ui/primitives';
 import { SectionTile } from './ui/SectionPicture';
+import { openCredits, useCredits } from '../services/credits';
+import '../i18n/credits';
 
 const openCheckout = () => window.dispatchEvent(new CustomEvent('dz_open_checkout'));
 
@@ -39,11 +41,14 @@ export default function DashboardHome() {
     settingsApi.get().then((s) => setHasKey(Boolean(s?.geminiApiKey))).catch(() => {});
   }, []);
 
+  const credits = useCredits();
   const go = (tab: NavItem) => navigate(TAB_PATHS[tab]);
 
   const attention = attentionItems({
     hasGeminiKey: hasKey,
     plan: { active: hasActivePlan(user), pending: user?.planStatus === 'pending', expiresAt: user?.planExpiresAt ? String(user.planExpiresAt) : null },
+    // "low" = not enough for two images
+    points: credits ? { available: credits.available, balance: credits.balance, lowBelow: credits.settings.imageCost * 2 } : null,
   });
 
   const renderItem = (item: AttentionItem) => {
@@ -54,6 +59,8 @@ export default function DashboardHome() {
         return <AttentionRow key={item.id} icon={CalendarClock} action={t('dashOpen', 'Ouvrir')} onAction={openCheckout}>{t('dashAttPending', 'Ton paiement est en cours de vérification par un admin.')}</AttentionRow>;
       case 'plan-ending':
         return <AttentionRow key={item.id} icon={CalendarClock} tone="warning" action={t('dashRenew', 'Renouveler')} onAction={openCheckout}>{t('dashAttEnding', 'Ton abonnement se termine le {date}.', { date: user?.planExpiresAt ? formatDate(user.planExpiresAt, language, { day: 'numeric', month: 'long' }) : '' })}</AttentionRow>;
+      case 'low-points':
+        return <AttentionRow key={item.id} icon={Coins} tone="warning" action={t('crdTopUp', 'Recharger')} onAction={openCredits}>{t('crdAttLow', 'Il te reste {balance} points et pas de clé Gemini : recharge tes points pour continuer à générer.', { balance: item.balance })}</AttentionRow>;
       case 'no-key':
         return <AttentionRow key={item.id} icon={KeyRound} tone="warning" action={t('menuSettings', 'Paramètres')} onAction={() => go('settings')}>{t('dashAttNoKey', 'Ajoute ta clé Gemini : sans elle, l’IA ne peut rien générer.')}</AttentionRow>;
     }

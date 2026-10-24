@@ -1,3 +1,4 @@
+import { validateProof } from "../lib/paymentProof";
 import crypto from "crypto";
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
@@ -655,27 +656,6 @@ router.post("/api/auth/reset-password", async (req, res) => {
 });
 
 // POST /api/user/payment-proof — submit payment proof
-const MAX_PROOF_BYTES = 5 * 1024 * 1024; // 5 MB decoded
-const PROOF_MIME = /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/i;
-
-function validateProof(
-  proof: unknown,
-): { ok: true; dataUrl: string } | { ok: false; error: string } {
-  if (proof == null || proof === "") return { ok: true, dataUrl: "" };
-  if (typeof proof !== "string" || !proof.startsWith("data:")) {
-    return { ok: false, error: "Preuve invalide." };
-  }
-  const header = proof.match(/^data:([^;]+);base64,/);
-  if (!header || !PROOF_MIME.test(header[1])) {
-    return { ok: false, error: "Format de preuve non supporté (image ou PDF)." };
-  }
-  const approxBytes = Math.ceil(((proof.length - header[0].length) * 3) / 4);
-  if (approxBytes > MAX_PROOF_BYTES) {
-    return { ok: false, error: "La preuve dépasse 5 Mo." };
-  }
-  return { ok: true, dataUrl: proof };
-}
-
 router.post("/api/user/payment-proof", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.sub;

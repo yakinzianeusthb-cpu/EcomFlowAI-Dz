@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, LayoutDashboard, Users, Key, CreditCard, Megaphone, Flame, Coins, Phone, ArrowLeft, PlaySquare } from 'lucide-react';
+import { Shield, LayoutDashboard, Users, Key, CreditCard, Megaphone, Flame, Coins, Phone, ArrowLeft, PlaySquare, Gem } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import AdminOverview from './admin/AdminOverview';
@@ -12,10 +12,12 @@ import AdminHotDeals from './admin/AdminHotDeals';
 import AdminGuides from './admin/AdminGuides';
 import AdminPricing from './admin/AdminPricing';
 import AdminContacts from './admin/AdminContacts';
+import AdminCredits from './admin/AdminCredits';
+import '../i18n/credits';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/admin';
 
-type AdminTab = 'overview' | 'users' | 'apis' | 'payments' | 'pricing' | 'announcements' | 'deals' | 'guides' | 'contacts';
+type AdminTab = 'overview' | 'users' | 'apis' | 'payments' | 'pricing' | 'credits' | 'announcements' | 'deals' | 'guides' | 'contacts';
 
 const TABS: { id: AdminTab; labelKey: string; fallback: string; icon: typeof Users }[] = [
   { id: 'overview', labelKey: 'admTabOverview', fallback: "Vue d'ensemble", icon: LayoutDashboard },
@@ -23,6 +25,7 @@ const TABS: { id: AdminTab; labelKey: string; fallback: string; icon: typeof Use
   { id: 'apis', labelKey: 'admTabApis', fallback: 'APIs', icon: Key },
   { id: 'payments', labelKey: 'admTabPayments', fallback: 'Paiements', icon: CreditCard },
   { id: 'pricing', labelKey: 'lpNavPricing', fallback: 'Tarifs', icon: Coins },
+  { id: 'credits', labelKey: 'crdAdmTitle', fallback: 'Points', icon: Gem },
   { id: 'announcements', labelKey: 'dashWidgetAnnouncements', fallback: 'Annonces', icon: Megaphone },
   { id: 'deals', labelKey: 'admTabDeals', fallback: 'Offres Hot', icon: Flame },
   { id: 'guides', labelKey: 'admTabGuides', fallback: 'Guides Vidéo', icon: PlaySquare },
@@ -101,6 +104,7 @@ export default function AdminDashboard() {
             {tab === 'apis' && <AdminApis />}
             {tab === 'payments' && <AdminPayments />}
             {tab === 'pricing' && <AdminPricing />}
+            {tab === 'credits' && <AdminCredits />}
             {tab === 'announcements' && <AdminAnnouncements />}
             {tab === 'deals' && <AdminHotDeals />}
             {tab === 'guides' && <AdminGuides />}

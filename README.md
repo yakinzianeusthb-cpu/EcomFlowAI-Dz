@@ -127,6 +127,33 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
 - **Preferences** (`PUT /api/preferences`) are checked field by field (`src/lib/preferencesRules.ts`): a value of the
   wrong shape or size is refused with a 400 or 413 instead of reaching the database.
 
+## Points (AI on the platform's key)
+
+Sellers who do not want to set up their own Gemini key can pay for the AI with **points**, spent on the platform's
+own key. The plan still opens the tools; points only pay for the AI. A seller with their own key keeps using it and
+spends no points; administrators use the platform key for free.
+
+- **Setup (admin → Points):** paste a Gemini key with billing (stored encrypted, shown masked, never sent to the
+  browser). Until a key is set, points cannot be bought and nothing changes for anyone.
+- **Prices** (editable there, defaults in `src/lib/credits.ts`): text 1 point per 5 000 tokens actually used (prompt,
+  photos and answer; a call costs 1 point at least, a big landing page 3 to 4), an AI image 5 points, AI video 8 points
+  a second. Packs: 100 points for 1 000 DA, 300 for 2 700 DA, 1 000 for 8 000 DA. The admin page shows each price's
+  margin over Google's cost (about 4 DA per 5 000 tokens, 8 to 17 DA an image, 25 DA a video second, at about 250 DA a
+  dollar), worked out with the cheapest point of the packs.
+- **Buying:** the seller picks a pack, pays with one of the payment methods and uploads a proof (same checks as a plan);
+  an admin approves or refuses it in admin → Points, or adds points by hand (a negative number takes them back).
+- **Charging** (`src/lib/creditStore.ts`, used by `/api/ai/generate`, `/api/ai/generate-product` and `/api/ai/video`):
+  points are taken before the call with a conditional update, so two calls at once can never spend the same points,
+  and given back when the call fails, when an image model answers without an image, or when Google cannot make a video
+  clip (the clip's token carries what it cost). Every change is a row of `credit_entries`, unique per reason and
+  reference: an approved purchase is credited once, a refund happens once. The answer carries the new balance
+  (`X-Credits-Left`), and a refusal for lack of points (402 `CREDITS_REQUIRED`) opens the points window.
+- **In the app:** the balance sits under the plan in the menu, the image and video buttons show their cost in points,
+  and the dashboard reminds a seller without a key when fewer than two images' worth of points are left.
+- Tested end to end against a local server, an in-memory database and a stand-in for Google's API (33 checks:
+  purchase, approval twice at once, charges by tokens, refunds, three requests at once with points for one, plan still
+  required, admin free, key never shown); not yet with real money or a real Google bill.
+
 ## AI and Gemini keys
 
 Every AI call runs on the server with the user's own Gemini key (`/api/ai/generate`, `/api/ai/video`).
@@ -240,7 +267,7 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (579 in 52 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+`npm test` runs the unit tests (590 in 53 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
 delivery, settings validation, pricing, translations, AI error handling, the video timeline, music and AI video jobs, the
 landing page HTML, its templates, colours and order totals,
 file validation, image costs, the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
@@ -258,9 +285,10 @@ development secret. `SITE_URL` should be the public address of the site so link 
 absolute image URL.
 
 **Database update for this version:** run `npx prisma db push` once against the production database. It only adds
-tables (`assets`, plus the unused `projects`, `project_outputs`, `brand_kits` and `meta_connections`) and five columns to `api_settings`
-(`image_provider`, defaulting to `gemini`, and the empty key columns of the other image services), and leaves existing
-data alone; until it runs, the settings page cannot load. Read
+tables (`credit_purchases` and `credit_entries` for points, `assets`, plus the unused `projects`, `project_outputs`, `brand_kits` and `meta_connections`) and five columns to `api_settings`
+(`image_provider`, defaulting to `gemini`, and the empty key columns of the other image services), plus `users.credits` (0)
+and the points settings on `platform_config` (defaults as above), and leaves existing
+data alone; until it runs, the settings page and every AI call fail (they read the new columns). Read
 the plan Prisma prints before confirming, and stop if it mentions dropping or resetting anything. Library images are
 stored in Postgres (up to 250 MB per account), so keep an eye on the database size on small plans.
 

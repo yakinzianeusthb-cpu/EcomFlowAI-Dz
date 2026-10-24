@@ -7,6 +7,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, Menu, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
+import { CREDITS_OPEN_EVENT } from './services/credits';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import ThemeToggle from './components/ThemeToggle';
 import LockedTool from './components/LockedTool';
@@ -37,6 +38,7 @@ const ContactUs = lazy(() => import('./components/ContactUs'));
 
 // The plan dialog (and the animation library it uses) is only needed once somebody opens it.
 const PlanCheckout = lazy(() => import('./components/PlanCheckout'));
+const CreditsCheckout = lazy(() => import('./components/CreditsCheckout'));
 
 // Pages people open most; fetched quietly while the dashboard is being read so the first click is instant.
 const WARM_UP_TOOLS = [
@@ -140,6 +142,9 @@ export default function AppShell() {
   const [visitedTabs, setVisitedTabs] = useState<Set<NavItem>>(() => new Set<NavItem>([activeTab]));
   const [navOpen, setNavOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // the points dialog (src/services/credits.ts opens it with an event), loaded the first time it is asked for
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [creditsLoaded, setCreditsLoaded] = useState(false);
   const [checkoutLoaded, setCheckoutLoaded] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -159,11 +164,17 @@ export default function AppShell() {
       setCheckoutLoaded(true);
       setCheckoutOpen(true);
     };
+    const onOpenCredits = () => {
+      setCreditsLoaded(true);
+      setCreditsOpen(true);
+    };
     window.addEventListener('nav-change', onNavChange);
     window.addEventListener('dz_open_checkout', onOpenCheckout);
+    window.addEventListener(CREDITS_OPEN_EVENT, onOpenCredits);
     return () => {
       window.removeEventListener('nav-change', onNavChange);
       window.removeEventListener('dz_open_checkout', onOpenCheckout);
+      window.removeEventListener(CREDITS_OPEN_EVENT, onOpenCredits);
     };
   }, [navigate]);
 
@@ -330,6 +341,11 @@ export default function AppShell() {
       {checkoutLoaded && (
         <Suspense fallback={null}>
           <PlanCheckout open={checkoutOpen} initialPlan={checkoutPlan} onClose={() => setCheckoutOpen(false)} />
+        </Suspense>
+      )}
+      {creditsLoaded && (
+        <Suspense fallback={null}>
+          <CreditsCheckout open={creditsOpen} onClose={() => setCreditsOpen(false)} />
         </Suspense>
       )}
     </div>

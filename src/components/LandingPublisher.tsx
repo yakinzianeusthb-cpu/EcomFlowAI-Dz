@@ -14,6 +14,8 @@ import { drawSectionImage } from '../services/sectionImage';
 import { KEEPS_PRODUCT, type ImageProvider } from '../lib/imageProviders';
 import { formatImageCost } from '../lib/imageCost';
 import { DATE_LOCALE } from '../i18n/dates';
+import '../i18n/credits';
+import { useCredits } from '../services/credits';
 import { cn } from '../lib/utils';
 import PageOptions from './landing/PageOptions';
 import PosterColorsPicker from './landing/PosterColorsPicker';
@@ -59,6 +61,8 @@ function loadSettings(): PublisherSettings {
 /** The generated structure as a real landing page: its look and promises, a live preview and a self-contained HTML file to publish. */
 export default function LandingPublisher({ lpData, productName, photos, language, sectionImages, defaultPrice }: Props) {
   const { t, language: uiLanguage } = useLanguage();
+  const credits = useCredits();
+  const onPoints = credits?.mode === 'points' ? credits : null;
   const [aiImages, setAiImages] = useState<(string | null)[]>(() => (lpData.sections ?? []).map((_, i) => sectionImages?.[i] ?? null));
   // posters of the long-image template, kept apart: their words are drawn in, so other templates cannot use them
   const [posterImages, setPosterImages] = useState<(string | null)[]>(() => (lpData.sections ?? []).map(() => null));
@@ -208,7 +212,8 @@ export default function LandingPublisher({ lpData, productName, photos, language
       onRemove={removeImage}
       promptOf={promptFor}
       service={service}
-      costOf={(count) => (service ? formatImageCost(service, DATE_LOCALE[uiLanguage], count) : null)}
+      costOf={(count) => (onPoints ? t('crdPts', '{count} pts', { count: count * onPoints.settings.imageCost }) : service ? formatImageCost(service, DATE_LOCALE[uiLanguage], count) : null)}
+      points={onPoints ? { each: onPoints.settings.imageCost, balance: onPoints.balance } : null}
       onLongImage={postersDone ? () => void downloadLongImage() : null}
       longImageBusy={longImageBusy}
     />

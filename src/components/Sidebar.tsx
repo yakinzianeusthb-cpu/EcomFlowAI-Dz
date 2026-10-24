@@ -1,4 +1,4 @@
-import { Lock, LogOut, Plus } from 'lucide-react';
+import { Coins, Lock, LogOut, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +8,8 @@ import { useCountdown } from '../lib/countdown';
 import { NAV_GROUPS, type NavItem } from '../lib/nav';
 import { BrandLogo } from './BrandMark';
 import { SectionPicture } from './ui/SectionPicture';
+import { openCredits, useCredits } from '../services/credits';
+import '../i18n/credits';
 
 interface SidebarProps {
   activeTab: NavItem;
@@ -63,6 +65,22 @@ function PlanStatus() {
         {t('sidebarSubUpgrade', 'Voir les plans')}
       </button>
     </div>
+  );
+}
+
+/** The seller's points, shown once points can be used (the platform's key is set) or the seller has some. */
+function CreditsStatus() {
+  const { t } = useLanguage();
+  const credits = useCredits();
+  if (!credits || (!credits.available && credits.balance === 0)) return null;
+  return (
+    <button type="button" onClick={openCredits} className="flex w-full items-center gap-2.5 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2.5 text-start transition-colors hover:border-line-strong">
+      <Coins size={16} className="shrink-0 text-primary-ink" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold tabular-nums text-fg">{t('crdSidebarPoints', '{count} points', { count: credits.balance })}</span>
+        <span className="block truncate text-xs text-fg-muted">{credits.mode === 'own-key' ? t('crdSidebarOwnKey', 'Ta clé Gemini est utilisée') : credits.pending ? t('crdSidebarPending', 'Achat en vérification') : t('crdTopUp', 'Recharger')}</span>
+      </span>
+    </button>
   );
 }
 
@@ -151,6 +169,7 @@ export default function Sidebar({ activeTab, setActiveTab, onNewLanding, onNavig
         </div>
 
         <PlanStatus />
+        <CreditsStatus />
 
         {user && (
           <div className="flex items-center gap-2.5 px-1">
