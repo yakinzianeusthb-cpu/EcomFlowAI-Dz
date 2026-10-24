@@ -922,6 +922,22 @@ html:not(.dark) {
   }
 }
 
+/* showcase pages run through their whole length while pointed at, and come back quickly */
+.showcase-run {
+  transition: transform 700ms var(--ease-out);
+  will-change: transform;
+}
+a:hover > span > .showcase-run,
+a:focus-visible > span > .showcase-run {
+  transition: transform 9s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .showcase-run {
+    transition: none;
+    transform: none !important;
+  }
+}
+
 /* entrances: each part rises a little and fades in, in turn (--rise-delay); none for reduced motion */
 @keyframes hero-rise {
   from { opacity: 0; transform: translateY(24px); }

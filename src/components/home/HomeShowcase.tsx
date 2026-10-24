@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { cn } from '../../lib/utils';
 import { reveal } from './useReveal';
+import ShowcaseGallery from './ShowcaseGallery';
 import '../../i18n/home';
 
 /** The parts of the long page, as fractions of its height (public/showcase/douche-plage.webp, 720 × 2124). */
@@ -102,6 +103,19 @@ export default function HomeShowcase({ titleClass }: { titleClass: string }) {
               <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-full origin-bottom bg-black/65 transition-transform duration-500 ease-[var(--ease-out)]" style={dimBelow} />
             </div>
           </div>
+        </div>
+
+        <div className="mt-28 lg:mt-40">
+          <ShowcaseGallery
+            intro={
+              <>
+                <h3 className="home-display text-[clamp(2rem,1.4rem+1.8vw,3.25rem)] text-fg" {...reveal()}>{t('homeWorkGalleryTitle', 'Faites avec le modèle Affiche.')}</h3>
+                <p className="mt-5 max-w-xl text-[18px] leading-relaxed text-fg" {...reveal(80)}>
+                  {t('homeWorkGalleryText', 'Des pages de démonstration : textes écrits par l’IA, photos du produit créées par l’IA, mises en page par le modèle Affiche. Passe sur une page pour la parcourir.')}
+                </p>
+              </>
+            }
+          />
         </div>
 
         <div className="mt-28 grid items-center gap-10 rounded-[var(--radius-lg)] bg-surface p-6 sm:p-10 lg:mt-40 lg:grid-cols-12 lg:gap-12">

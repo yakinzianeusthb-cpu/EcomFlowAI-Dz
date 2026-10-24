@@ -453,6 +453,41 @@ export const homeTranslations: TranslationDictionary = {
     ar: "أنشئ صفحة الهبوط الخاصة بي",
     en: "Create my landing page",
   },
+  homeWorkGalleryTitle: {
+    fr: "Faites avec le modèle Affiche.",
+    ar: "مصنوعة بقالب «الملصق».",
+    en: "Made with the Poster template.",
+  },
+  homeWorkGalleryText: {
+    fr: "Des pages de démonstration : textes écrits par l’IA, photos du produit créées par l’IA, mises en page par le modèle Affiche. Passe sur une page pour la parcourir.",
+    ar: "صفحات للعرض: نصوص كتبها الذكاء الاصطناعي، وصور منتج صنعها الذكاء الاصطناعي، بتنسيق قالب «الملصق». مرّر على صفحة لتتصفحها.",
+    en: "Demonstration pages: copy written by the AI, product photos made by the AI, laid out by the Poster template. Point at a page to run through it.",
+  },
+  homeWorkPage1: {
+    fr: "Cuisine : un hachoir à légumes",
+    ar: "المطبخ: قطّاعة خضر",
+    en: "Kitchen: a vegetable chopper",
+  },
+  homeWorkPage2: {
+    fr: "Beauté : une brosse lissante",
+    ar: "الجمال: فرشاة تمليس",
+    en: "Beauty: a straightening brush",
+  },
+  homeWorkPage3: {
+    fr: "Auto : un aspirateur sans fil",
+    ar: "السيارات: شفّاط لاسلكي",
+    en: "Car: a cordless vacuum",
+  },
+  homeWorkPage4: {
+    fr: "Enfants : une montre GPS",
+    ar: "الأطفال: ساعة GPS",
+    en: "Kids: a GPS watch",
+  },
+  homeWorkOpen: {
+    fr: "Voir la page entière : {label}",
+    ar: "عرض الصفحة كاملة: {label}",
+    en: "See the whole page: {label}",
+  },
 };
 
 registerTranslations('home', homeTranslations);
