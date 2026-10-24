@@ -194,9 +194,9 @@ export const homeTranslations: TranslationDictionary = {
     en: "How to use",
   },
   homeLandingSection4: {
-    fr: "Questions",
-    ar: "الأسئلة",
-    en: "Questions",
+    fr: "Garantie",
+    ar: "الضمان",
+    en: "Guarantee",
   },
   homeLandingSection5: {
     fr: "Bon de commande",

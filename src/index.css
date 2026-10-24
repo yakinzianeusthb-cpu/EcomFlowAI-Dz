@@ -922,6 +922,30 @@ html:not(.dark) {
   }
 }
 
+/* studio visuals: the phones lean in 3D and follow the pointer; the video playhead fills the active scene */
+.studio-tilt {
+  transform: var(--tilt);
+  transition: transform 600ms var(--ease-out);
+}
+/* captions burned into the video frames stay legible on any photo */
+.studio-caption {
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.7); /* taste-skill-ignore */
+}
+.studio-caption > span {
+  text-shadow: none;
+}
+@keyframes studio-play {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.studio-play {
+  animation: studio-play 2400ms linear both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-tilt { transition: none; }
+  .studio-play { animation: none; transform: scaleX(1); }
+}
+
 /* showcase pages run through their whole length while pointed at, and come back quickly */
 .showcase-run {
   transition: transform 700ms var(--ease-out);
