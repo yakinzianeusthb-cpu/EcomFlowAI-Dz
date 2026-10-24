@@ -286,7 +286,9 @@ export default function AppShell() {
           <ThemeToggle />
         </header>
 
-        <main id="app-main" ref={mainRef} className="min-h-0 flex-1 overflow-y-auto">
+        {/* relative: absolutely placed things inside (the hidden inputs of radio cards) stay in this scrolling area
+            instead of stretching the page past the screen */}
+        <main id="app-main" ref={mainRef} className="relative min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
             {needsPlan && (
               <div className="ui-tint-accent mb-6 flex flex-col gap-3 rounded-[var(--radius-md)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
