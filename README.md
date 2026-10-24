@@ -47,7 +47,7 @@ are printed in the server console. To make someone an administrator:
 ## Project layout
 
 ```
-server.ts, api/            Express app, and the Vercel entry that reuses it
+server.ts, scripts/vercel-entry.ts   Express app, and the Vercel entry that reuses it (outside api/: Vercel would treat that folder as its own)
 src/routes/                API routes (auth, admin, settings, projects, assets, brand, meta, history...)
 src/lib/                   Server and shared logic: sessions, plan rules, OTP, crypto, e-mail, rate limiting,
                            campaign/asset/brand validation (projectRules, assetRules, brandRules), Meta (meta.ts),
@@ -127,6 +127,50 @@ settings. Until then only people with a role on the app can connect. The integra
 local stand-in for the Graph API (`META_GRAPH_BASE_URL` / `META_DIALOG_BASE_URL`, ignored in production), never against
 Meta itself: watch the first real connection and campaign.
 
+## TikTok, Snapchat and Google packs
+
+The campaign's **Publier** tab has a platform switch: Facebook · Instagram (the Meta publishing above), TikTok,
+Snapchat and Google · YouTube. The three others are **ready-to-upload packs**, not direct publishing: the seller
+downloads a zip and imports it in the platform's own ads manager (no developer app, no review, works for everyone).
+
+- **Copy:** one AI call (**Préparer les packs**) adapts the concepts picked on that screen (by default those saved as
+  chosen in the Ads tab) to all three platforms at once, so it costs one request of the seller's Gemini quota. It is
+  saved inside the ads output (`platforms` in `AdsOutput`), so it follows the ads' versions; a new set of concepts
+  makes it stale and the tab asks to prepare it again. If the ads change while the AI is writing (regenerated, edited),
+  nothing is saved and the seller is asked to prepare again, so an older pack never overwrites newer ads. Edits stay a
+  draft until **Enregistrer les modifications** (kept for the browser session, so leaving the tab does not lose them);
+  the sales page address is kept across rewrites. Each save is a new ads version, and **Nouveaux concepts** starts
+  without packs (the sales page address has to be typed again).
+- **Limits** (`src/lib/adPlatforms.ts`, from each platform's documentation, October 2026): TikTok caption 100
+  characters (TikTok shows that much before "See more"; no hashtags, @ or links on non-Spark ads), display name 20;
+  Snapchat headline 34, brand name 25 (the app uses one 20-character name for all three); Google search headlines 30
+  (3 to 15), descriptions 90 (2 to 4), display paths 15, display long headline 90, business name 25, YouTube (Demand
+  Gen) headline 40 and call to action 10. The AI's answer is cleaned before anyone sees it: emoji, hashtags and "!" in
+  Google headlines removed, texts cut at a word boundary, a Google headline that is too long dropped rather than cut,
+  missing texts rebuilt from the concepts. A pack cannot be downloaded while a text is over its limit or empty, while a
+  hand edit brings back what the platform refuses (hashtags, @ or links on TikTok; emoji or line breaks in Google
+  texts), while Google has fewer than 3 headlines or 2 descriptions, a repeated one, a "!" in a headline or a malformed
+  display path, or (Google) without an https sales page. The Google Ads Editor file only escapes real formula starts,
+  so a headline like "-30 %" keeps its sign.
+- **Pictures**, drawn in the browser from the campaign photos and brand kit, like the Meta visuals:
+  - TikTok: carousel images, vertical 720 × 1280 at about 100 KB (TikTok's carousel specs), with a safe zone that keeps
+    the text out of what TikTok covers (`TIKTOK_SAFE_ZONE`: 10 % top, 30 % bottom, 13 % each side). TikTok's feed
+    works best with a 9:16 video: the pack sends the seller to the Video tab, and warns when the browser records WebM,
+    which TikTok and Snapchat do not accept (they take MP4).
+  - Snapchat: one full-screen 1080 × 1920 image per concept; the Stories safe zone (269 px top, 384 px bottom) already
+    clears what Snapchat covers.
+  - Google: clean images, landscape 1200 × 628 and square 1200 × 1200 per product photo, with **no text, logo or button
+    on them** (Google's guidance for display images): the whole product, over a blurred copy of itself when the shapes
+    differ (`plainImageLayout`).
+- **Zips** (`src/lib/adPlatformExport.ts`, made with `fflate`): the texts as CSV (UTF-8 with a byte-order mark), the
+  pictures, and `guide.txt` with the import steps in the interface language. Google's zip has
+  `google-ads-editor-search.csv`, one responsive search ad with the column names Google Ads Editor recognises
+  (`Campaign`, `Ad group`, `Headline 1`…, `Description 1`…, `Path 1`, `Path 2`, `Final URL`) for **Account > Import > From
+  file**, and `google-display-youtube-texts.csv` for the display and YouTube ads, which are set up by hand.
+- The packs were checked in a real browser (headless Chrome) against the local server: preparing, the limits blocking
+  the download, editing and saving, the three zips and their contents, and the Arabic, right-to-left page. They were
+  not uploaded to TikTok, Snapchat or Google: check the first real import, since the platforms change their rules.
+
 ## Plans and access
 
 Users start free. They pick a plan, pay outside the app and upload a proof; an administrator approves it in `/admin`,
@@ -134,7 +178,14 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
 
 - The rule lives in one file, `src/lib/access.ts`, used by the browser (to lock the tools) and by the server
   (`/api/ai/generate` and `/api/ai/video` answer 403 `PLAN_REQUIRED` without a live plan; administrators are exempt).
-- Sessions are signed cookies that expire after 30 days. Changing `SESSION_SECRET` signs everyone out.
+- Sessions are signed cookies that expire after 30 days. Changing `SESSION_SECRET` signs everyone out. Each session
+  carries a stamp of the account's password (`passwordStamp` in `src/lib/session.ts`), checked on every signed-in
+  request (`src/lib/requireAuth.ts`): resetting the password ends every session opened before, a deleted account's
+  session stops working, and a password-reset link works once. Logging out ends only the session of that browser.
+- A Google sign-in marks the e-mail as verified (an address Google has not verified is refused), and the sign-up
+  form never changes the password of a verified or Google account.
+- The user object the API returns never includes the password hash or the payment proof (only the admin pages show
+  the proof, through their own routes).
 - Gemini keys and ad-platform tokens are encrypted at rest (`TOKEN_ENCRYPTION_KEY`, falling back to `SESSION_SECRET`).
 - **Browser security:** the built `index.html` carries a content security policy (scripts only from this site, or one
   of the inline scripts allowed by hash, including the order-form script of generated landing pages, which runs in the
@@ -142,7 +193,12 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
   on Vercel, by the routes in `scripts/vercel-output.mjs`. If you add an inline script to `index.html`, the build
   hashes it automatically (`vite.config.ts`).
 - **Requests:** bodies are limited to 1 MB, or 10 MB for signed-in requests to the routes that take images. The
-  client address used by the rate limits trusts exactly `TRUST_PROXY` proxies (default 1).
+  client address used by the rate limits trusts exactly `TRUST_PROXY` proxies (default 1). The sign-in, sign-up,
+  code and contact limits are counted in Postgres (`rate_limit_hits`, keys stored as hashes, `src/lib/rateLimitStore.ts`)
+  so every server instance shares them; if that table is missing they fall back to counting in memory. The other limits
+  count in memory, per instance.
+- **Preferences** (`PUT /api/preferences`) are checked field by field (`src/lib/preferencesRules.ts`): a value of the
+  wrong shape or size is refused with a 400 or 413 instead of reaching the database.
 
 ## AI and Gemini keys
 
@@ -250,10 +306,11 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (633 in 58 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+`npm test` runs the unit tests (704 in 61 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
 delivery, settings validation, pricing, translations, AI error handling, the video timeline, music and AI video jobs, the
 landing page HTML, its templates, colours and order totals,
-campaign / file / brand-kit validation, ad packs, ad layouts and CSV export, the Meta payloads, budgets and login state,
+campaign / file / brand-kit validation, ad packs, ad layouts and CSV export, the TikTok / Snapchat / Google packs (limits,
+clean-up of the AI's answer, spreadsheets, zip, safe zones), the Meta payloads, budgets and login state,
 the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
 components, the Express routes and `server.ts` are **not** covered by unit tests; they were checked in a real browser
 against a real database during development (campaign workflow, data ownership between two accounts, the Meta flow
@@ -274,6 +331,9 @@ tables (`projects`, `assets`, `project_outputs`, `brand_kits`, `meta_connections
 data alone; until it runs, the settings page cannot load. Read
 the plan Prisma prints before confirming, and stop if it mentions dropping or resetting anything. Campaign images are
 stored in Postgres (up to 250 MB per account), so keep an eye on the database size on small plans.
+
+The same `npx prisma db push` also adds the `rate_limit_hits` table (shared sign-in rate limits). Nothing else depends
+on it: until it exists, those limits count in memory as before and the server logs one warning.
 
 ## Known gaps
 

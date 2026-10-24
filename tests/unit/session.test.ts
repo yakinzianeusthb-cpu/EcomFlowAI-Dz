@@ -70,42 +70,99 @@ describe('signSession / verifySession', () => {
   });
 });
 
+describe('passwordStamp / sessionMatchesAccount', () => {
+  it('gives the same stamp for the same hash and a different one when the password changes', () => {
+    expect(session.passwordStamp('salt:hash')).toBe(session.passwordStamp('salt:hash'));
+    expect(session.passwordStamp('salt:hash')).not.toBe(session.passwordStamp('salt:other'));
+    expect(session.passwordStamp(null)).toBe(session.passwordStamp(undefined));
+    expect(session.passwordStamp(null)).not.toBe(session.passwordStamp('salt:hash'));
+  });
+
+  it('never reveals the hash', () => {
+    expect(session.passwordStamp('salt:hash')).not.toContain('hash');
+    expect(session.passwordStamp('salt:hash')).toHaveLength(16);
+  });
+
+  it('matches a session opened with the current password, and a legacy one without a stamp', () => {
+    const account = { passwordHash: 'salt:hash' };
+    expect(session.sessionMatchesAccount({ ...PAYLOAD, pw: session.passwordStamp('salt:hash') }, account)).toBe(true);
+    expect(session.sessionMatchesAccount({ ...PAYLOAD, pw: session.passwordStamp('salt:old') }, account)).toBe(false);
+    expect(session.sessionMatchesAccount(PAYLOAD, account)).toBe(true);
+  });
+});
+
 describe('requireAuth', () => {
-  it('answers 401 without a cookie', () => {
+  const HASH = 'salt:hash';
+  const stamped = (extra: Record<string, unknown> = {}) => session.signSession({ ...PAYLOAD, pw: session.passwordStamp(HASH), ...extra });
+  const guard = (account: { passwordHash: string | null } | null = { passwordHash: HASH }) => session.createRequireAuth(vi.fn(async () => account));
+  const run = async (requireAuth: ReturnType<typeof session.createRequireAuth>, req: any) => {
     const res = fakeRes();
     const next = vi.fn();
-    session.requireAuth(reqWith(), res, next);
+    await requireAuth(req, res, next);
+    return { res, next };
+  };
+
+  it('answers 401 without a cookie, and does not look the account up', async () => {
+    const loader = vi.fn(async () => ({ passwordHash: HASH }));
+    const { res, next } = await run(session.createRequireAuth(loader), reqWith());
+    expect(res.statusCode).toBe(401);
+    expect(next).not.toHaveBeenCalled();
+    expect(loader).not.toHaveBeenCalled();
+  });
+
+  it('answers 401 for an expired session', async () => {
+    const { res, next } = await run(guard(), reqWith(stamped({ exp: Date.now() - 1000 })));
     expect(res.statusCode).toBe(401);
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('answers 401 for an expired session', () => {
-    const res = fakeRes();
-    const next = vi.fn();
-    session.requireAuth(reqWith(session.signSession({ ...PAYLOAD, exp: Date.now() - 1000 })), res, next);
-    expect(res.statusCode).toBe(401);
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  it('lets a current token through without touching the cookie', () => {
-    const res = fakeRes();
-    const next = vi.fn();
-    const req = reqWith(session.signSession(PAYLOAD));
-    session.requireAuth(req, res, next);
+  it('lets a current token through without touching the cookie', async () => {
+    const req = reqWith(stamped());
+    const { res, next } = await run(guard(), req);
     expect(next).toHaveBeenCalledOnce();
     expect(req.user.sub).toBe('user-1');
     expect(res.cookie).not.toHaveBeenCalled();
   });
 
-  it('upgrades a legacy token to one with an expiry instead of logging the user out', () => {
-    const res = fakeRes();
-    const next = vi.fn();
-    session.requireAuth(reqWith(legacyToken(PAYLOAD)), res, next);
+  it('answers 401 once the password has changed since sign-in', async () => {
+    const { res, next } = await run(guard({ passwordHash: 'salt:new' }), reqWith(stamped()));
+    expect(res.statusCode).toBe(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('answers 401 when the account no longer exists', async () => {
+    const { res, next } = await run(guard(null), reqWith(stamped()));
+    expect(res.statusCode).toBe(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('answers 500 (not 401) when the account cannot be checked', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failing = session.createRequireAuth(vi.fn(async () => { throw new Error('db down'); }));
+    const { res, next } = await run(failing, reqWith(stamped()));
+    expect(res.statusCode).toBe(500);
+    expect(next).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('upgrades a legacy token to one with an expiry and a stamp instead of logging the user out', async () => {
+    const { res, next } = await run(guard(), reqWith(legacyToken(PAYLOAD)));
     expect(next).toHaveBeenCalledOnce();
     expect(res.cookie).toHaveBeenCalledOnce();
     const [name, value] = res.cookies[0] as [string, string];
     expect(name).toBe('dzads_session');
-    expect(session.verifySession(value)?.exp).toBeGreaterThan(Date.now());
+    const upgraded = session.verifySession(value);
+    expect(upgraded?.exp).toBeGreaterThan(Date.now());
+    expect(upgraded?.pw).toBe(session.passwordStamp(HASH));
+  });
+
+  it('stamps a token that has an expiry but no stamp, keeping its expiry', async () => {
+    const exp = Date.now() + DAY;
+    const { res, next } = await run(guard(), reqWith(session.signSession({ ...PAYLOAD, exp })));
+    expect(next).toHaveBeenCalledOnce();
+    const upgraded = session.verifySession((res.cookies[0] as [string, string])[1]);
+    expect(upgraded?.exp).toBe(exp);
+    expect(upgraded?.pw).toBe(session.passwordStamp(HASH));
   });
 });
 
@@ -126,13 +183,22 @@ describe('cookie helpers', () => {
 });
 
 describe('password reset tokens', () => {
-  it('round-trips and lowercases the email', () => {
-    expect(session.verifyResetToken(session.signResetToken('Mixed@Case.com'))).toEqual({ email: 'mixed@case.com' });
+  it('round-trips, lowercases the email and carries the stamp of the password it replaces', () => {
+    expect(session.verifyResetToken(session.signResetToken('Mixed@Case.com', 'salt:hash'))).toEqual({
+      email: 'mixed@case.com',
+      pw: session.passwordStamp('salt:hash'),
+    });
+  });
+
+  it('still reads a token issued before stamps existed (no pw)', () => {
+    const body = Buffer.from(JSON.stringify({ purpose: 'password_reset', email: 'a@b.co', exp: Date.now() + 60_000 })).toString('base64url');
+    const sig = crypto.createHmac('sha256', SECRET).update(body).digest('base64url');
+    expect(session.verifyResetToken(`${body}.${sig}`)).toEqual({ email: 'a@b.co' });
   });
 
   it('rejects session tokens, tampered tokens and garbage', () => {
     expect(session.verifyResetToken(session.signSession(PAYLOAD))).toBeNull();
-    const [body, sig] = session.signResetToken('a@b.co').split('.');
+    const [body, sig] = session.signResetToken('a@b.co', 'salt:hash').split('.');
     expect(session.verifyResetToken(`${body}x.${sig}`)).toBeNull();
     expect(session.verifyResetToken('nope')).toBeNull();
   });
@@ -140,7 +206,7 @@ describe('password reset tokens', () => {
   it('rejects an expired reset token', () => {
     vi.useFakeTimers();
     try {
-      const token = session.signResetToken('a@b.co');
+      const token = session.signResetToken('a@b.co', 'salt:hash');
       vi.advanceTimersByTime(11 * 60 * 1000);
       expect(session.verifyResetToken(token)).toBeNull();
     } finally {

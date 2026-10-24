@@ -338,6 +338,16 @@ model PlatformConfig {
   @@map("platform_config")
 }
 
+/// Request counts for the sign-in rate limits, shared by every server instance (src/lib/rateLimitStore.ts).
+/// The key is a hash: it never holds an address or an e-mail.
+model RateLimitHit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at")
+
+  @@map("rate_limit_hits")
+}
+
 model Guide {
   id          String   @id @default(uuid())
   title       String

@@ -15,7 +15,7 @@ import { SectionPicture } from './components/ui/SectionPicture';
 import { useLanguage } from './context/LanguageContext';
 import { useAuth, type PlanId } from './context/AuthContext';
 import { cn } from './lib/utils';
-import { isToolPaid, hasActivePlan } from './lib/access';
+import { isToolPaid, canUsePaidTools } from './lib/access';
 import { TAB_PATHS, TAB_TITLES, projectPath, tabFromPath, type NavItem } from './lib/nav';
 import { useDocumentMeta } from './lib/useDocumentMeta';
 
@@ -187,7 +187,7 @@ export default function AppShell() {
   // Warm up the main pages a few seconds after the dashboard is up, so it never competes with the
   // dashboard's own assets (skipped on data-saver / very slow connections).
   useEffect(() => {
-    if (!hasActivePlan(user)) return;
+    if (!canUsePaidTools(user)) return;
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')) return;
     const warm = () => WARM_UP_TOOLS.forEach((load) => void load().catch(() => {}));
@@ -238,7 +238,8 @@ export default function AppShell() {
   };
   const title = t(TAB_TITLES[activeTab].key, TAB_TITLES[activeTab].fallback);
   useDocumentMeta({ title: `${title} — EcomFlow AI` });
-  const needsPlan = !user?.plan || !hasActivePlan(user);
+  // admins use every tool without a plan (same rule as the server), so they get no subscribe banner
+  const needsPlan = !canUsePaidTools(user) || (!user?.isAdmin && !user?.plan);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-bg text-fg">
@@ -312,7 +313,7 @@ export default function AppShell() {
                   const isVisible = activeTab === key;
 
                   // Paid tool without an active plan: never mount it, show the locked screen instead.
-                  if (isToolPaid(key) && !hasActivePlan(user)) {
+                  if (isToolPaid(key) && !canUsePaidTools(user)) {
                     return isVisible ? (
                       <div key={key} className="w-full">
                         <LockedTool tab={key} onSubscribe={openPlans} />

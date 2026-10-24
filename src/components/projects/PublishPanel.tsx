@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CircleAlert, ExternalLink, Loader2, Megaphone, Pause, Play, RefreshCw, Rocket } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
@@ -12,7 +13,14 @@ import { useCreativeImages } from '../ads/useCreativeImages';
 import { EmptyState, Field, Segmented, Skeleton, StatusChip, type StatusState } from '../ui/primitives';
 import { useBrandKit, type ProjectHandle } from './useProject';
 import type { AdsOutput } from './useGenerators';
+import { PACK_PLATFORMS, type PackPlatform } from '../../lib/adPlatforms';
 import '../../i18n/campaigns';
+
+// The TikTok, Snapchat and Google packs (and the zip and drawing code they use) load only when one is opened.
+const PlatformPacks = lazy(() => import('./PlatformPacks'));
+
+type Channel = 'meta' | PackPlatform;
+const CHANNELS: readonly Channel[] = ['meta', ...PACK_PLATFORMS];
 
 type Objective = 'OUTCOME_TRAFFIC' | 'OUTCOME_AWARENESS' | 'OUTCOME_SALES';
 
@@ -380,7 +388,47 @@ function CampaignForm({ project, ads, onCreated, onReconnect }: { project: Proje
   );
 }
 
+/** Where the campaign goes out: Meta directly, or a ready-to-upload pack for TikTok, Snapchat or Google. */
 export default function PublishPanel({ project }: { project: ProjectHandle }) {
+  const { t } = useLanguage();
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('platform') as Channel | null;
+  const channel: Channel = requested && CHANNELS.includes(requested) ? requested : 'meta';
+  const choose = (next: Channel) =>
+    setParams((current) => {
+      const updated = new URLSearchParams(current);
+      if (next === 'meta') updated.delete('platform');
+      else updated.set('platform', next);
+      return updated;
+    }, { replace: true });
+
+  return (
+    <div className="space-y-6">
+      <Segmented<Channel>
+        label={t('pkChannel', 'Plateforme de publication')}
+        value={channel}
+        onChange={choose}
+        // platform names, written the same in every language
+        options={[
+          { value: 'meta', label: 'Facebook · Instagram' },
+          { value: 'tiktok', label: 'TikTok' },
+          { value: 'snapchat', label: 'Snapchat' },
+          { value: 'google', label: 'Google · YouTube' },
+        ]}
+      />
+      {channel === 'meta' ? (
+        <MetaPublish project={project} />
+      ) : (
+        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+          <PlatformPacks project={project} platform={channel} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+
+/** Meta: connect the account, create the campaign paused, then activate it. */
+function MetaPublish({ project }: { project: ProjectHandle }) {
   const { t } = useLanguage();
   const meta = useMetaStatus();
   useMetaReturnNotice(meta.reload);

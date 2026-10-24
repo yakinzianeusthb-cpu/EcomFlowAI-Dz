@@ -7,6 +7,7 @@ import { AD_FORMATS, type AdFormat } from '../../lib/adCreative';
 import { blobToDataUrl, renderCreativeBlob } from '../../lib/adCreativeRender';
 import { adPackToCsv, creativeFileName } from '../../lib/adExport';
 import type { AdConcept } from '../../lib/adPack';
+import { saveBlob as saveFile } from '../../lib/download';
 import { assetsApi, type BrandKit } from '../../services/campaigns';
 import { Segmented, Skeleton, StatusChip } from '../ui/primitives';
 import type { ProjectHandle } from '../projects/useProject';
@@ -15,17 +16,6 @@ import { GenerateState, VersionPicker } from '../projects/OutputControls';
 import CreativeCard, { creativeInput, type CreativeAssets } from './CreativeCard';
 import { useCreativeImages } from './useCreativeImages';
 import '../../i18n/campaigns';
-
-const saveFile = (blob: Blob, name: string) => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-};
 
 export default function AdsPanel({ project, gen, kit }: { project: ProjectHandle; gen: Generators; kit: BrandKit | null }) {
   const { t, language } = useLanguage();
@@ -67,7 +57,8 @@ export default function AdsPanel({ project, gen, kit }: { project: ProjectHandle
 
   const saveConcept = async (next: AdConcept) => {
     try {
-      await project.saveOutput('ads', { pack: { ...pack, concepts: pack.concepts.map((c) => (c.id === next.id ? next : c)) }, selected });
+      // keep the rest of the saved output (the TikTok, Snapchat and Google packs)
+      await project.saveOutput('ads', { ...output.data, pack: { ...pack, concepts: pack.concepts.map((c) => (c.id === next.id ? next : c)) }, selected });
       toast.success(t('cmpVersionSaved', 'Nouvelle version enregistrée.'));
     } catch (err) {
       toast.error((err as Error).message || t('cmpSaveFailed', 'Modification non enregistrée. Réessaie.'));

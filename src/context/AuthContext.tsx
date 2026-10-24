@@ -46,6 +46,9 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/** A signed-in tab re-checks the account when it comes back into view, at most this often. */
+const RECHECK_MIN_MS = 30_000;
+
 /** Sync server preferences into localStorage for instant UI effect. */
 async function syncPrefsToLocal() {
   try {
@@ -115,6 +118,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // When the tab comes back into view, re-check the account: a plan an admin has just approved unlocks the tools,
+  // and a session ended elsewhere (password changed) signs out, without a reload. Only an account that changed is
+  // applied, so nothing re-renders for nothing; a network error changes nothing.
+  const signedIn = user !== null;
+  useEffect(() => {
+    if (!signedIn) return;
+    let lastCheck = Date.now();
+    const recheck = async () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastCheck < RECHECK_MIN_MS) return;
+      lastCheck = Date.now();
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.status === 401) {
+          setUser(null);
+          setIsMock(false);
+          try { localStorage.removeItem('dz_returning'); } catch { /* ignore */ }
+          return;
+        }
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.user) setUser((current) => (JSON.stringify(current) === JSON.stringify(data.user) ? current : data.user));
+      } catch {
+        /* offline: keep the account as it is */
+      }
+    };
+    document.addEventListener('visibilitychange', recheck);
+    window.addEventListener('focus', recheck);
+    return () => {
+      document.removeEventListener('visibilitychange', recheck);
+      window.removeEventListener('focus', recheck);
+    };
+  }, [signedIn]);
 
   const login = useCallback(() => {
     window.location.href = '/api/auth/google';

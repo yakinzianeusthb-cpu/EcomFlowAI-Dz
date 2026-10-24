@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, SessionPayload } from "../lib/session";
+import { SessionPayload } from "../lib/session";
+import { requireAuth } from "../lib/requireAuth";
 import { createRateLimiter } from "../lib/rateLimit";
 import { ASSET_META, SERVER_ERROR, UUID, accountKey } from "../lib/routeHelpers";
 import type { Prisma } from "@prisma/client";

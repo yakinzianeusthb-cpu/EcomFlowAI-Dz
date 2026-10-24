@@ -2,7 +2,8 @@ import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { encryptSecret, maskSecret } from "../lib/crypto";
 import { DEFAULT_IMAGE_PROVIDER } from "../lib/imageProviders";
-import { requireAuth, SessionPayload } from "../lib/session";
+import { SessionPayload } from "../lib/session";
+import { requireAuth } from "../lib/requireAuth";
 import {
   buildSettingsWrite,
   DEFAULT_WORKSPACE_NAME,

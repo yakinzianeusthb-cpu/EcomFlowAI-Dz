@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
 import { History, Loader2, Lock, RefreshCw, Sparkles, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { hasActivePlan } from '../../lib/access';
+import { canUsePaidTools } from '../../lib/access';
 import { formatRelative } from '../../i18n/dates';
 import { Skeleton } from '../ui/primitives';
 import type { ProjectHandle } from './useProject';
@@ -35,7 +36,7 @@ export function VersionPicker({ project, kind }: { project: ProjectHandle; kind:
 }
 
 /** Shown before anything was generated, while it runs, or when it failed. */
-export function GenerateState({ title, intro, running, runningText, error, onGenerate, label, icon: Icon }: {
+export function GenerateState({ title, intro, running, runningText, error, onGenerate, label, icon: Icon, children }: {
   title: string;
   intro: string;
   running: boolean;
@@ -44,10 +45,12 @@ export function GenerateState({ title, intro, running, runningText, error, onGen
   onGenerate: () => void;
   label: string;
   icon: LucideIcon;
+  /** choices shown under the intro (for example which concepts to use) */
+  children?: ReactNode;
 }) {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const locked = !hasActivePlan(user);
+  const locked = !canUsePaidTools(user);
   if (running) {
     return (
       <div className="ui-card space-y-4 p-6" aria-busy="true">
@@ -64,6 +67,7 @@ export function GenerateState({ title, intro, running, runningText, error, onGen
       <div className="min-w-0 flex-1">
         <h2 className="text-[15px] font-semibold text-fg">{title}</h2>
         <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">{intro}</p>
+        {children && <div className="mt-3">{children}</div>}
         {error !== undefined && (
           <p role="alert" className="mt-2 text-[13px] text-danger-ink">{error || t('cmpGenFailed', 'La génération a échoué. Réessaie dans un instant.')}</p>
         )}

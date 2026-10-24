@@ -461,6 +461,12 @@ export function drawFrame(ctx: CanvasRenderingContext2D, timeline: Timeline, sec
   ctx.restore();
 }
 
+/** True when this browser records videos as MP4 (TikTok and Snapchat refuse WebM, the other format browsers record). */
+export function recordsMp4(): boolean {
+  if (!canRecordVideo()) return false;
+  return (pickRecorderMime((t) => MediaRecorder.isTypeSupported(t)) ?? '').startsWith('video/mp4');
+}
+
 /** True when this browser can record a canvas into a video. */
 export function canRecordVideo(): boolean {
   if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') return false;

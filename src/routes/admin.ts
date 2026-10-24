@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { encryptSecret, maskSecret } from '../lib/crypto';
-import { requireAuth } from '../lib/session';
+import { requireAuth } from '../lib/requireAuth';
 import { requireAdmin } from '../lib/admin';
 import { publicCache } from '../lib/cache';
 import { isPlaceholderGuide } from '../lib/dashboardContent';

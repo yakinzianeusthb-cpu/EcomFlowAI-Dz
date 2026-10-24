@@ -3,7 +3,7 @@ import { cn } from '../lib/utils';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
-import { isToolPaid, hasActivePlan } from '../lib/access';
+import { isToolPaid, canUsePaidTools } from '../lib/access';
 import { useCountdown } from '../lib/countdown';
 import { NAV_GROUPS, type NavItem } from '../lib/nav';
 import { BrandLogo } from './BrandMark';
@@ -76,7 +76,7 @@ export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavi
     onNavigate?.();
   };
 
-  const paidLocked = !hasActivePlan(user);
+  const paidLocked = !canUsePaidTools(user);
   const avatar = user?.avatarUrl ?? user?.avatar;
 
   const secondary: { id: NavItem; label: string }[] = [

@@ -75,13 +75,16 @@ export function useProject(projectId: string) {
     return saved;
   }, [projectId]);
 
+  /** The output as it is now, not as it was when a long task (an AI call) started. */
+  const currentOutput = useCallback((kind: OutputKind) => detailRef.current?.outputs[kind], []);
+
   /** Shows an older version (it becomes the current one only once saved again). */
   const openVersion = useCallback(async (kind: OutputKind, version: number) => {
     const v = await projectsApi.getVersion(projectId, kind, version);
     setDetail((d) => (d ? { ...d, outputs: { ...d.outputs, [kind]: { id: v.id, version: v.version, createdAt: v.createdAt, data: v.data } } } : d));
   }, [projectId]);
 
-  return { state, detail, reload: load, updateBrief, addPhoto, addAsset, removeAsset, saveOutput, openVersion };
+  return { state, detail, reload: load, updateBrief, addPhoto, addAsset, removeAsset, saveOutput, currentOutput, openVersion };
 }
 
 export type ProjectHandle = ReturnType<typeof useProject>;

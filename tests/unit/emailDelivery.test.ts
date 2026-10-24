@@ -48,6 +48,15 @@ describe('email delivery', () => {
       await sendOtpEmail('a@b.co', '654321');
       expect(log.mock.calls.flat().join('\n')).toContain('654321');
     });
+
+    it('is refused in production: codes and messages never go to the server logs', async () => {
+      const log = vi.spyOn(console, 'log');
+      const { sendOtpEmail, sendContactEmail } = await loadEmail();
+      vi.stubEnv('NODE_ENV', 'production');
+      await expect(sendOtpEmail('a@b.co', '777777')).rejects.toThrow(/No email provider/);
+      await expect(sendContactEmail('admin@b.co', { fromName: 'Sara', fromEmail: 's@b.co', subject: 'Hi', message: 'Secret' })).rejects.toThrow(/No email provider/);
+      expect(log.mock.calls.flat().join('\n')).not.toMatch(/777777|Secret/);
+    });
   });
 
   describe('Resend', () => {

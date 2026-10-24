@@ -4,6 +4,7 @@ import { generateAdPack } from '../../services/adsAi';
 import { assetAsDataUrl, type BrandKit, type ProjectDetail } from '../../services/campaigns';
 import { landingInputFromBrief, videoContextFromBrief, type BrandFields } from '../../lib/campaignContext';
 import type { AdPack } from '../../lib/adPack';
+import type { PlatformCopy } from '../../lib/adPlatforms';
 import type { OutputKind } from '../../lib/projectRules';
 
 export type GenKind = Exclude<OutputKind, 'meta_campaign'>;
@@ -25,6 +26,8 @@ export interface VideoOutput {
 export interface AdsOutput {
   pack: AdPack;
   selected: string[];
+  /** the TikTok, Snapchat and Google packs, once prepared (Publish tab) */
+  platforms?: PlatformCopy;
 }
 
 const toInline = (dataUrl: string) => {
@@ -32,7 +35,7 @@ const toInline = (dataUrl: string) => {
   return { data, mimeType: /data:([^;]+)/.exec(head)?.[1] ?? 'image/jpeg' };
 };
 
-const brandFields = (kit: BrandKit | null): BrandFields | null => (kit ? { brandName: kit.brandName, colors: kit.colors, tone: kit.tone, audience: kit.audience, instructions: kit.instructions, styles: kit.styles } : null);
+export const brandFields = (kit: BrandKit | null): BrandFields | null => (kit ? { brandName: kit.brandName, colors: kit.colors, tone: kit.tone, audience: kit.audience, instructions: kit.instructions, styles: kit.styles } : null);
 
 /**
  * Runs the three generators for a campaign. Each output succeeds or fails on its own, and each success is saved

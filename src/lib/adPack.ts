@@ -39,20 +39,21 @@ export interface AdPack {
   testPlan: string[];
 }
 
-const COPY_LANGUAGE = {
+export const COPY_LANGUAGE = {
   ar: 'arabe algérien (Darija) écrit en lettres arabes, compréhensible partout en Algérie',
   fr: 'français',
   en: 'anglais',
 } as const;
 
-const OBJECTIVE = {
+export const OBJECTIVE = {
   sales: 'ventes en paiement à la livraison',
   leads: 'collecte de contacts',
   traffic: 'visites vers la page produit',
   awareness: 'notoriété de la marque',
 } as const;
 
-const line = (label: string, value: string | undefined | null) => (value && value.trim() ? `- ${label} : ${value.trim()}\n` : '');
+/** One "- label : value" line of a prompt, or nothing when the value is empty. */
+export const line = (label: string, value: string | undefined | null) => (value && value.trim() ? `- ${label} : ${value.trim()}\n` : '');
 
 export function buildAdPackPrompt(brief: BriefFields, brand: BrandFields | null, count: number): string {
   return `

@@ -108,7 +108,10 @@ export async function sendOtpEmail(
     return { deliveredTo: to, dev: false, provider: "smtp" };
   }
 
-  // 3. Console (dev)
+  // 3. Console (dev). Never in production: the messages would sit in the server logs, readable by anyone with log access.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("No email provider configured: set RESEND_API_KEY or SMTP_HOST");
+  }
   console.log("──────────────────────────────────────────────");
   console.log(`[EMAIL:DEV] ${reason.toUpperCase()} OTP for ${to}`);
   console.log(`[EMAIL:DEV] Code: ${code} (expires in ${expiresMinutes} min)`);
@@ -189,7 +192,10 @@ export async function sendContactEmail(
     return { deliveredTo: to, dev: false, provider: "smtp" };
   }
 
-  // 3. Console (dev)
+  // 3. Console (dev). Never in production: the messages would sit in the server logs, readable by anyone with log access.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("No email provider configured: set RESEND_API_KEY or SMTP_HOST");
+  }
   console.log("──────────────────────────────────────────────");
   console.log(`[EMAIL:DEV] CONTACT from ${opts.fromName} <${opts.fromEmail}>`);
   console.log(`[EMAIL:DEV] Subject: ${opts.subject}`);

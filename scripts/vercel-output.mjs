@@ -2,7 +2,7 @@
 //   - static/            <- the built frontend (dist/), minus the Node bundle
 //   - functions/api.func <- the whole Express backend bundled into ONE file
 // This avoids the @vercel/node ESM import-resolution issue with relative
-// TS imports outside api/ (see api/index.ts -> ../server).
+// TS imports outside api/ (see scripts/vercel-entry.ts -> ../server).
 import { execSync } from "node:child_process";
 import { cpSync, mkdirSync, rmSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -31,7 +31,7 @@ for (const entry of readdirSync(distDir)) {
 
 // 3. Bundle the API server into a single self-contained CJS file
 execSync(
-  `npx esbuild api/index.ts --bundle --platform=node --format=cjs ` +
+  `npx esbuild scripts/vercel-entry.ts --bundle --platform=node --format=cjs ` +
     // vite is only imported by the local dev server (server.ts, non-production). Bundling it added
     // ~4 MB and ~75 ms to every serverless cold start.
     `--external:pg-native --external:*.node --external:vite ` +

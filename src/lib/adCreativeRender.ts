@@ -2,7 +2,10 @@
  * Draws an image ad on a canvas from a product photo, the concept's words and the brand colour
  * (layout rules in adCreative.ts). Runs in the browser; the result is a real JPEG the seller can upload anywhere.
  */
-import { AD_FORMATS, creativeLayout, ctaLabel, readableTextOn, type AdFormat, type AdTemplate, type Rect } from './adCreative';
+import {
+  AD_FORMATS, GOOGLE_IMAGE_FORMATS, creativeLayout, ctaLabel, plainImageLayout, readableTextOn,
+  type AdFormat, type AdTemplate, type GoogleImageFormat, type Rect, type SafeZone,
+} from './adCreative';
 import type { AdConcept } from './adPack';
 import type { ProjectLanguage } from './projectRules';
 import { keepNumbersTogether } from './numberSpacing';
@@ -22,6 +25,8 @@ export interface CreativeInput {
   photo: HTMLImageElement | null;
   logo: HTMLImageElement | null;
   brandColor?: string;
+  /** where the app's interface covers a story ad (default: Stories and Reels) */
+  safeZone?: SafeZone;
 }
 
 export function loadImage(src: string): Promise<HTMLImageElement> {
@@ -138,7 +143,7 @@ function shade(hex: string, amount: number): string {
 /** Paints the whole ad on `ctx` (whose canvas must be the size of the format). */
 export function drawCreative(ctx: CanvasRenderingContext2D, input: CreativeInput): void {
   const { width: W, height: H } = AD_FORMATS[input.format];
-  const L = creativeLayout(input.format, input.template);
+  const L = creativeLayout(input.format, input.template, input.safeZone);
   const brand = input.brandColor && HEX.test(input.brandColor) ? input.brandColor : DEFAULT_BRAND;
   const onBrand = readableTextOn(brand);
 
@@ -186,17 +191,63 @@ export function drawCreative(ctx: CanvasRenderingContext2D, input: CreativeInput
   else drawPill(ctx, L.cta, label, onBrand, onBrand === '#ffffff' ? brand : '#ffffff');
 }
 
-/** The ad as a JPEG file. */
-export async function renderCreativeBlob(input: CreativeInput, quality = 0.9): Promise<Blob> {
-  await loadCreativeFonts();
-  const { width, height } = AD_FORMATS[input.format];
+function sizedCanvas(width: number, height: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas unavailable');
+  return { canvas, ctx };
+}
+
+const canvasToJpeg = (canvas: HTMLCanvasElement, quality: number) =>
+  new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('encoding failed'))), 'image/jpeg', quality));
+
+/** The ad as a JPEG file. */
+export async function renderCreativeBlob(input: CreativeInput, quality = 0.9): Promise<Blob> {
+  await loadCreativeFonts();
+  const { width, height } = AD_FORMATS[input.format];
+  const { canvas, ctx } = sizedCanvas(width, height);
   drawCreative(ctx, input);
-  return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('encoding failed'))), 'image/jpeg', quality));
+  return canvasToJpeg(canvas, quality);
+}
+
+/** A clean product image for Google's display network: the product only, no text, logo or button (plainImageLayout). */
+export async function renderPlainImageBlob(photo: HTMLImageElement, format: GoogleImageFormat, quality = 0.9): Promise<Blob> {
+  const { width, height } = GOOGLE_IMAGE_FORMATS[format];
+  const { canvas, ctx } = sizedCanvas(width, height);
+  const L = plainImageLayout(width, height, photo.naturalWidth, photo.naturalHeight);
+  ctx.fillStyle = '#0c0c0f';
+  ctx.fillRect(0, 0, width, height);
+  if (L.backdrop) {
+    // a small blurred copy, stretched to fill: soft everywhere, then darkened a little so the product stands out
+    const small = sizedCanvas(Math.max(1, Math.round(width / 16)), Math.max(1, Math.round(height / 16)));
+    small.ctx.filter = 'blur(2px)';
+    drawPhoto(small.ctx, photo, { x: 0, y: 0, w: small.canvas.width, h: small.canvas.height }, 'cover');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(small.canvas, 0, 0, width, height);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.fillRect(0, 0, width, height);
+    drawPhoto(ctx, photo, L.photo, 'contain');
+  } else {
+    drawPhoto(ctx, photo, L.photo, 'cover');
+  }
+  return canvasToJpeg(canvas, quality);
+}
+
+/** A JPEG redrawn at `width`×`height`, at the best quality that stays under `maxBytes` (or the lowest one tried). */
+export async function shrinkJpeg(blob: Blob, width: number, height: number, maxBytes: number): Promise<Blob> {
+  const bitmap = await createImageBitmap(blob);
+  const { canvas, ctx } = sizedCanvas(width, height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  let out = await canvasToJpeg(canvas, 0.86);
+  for (const quality of [0.78, 0.7, 0.62, 0.55]) {
+    if (out.size <= maxBytes) break;
+    out = await canvasToJpeg(canvas, quality);
+  }
+  return out;
 }
 
 export const blobToDataUrl = (blob: Blob) =>

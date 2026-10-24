@@ -9,7 +9,8 @@ import compression from "compression";
 // loader hook that makes the first dynamic import() of a local .ts file resolve to an empty module.
 import { getTelegramPulse } from "./server-telegram";
 import { prisma } from "./src/lib/prisma";
-import { getCurrentUser, purposeSigner, requireAuth, SessionPayload } from "./src/lib/session";
+import { getCurrentUser, purposeSigner, SessionPayload } from "./src/lib/session";
+import { requireAuth } from "./src/lib/requireAuth";
 import { decryptSecret, isEncryptedSecret } from "./src/lib/crypto";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import { createPaidAccessGuard } from "./src/lib/planGuard";

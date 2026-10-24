@@ -3,7 +3,7 @@ import { Check, Clapperboard, Loader2, Lock, Megaphone, Sparkles, Wand2, X, type
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { hasActivePlan } from '../../lib/access';
+import { canUsePaidTools } from '../../lib/access';
 import { MAX_PRODUCT_PHOTOS, type ProjectLanguage, type ProjectObjective, type ProjectPlatform } from '../../lib/projectRules';
 import { cn } from '../../lib/utils';
 import { assetsApi, assetUrl, type AssetMeta, type ProjectInput } from '../../services/campaigns';
@@ -19,7 +19,7 @@ function GenerateCard({ project, gen, onOpen }: { project: ProjectHandle; gen: G
   const { t } = useLanguage();
   const { user } = useAuth();
   const outputs = project.detail!.outputs;
-  const locked = !hasActivePlan(user);
+  const locked = !canUsePaidTools(user);
   const rows: { kind: GenKind; icon: LucideIcon; run: () => Promise<boolean> }[] = [
     { kind: 'landing', icon: Wand2, run: gen.generateLanding },
     // a new script keeps the style, format and length chosen for the current one

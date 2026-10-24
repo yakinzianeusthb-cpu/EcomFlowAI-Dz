@@ -16,8 +16,34 @@ export type AdFormat = keyof typeof AD_FORMATS;
 export const AD_TEMPLATES = ['spotlight', 'split', 'studio'] as const;
 export type AdTemplate = (typeof AD_TEMPLATES)[number];
 
-/** Share of a 9:16 image covered by the profile bar (top) and the reply/CTA bar (bottom) in Stories and Reels. */
-export const STORY_SAFE_ZONE = { top: 0.14, bottom: 0.2 } as const;
+/** The share of a 9:16 image an app's interface covers: at the top, at the bottom, and down each side. */
+export interface SafeZone {
+  top: number;
+  bottom: number;
+  side: number;
+}
+
+/**
+ * Stories and Reels: the profile bar (top) and the reply/CTA bar (bottom). On 1080×1920 that is 269 px and 384 px,
+ * which also keeps clear of what Snapchat covers (the 150 px at the top and 330 px at the bottom usually advised).
+ */
+export const STORY_SAFE_ZONE: SafeZone = { top: 0.14, bottom: 0.2, side: 0 };
+
+/** TikTok covers more: the caption and its button low down, and the column of action buttons down one side. */
+export const TIKTOK_SAFE_ZONE: SafeZone = { top: 0.1, bottom: 0.3, side: 0.13 };
+
+/** TikTok carousel images: vertical 720×1280, about 100 KB each (TikTok's carousel specifications). */
+export const TIKTOK_CAROUSEL = { width: 720, height: 1280, maxBytes: 100 * 1024 } as const;
+
+/**
+ * Google display images: landscape 1.91:1 and square, at the sizes Google recommends. Google asks for no text, logo
+ * or button on top of them, so they are drawn by plainImageLayout, not creativeLayout.
+ */
+export const GOOGLE_IMAGE_FORMATS = {
+  landscape: { width: 1200, height: 628, ratio: '1.91:1' },
+  square: { width: 1200, height: 1200, ratio: '1:1' },
+} as const;
+export type GoogleImageFormat = keyof typeof GOOGLE_IMAGE_FORMATS;
 
 export interface Rect {
   x: number;
@@ -42,31 +68,35 @@ export interface CreativeLayout {
 
 const r = (x: number, y: number, w: number, h: number): Rect => ({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
 
-export function creativeLayout(format: AdFormat, template: AdTemplate): CreativeLayout {
+/** `safe` applies to story ads only: feed images have no interface on top of them. */
+export function creativeLayout(format: AdFormat, template: AdTemplate, safe: SafeZone = STORY_SAFE_ZONE): CreativeLayout {
   const { width: W, height: H } = AD_FORMATS[format];
   const story = format === 'story';
   // the area text may use: everything for feeds, the safe zone for stories
-  const top = story ? H * STORY_SAFE_ZONE.top : 0;
-  const bottom = story ? H * (1 - STORY_SAFE_ZONE.bottom) : H;
+  const top = story ? H * safe.top : 0;
+  const bottom = story ? H * (1 - safe.bottom) : H;
+  // the side margin of the text, button, badge and logo: the plain padding, plus what the app covers on the sides
   const pad = W * 0.07;
+  const inset = pad + (story ? W * safe.side : 0);
   const ctaH = W * 0.105;
   const badgeW = W * 0.32;
   const badgeH = W * 0.1;
   const logoS = W * 0.11;
 
   if (template === 'split') {
-    const photoH = story ? H * 0.52 : H * 0.6;
-    const panelTop = photoH;
     const ctaY = bottom - pad - ctaH;
+    // the photo gives way when the safe zone is tall, so the text keeps at least 13% of the height
+    const photoH = story ? Math.min(H * 0.52, ctaY - pad * 1.3 - H * 0.13) : H * 0.6;
+    const panelTop = photoH;
     return {
       photo: r(0, 0, W, photoH),
       photoFit: 'cover',
       panel: r(0, panelTop, W, H - panelTop),
       scrim: null,
-      text: r(pad, panelTop + pad * 0.8, W - pad * 2, ctaY - (panelTop + pad * 0.8) - pad * 0.5),
-      cta: r(pad, ctaY, W * 0.5, ctaH),
-      badge: r(W - pad - badgeW, Math.max(top + pad * 0.6, photoH - badgeH - pad * 0.6), badgeW, badgeH),
-      logo: r(pad, top + pad * 0.6, logoS, logoS),
+      text: r(inset, panelTop + pad * 0.8, W - inset * 2, ctaY - (panelTop + pad * 0.8) - pad * 0.5),
+      cta: r(inset, ctaY, W * 0.5, ctaH),
+      badge: r(W - inset - badgeW, Math.max(top + pad * 0.6, photoH - badgeH - pad * 0.6), badgeW, badgeH),
+      logo: r(inset, top + pad * 0.6, logoS, logoS),
     };
   }
 
@@ -81,9 +111,9 @@ export function creativeLayout(format: AdFormat, template: AdTemplate): Creative
       photoFit: 'contain',
       panel: r(0, 0, W, H),
       scrim: null,
-      text: r(pad, textY, W - pad * 2, textH),
+      text: r(inset, textY, W - inset * 2, textH),
       cta: r((W - W * 0.5) / 2, ctaY, W * 0.5, ctaH),
-      badge: r(W - pad - badgeW, photoY + pad * 0.3, badgeW, badgeH),
+      badge: r(W - inset - badgeW, photoY + pad * 0.3, badgeW, badgeH),
       logo: null,
     };
   }
@@ -96,11 +126,26 @@ export function creativeLayout(format: AdFormat, template: AdTemplate): Creative
     photoFit: 'cover',
     panel: null,
     scrim: { from: 0.4, to: 1 },
-    text: r(pad, ctaY - pad * 0.6 - textH, W - pad * 2, textH),
-    cta: r(pad, ctaY, W * 0.5, ctaH),
-    badge: r(W - pad - badgeW, top + pad, badgeW, badgeH),
-    logo: r(pad, top + pad, logoS, logoS),
+    text: r(inset, ctaY - pad * 0.6 - textH, W - inset * 2, textH),
+    cta: r(inset, ctaY, W * 0.5, ctaH),
+    badge: r(W - inset - badgeW, top + pad, badgeW, badgeH),
+    logo: r(inset, top + pad, logoS, logoS),
   };
+}
+
+/**
+ * A clean product image for Google's display network: the whole product as large as fits, centred, with nothing on
+ * top. When the photo's shape differs from the image's, a blurred copy of it fills the rest (no blank bands: Google
+ * wants the product as the focus and edges that bleed). A photo already of the image's shape fills it.
+ */
+export function plainImageLayout(width: number, height: number, photoWidth: number, photoHeight: number): { photo: Rect; backdrop: boolean } {
+  const sameShape = Math.abs(photoWidth / photoHeight - width / height) / (width / height) < 0.04;
+  if (sameShape) return { photo: r(0, 0, width, height), backdrop: false };
+  const margin = Math.min(width, height) * 0.06;
+  const scale = Math.min((width - margin * 2) / photoWidth, (height - margin * 2) / photoHeight);
+  const w = photoWidth * scale;
+  const h = photoHeight * scale;
+  return { photo: r((width - w) / 2, (height - h) / 2, w, h), backdrop: true };
 }
 
 /** One layout per concept, in turn, so a pack never looks like copies of one design. */

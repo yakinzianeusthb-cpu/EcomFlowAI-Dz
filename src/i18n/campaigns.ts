@@ -1648,6 +1648,427 @@ export const campaignsTranslations: TranslationDictionary = {
     ar: "الأسلوب والصيغة",
     en: "Style and format",
   },
+  // ---- TikTok, Snapchat and Google packs (Publish tab) ----
+  pkChannel: {
+    fr: "Plateforme de publication",
+    ar: "منصة النشر",
+    en: "Publishing platform",
+  },
+  pkTitle: {
+    fr: "Packs TikTok, Snapchat et Google",
+    ar: "حزم TikTok وSnapchat وGoogle",
+    en: "TikTok, Snapchat and Google packs",
+  },
+  pkIntro: {
+    fr: "L’IA adapte tes concepts aux règles de chaque plateforme (longueur des textes, formats d’image, bouton conseillé). Tu télécharges un pack et tu l’importes toi-même dans le gestionnaire de publicités.",
+    ar: "يكيّف الذكاء الاصطناعي مفاهيمك مع قواعد كل منصة (طول النصوص، صيغ الصور، الزر المقترح). تنزّل الحزمة ثم ترفعها بنفسك في مدير الإعلانات.",
+    en: "The AI adapts your concepts to each platform's rules (text length, image formats, suggested button). You download a pack and upload it yourself in the ads manager.",
+  },
+  pkStale: {
+    fr: "Tes concepts ont changé depuis la préparation des packs : prépare-les à nouveau pour qu’ils suivent.",
+    ar: "تغيّرت مفاهيمك منذ تحضير الحزم: حضّرها من جديد لتواكبها.",
+    en: "Your concepts changed since the packs were prepared: prepare them again so they match.",
+  },
+  pkGenerate: {
+    fr: "Préparer les packs",
+    ar: "تحضير الحزم",
+    en: "Prepare the packs",
+  },
+  pkRunning: {
+    fr: "L’IA adapte tes textes pour TikTok, Snapchat et Google… environ 30 secondes.",
+    ar: "يكيّف الذكاء الاصطناعي نصوصك لـ TikTok وSnapchat وGoogle… حوالي 30 ثانية.",
+    en: "The AI is adapting your copy for TikTok, Snapchat and Google… about 30 seconds.",
+  },
+  pkNeedAdsText: {
+    fr: "Les packs partent des concepts de l’onglet Publicités : génère-les d’abord.",
+    ar: "تنطلق الحزم من مفاهيم تبويب الإعلانات: أنشئها أولاً.",
+    en: "The packs start from the concepts in the Ads tab: generate them first.",
+  },
+  pkGoAds: {
+    fr: "Aller aux publicités",
+    ar: "الذهاب إلى الإعلانات",
+    en: "Go to the ads",
+  },
+  pkPrepared: {
+    fr: "Packs préparés {when}",
+    ar: "حُضّرت الحزم {when}",
+    en: "Packs prepared {when}",
+  },
+  pkUnsaved: {
+    fr: "Modifications non enregistrées",
+    ar: "تعديلات غير محفوظة",
+    en: "Unsaved changes",
+  },
+  pkRedo: {
+    fr: "Refaire les textes",
+    ar: "إعادة كتابة النصوص",
+    en: "Rewrite the texts",
+  },
+  pkSave: {
+    fr: "Enregistrer les modifications",
+    ar: "حفظ التعديلات",
+    en: "Save changes",
+  },
+  pkTooLong: {
+    fr: "Trop long de {count} caractères.",
+    ar: "أطول من اللازم بـ {count} حرفاً.",
+    en: "{count} characters too long.",
+  },
+  pkCta: {
+    fr: "Bouton conseillé : {cta}",
+    ar: "الزر المقترح: {cta}",
+    en: "Suggested button: {cta}",
+  },
+  pkGoVideo: {
+    fr: "Aller à la vidéo",
+    ar: "الذهاب إلى الفيديو",
+    en: "Go to the video",
+  },
+  pkNoMp4: {
+    fr: "Ce navigateur enregistre les vidéos en WebM, que TikTok et Snapchat refusent : ouvre l’app dans un navigateur récent qui enregistre en MP4, ou convertis le fichier.",
+    ar: "هذا المتصفح يسجّل الفيديوهات بصيغة WebM التي يرفضها TikTok وSnapchat: افتح التطبيق في متصفح حديث يسجّل بصيغة MP4، أو حوّل الملف.",
+    en: "This browser records videos as WebM, which TikTok and Snapchat refuse: open the app in a recent browser that records MP4, or convert the file.",
+  },
+  pkGuideTitle: {
+    fr: "Comment l’importer",
+    ar: "طريقة الرفع",
+    en: "How to upload it",
+  },
+  pkLimitsNote: {
+    fr: "Limites tirées de la documentation de chaque plateforme (octobre 2026). Elles peuvent changer : l’aperçu de la plateforme fait foi.",
+    ar: "الحدود مأخوذة من وثائق كل منصة (أكتوبر 2026). قد تتغيّر: المعاينة في المنصة هي المرجع.",
+    en: "Limits taken from each platform's documentation (October 2026). They can change: the platform's preview has the final word.",
+  },
+  pkImagesFailed: {
+    fr: "Les images du pack n’ont pas pu être créées. Recharge la page et réessaie.",
+    ar: "تعذّر إنشاء صور الحزمة. أعد تحميل الصفحة وحاول مجدداً.",
+    en: "The pack's images could not be created. Reload the page and try again.",
+  },
+  pkImageAlt: {
+    fr: "Image {n} du pack ({width} × {height})",
+    ar: "الصورة {n} من الحزمة ({width} × {height})",
+    en: "Pack image {n} ({width} × {height})",
+  },
+  pkDownloadImage: {
+    fr: "Télécharger l’image {n}",
+    ar: "تنزيل الصورة {n}",
+    en: "Download image {n}",
+  },
+  pkIssueTooLong: {
+    fr: "Un texte dépasse sa limite : raccourcis-le pour télécharger le pack.",
+    ar: "نص يتجاوز حدّه: اختصره لتنزيل الحزمة.",
+    en: "A text is over its limit: shorten it to download the pack.",
+  },
+  pkIssueEmpty: {
+    fr: "Un texte est vide : complète-le pour télécharger le pack.",
+    ar: "نص فارغ: أكمله لتنزيل الحزمة.",
+    en: "A text is empty: fill it in to download the pack.",
+  },
+  pkIssueTooFew: {
+    fr: "Google demande au moins 3 titres et 2 descriptions.",
+    ar: "يطلب Google ثلاثة عناوين ووصفين على الأقل.",
+    en: "Google needs at least 3 headlines and 2 descriptions.",
+  },
+  pkIssueExclaim: {
+    fr: "Google refuse le point d’exclamation dans les titres : retire-le.",
+    ar: "يرفض Google علامة التعجب في العناوين: احذفها.",
+    en: "Google refuses exclamation marks in headlines: remove them.",
+  },
+  pkIssueSymbols: {
+    fr: "Un texte contient un caractère que la plateforme refuse (emoji, #, @, lien ou retour à la ligne) : retire-le.",
+    ar: "نص يحتوي على رمز ترفضه المنصة (إيموجي، #، @، رابط أو سطر جديد): احذفه.",
+    en: "A text has a character the platform refuses (emoji, #, @, link or line break): remove it.",
+  },
+  pkIssueDuplicate: {
+    fr: "Deux titres ou deux descriptions Google sont identiques : change l’un d’eux.",
+    ar: "عنوانان أو وصفان في Google متطابقان: غيّر أحدهما.",
+    en: "Two Google headlines or descriptions are the same: change one of them.",
+  },
+  pkIssuePath: {
+    fr: "Chemins affichés : des lettres, des chiffres et des tirets seulement, et le chemin 1 avant le chemin 2.",
+    ar: "المسارات المعروضة: حروف وأرقام وشرطات فقط، والمسار 1 قبل المسار 2.",
+    en: "Display paths: letters, digits and dashes only, and path 1 before path 2.",
+  },
+  pkChangedMeanwhile: {
+    fr: "Tes publicités ont changé pendant la préparation : rien n’a été enregistré, prépare les packs à nouveau.",
+    ar: "تغيّرت إعلاناتك أثناء التحضير: لم يُحفظ شيء، حضّر الحزم من جديد.",
+    en: "Your ads changed while the packs were being prepared: nothing was saved, prepare them again.",
+  },
+  pkPickConcepts: {
+    fr: "Concepts à adapter",
+    ar: "المفاهيم المراد تكييفها",
+    en: "Concepts to adapt",
+  },
+  pkIssueUrl: {
+    fr: "Indique l’adresse https de ta page de vente pour télécharger le pack Google.",
+    ar: "أدخل عنوان https لصفحة البيع لتنزيل حزمة Google.",
+    en: "Enter the https address of your sales page to download the Google pack.",
+  },
+  pkReady: {
+    fr: "Pack prêt : textes, images et guide dans un seul fichier.",
+    ar: "الحزمة جاهزة: النصوص والصور والدليل في ملف واحد.",
+    en: "Pack ready: texts, images and guide in a single file.",
+  },
+  pkZipping: {
+    fr: "Préparation du pack…",
+    ar: "جارٍ تحضير الحزمة…",
+    en: "Preparing the pack…",
+  },
+  pkDownload: {
+    fr: "Télécharger le pack (.zip)",
+    ar: "تنزيل الحزمة (.zip)",
+    en: "Download the pack (.zip)",
+  },
+  pkDownloadFailed: {
+    fr: "Le pack n’a pas pu être créé. Réessaie.",
+    ar: "تعذّر إنشاء الحزمة. حاول مجدداً.",
+    en: "The pack could not be created. Try again.",
+  },
+  pkTexts: {
+    fr: "Textes",
+    ar: "النصوص",
+    en: "Texts",
+  },
+  pkBrandName: {
+    fr: "Nom affiché (ta marque)",
+    ar: "الاسم المعروض (علامتك)",
+    en: "Display name (your brand)",
+  },
+  pkBrandHint: {
+    fr: "Le même nom sert sur TikTok (20 caractères au plus), Snapchat et Google.",
+    ar: "يُستعمل الاسم نفسه على TikTok (20 حرفاً على الأكثر) وSnapchat وGoogle.",
+    en: "The same name is used on TikTok (20 characters at most), Snapchat and Google.",
+  },
+  pkAdText: {
+    fr: "Texte de la pub",
+    ar: "نص الإعلان",
+    en: "Ad text",
+  },
+  pkTiktokTitle: {
+    fr: "Pack TikTok",
+    ar: "حزمة TikTok",
+    en: "TikTok pack",
+  },
+  pkTiktokIntro: {
+    fr: "Un texte par concept (100 caractères au plus, sans hashtag, @ ni lien), le nom affiché, le bouton conseillé, et des images 9:16 pour une publicité carrousel si tu n’as pas de vidéo.",
+    ar: "نص لكل مفهوم (100 حرف على الأكثر، دون هاشتاغ أو @ أو رابط)، والاسم المعروض، والزر المقترح، وصور 9:16 لإعلان دوّار إن لم يكن لديك فيديو.",
+    en: "One text per concept (100 characters at most, no hashtag, @ or link), the display name, the suggested button, and 9:16 images for a carousel ad if you have no video.",
+  },
+  pkVideoTiktok: {
+    fr: "Sur TikTok, la vidéo verticale 9:16 marche le mieux. Crée-la dans l’onglet Vidéo (bouton Créer la vidéo), au format 9:16 : elle se télécharge prête à importer.",
+    ar: "على TikTok، يعمل الفيديو العمودي 9:16 أفضل. أنشئه في تبويب الفيديو (زر إنشاء الفيديو) بصيغة 9:16: يُنزَّل جاهزاً للرفع.",
+    en: "On TikTok, vertical 9:16 video works best. Make it in the Video tab (Create the video button) in 9:16: it downloads ready to upload.",
+  },
+  pkCarouselTitle: {
+    fr: "Images du carrousel (720 × 1280)",
+    ar: "صور الإعلان الدوّار (720 × 1280)",
+    en: "Carousel images (720 × 1280)",
+  },
+  pkCarouselNote: {
+    fr: "Pour une publicité carrousel TikTok : 2 images au moins et une musique choisie dans TikTok. Le texte reste loin du bas et des côtés, que l’interface de TikTok recouvre.",
+    ar: "لإعلان دوّار على TikTok: صورتان على الأقل وموسيقى تختارها في TikTok. يبقى النص بعيداً عن الأسفل والجوانب التي تغطيها واجهة TikTok.",
+    en: "For a TikTok carousel ad: at least 2 images and music picked in TikTok. The text stays away from the bottom and the sides, which TikTok's interface covers.",
+  },
+  pkTtStep1: {
+    fr: "Dans TikTok Ads Manager, crée une campagne (objectif Trafic ou Ventes), puis un groupe d’annonces qui cible l’Algérie.",
+    ar: "في TikTok Ads Manager، أنشئ حملة (هدف الزيارات أو المبيعات)، ثم مجموعة إعلانات تستهدف الجزائر.",
+    en: "In TikTok Ads Manager, create a campaign (Traffic or Sales objective), then an ad group targeting Algeria.",
+  },
+  pkTtStep2: {
+    fr: "Dans l’annonce, importe ta vidéo 9:16 en MP4 (onglet Vidéo). Sans vidéo, choisis le format Carrousel, importe les images du pack et ajoute une musique.",
+    ar: "في الإعلان، ارفع فيديو 9:16 بصيغة MP4 (تبويب الفيديو). دون فيديو، اختر صيغة الإعلان الدوّار وارفع صور الحزمة وأضف موسيقى.",
+    en: "In the ad, upload your 9:16 MP4 video (Video tab). Without a video, choose the Carousel format, upload the pack's images and add music.",
+  },
+  pkTtStep3: {
+    fr: "Colle un des textes (100 caractères au plus) et le nom affiché, puis choisis le bouton conseillé.",
+    ar: "الصق أحد النصوص (100 حرف على الأكثر) والاسم المعروض، ثم اختر الزر المقترح.",
+    en: "Paste one of the texts (100 characters at most) and the display name, then choose the suggested button.",
+  },
+  pkTtStep4: {
+    fr: "Colle l’adresse https de ta page de vente et vérifie l’aperçu avant de publier.",
+    ar: "الصق عنوان https لصفحة البيع وتحقّق من المعاينة قبل النشر.",
+    en: "Paste the https address of your sales page and check the preview before publishing.",
+  },
+  pkSnapTitle: {
+    fr: "Pack Snapchat",
+    ar: "حزمة Snapchat",
+    en: "Snapchat pack",
+  },
+  pkSnapIntro: {
+    fr: "Un titre par concept (34 caractères au plus), le nom de marque, le bouton conseillé et une image plein écran 9:16 par concept.",
+    ar: "عنوان لكل مفهوم (34 حرفاً على الأكثر)، واسم العلامة، والزر المقترح، وصورة 9:16 بملء الشاشة لكل مفهوم.",
+    en: "One headline per concept (34 characters at most), the brand name, the suggested button and a full-screen 9:16 image per concept.",
+  },
+  pkSnapHeadline: {
+    fr: "Titre Snapchat",
+    ar: "عنوان Snapchat",
+    en: "Snapchat headline",
+  },
+  pkSnapImages: {
+    fr: "Images plein écran (1080 × 1920)",
+    ar: "صور بملء الشاشة (1080 × 1920)",
+    en: "Full-screen images (1080 × 1920)",
+  },
+  pkSnapImagesNote: {
+    fr: "Le texte et le bouton restent loin du haut et du bas de l’écran, que Snapchat recouvre.",
+    ar: "يبقى النص والزر بعيدين عن أعلى الشاشة وأسفلها، حيث يغطيهما Snapchat.",
+    en: "The text and button stay away from the top and bottom of the screen, which Snapchat covers.",
+  },
+  pkVideoSnap: {
+    fr: "Snapchat accepte aussi une vidéo 9:16 à la place d’une image : crée-la dans l’onglet Vidéo, au format 9:16.",
+    ar: "يقبل Snapchat أيضاً فيديو 9:16 بدل الصورة: أنشئه في تبويب الفيديو بصيغة 9:16.",
+    en: "Snapchat also takes a 9:16 video instead of an image: make it in the Video tab, in 9:16.",
+  },
+  pkScStep1: {
+    fr: "Dans Snapchat Ads Manager, crée une campagne (objectif Trafic ou Ventes) et un groupe d’annonces qui cible l’Algérie.",
+    ar: "في Snapchat Ads Manager، أنشئ حملة (هدف الزيارات أو المبيعات) ومجموعة إعلانات تستهدف الجزائر.",
+    en: "In Snapchat Ads Manager, create a campaign (Traffic or Sales objective) and an ad group targeting Algeria.",
+  },
+  pkScStep2: {
+    fr: "Choisis une annonce Image ou vidéo unique et importe une image 9:16 du pack, ou ta vidéo 9:16 en MP4.",
+    ar: "اختر إعلان صورة أو فيديو واحد وارفع صورة 9:16 من الحزمة، أو فيديو 9:16 بصيغة MP4.",
+    en: "Choose a Single Image or Video ad and upload a 9:16 image from the pack, or your 9:16 MP4 video.",
+  },
+  pkScStep3: {
+    fr: "Colle le nom de marque et un titre (34 caractères au plus), choisis le bouton conseillé et colle l’adresse de ta page de vente.",
+    ar: "الصق اسم العلامة وعنواناً (34 حرفاً على الأكثر)، واختر الزر المقترح والصق عنوان صفحة البيع.",
+    en: "Paste the brand name and a headline (34 characters at most), choose the suggested button and paste your sales page address.",
+  },
+  pkScStep4: {
+    fr: "Vérifie dans l’aperçu que rien d’important n’est caché en haut ou en bas de l’écran.",
+    ar: "تحقّق في المعاينة من أن لا شيء مهماً مخفي أعلى الشاشة أو أسفلها.",
+    en: "Check in the preview that nothing important is hidden at the top or bottom of the screen.",
+  },
+  pkGoogleTitle: {
+    fr: "Pack Google et YouTube",
+    ar: "حزمة Google وYouTube",
+    en: "Google and YouTube pack",
+  },
+  pkGoogleIntro: {
+    fr: "Une annonce Search à importer dans Google Ads Editor, les textes et les images d’une annonce Display, et le titre d’une annonce vidéo YouTube.",
+    ar: "إعلان بحث تستورده في Google Ads Editor، ونصوص إعلان Display وصوره، وعنوان إعلان فيديو على YouTube.",
+    en: "A Search ad to import into Google Ads Editor, the texts and images of a Display ad, and the headline of a YouTube video ad.",
+  },
+  pkSearchTitle: {
+    fr: "Annonce Search (Google Ads Editor)",
+    ar: "إعلان البحث (Google Ads Editor)",
+    en: "Search ad (Google Ads Editor)",
+  },
+  pkSearchNote: {
+    fr: "De 3 à 15 titres de 30 caractères et de 2 à 4 descriptions de 90 caractères : Google les combine lui-même.",
+    ar: "من 3 إلى 15 عنواناً من 30 حرفاً، ومن 2 إلى 4 أوصاف من 90 حرفاً: يمزجها Google بنفسه.",
+    en: "3 to 15 headlines of 30 characters and 2 to 4 descriptions of 90 characters: Google combines them itself.",
+  },
+  pkHeadline: {
+    fr: "Titre {n}",
+    ar: "العنوان {n}",
+    en: "Headline {n}",
+  },
+  pkAddHeadline: {
+    fr: "Ajouter un titre",
+    ar: "إضافة عنوان",
+    en: "Add a headline",
+  },
+  pkDescription: {
+    fr: "Texte de description {n}",
+    ar: "نص الوصف {n}",
+    en: "Description text {n}",
+  },
+  pkAddDescription: {
+    fr: "Ajouter une description",
+    ar: "إضافة وصف",
+    en: "Add a description",
+  },
+  pkRemove: {
+    fr: "Retirer « {label} »",
+    ar: "إزالة «{label}»",
+    en: "Remove “{label}”",
+  },
+  pkPath: {
+    fr: "Chemin affiché {n}",
+    ar: "المسار المعروض {n}",
+    en: "Display path {n}",
+  },
+  pkPathHint: {
+    fr: "Apparaît après ton domaine : exemple.com/chemin-1/chemin-2.",
+    ar: "يظهر بعد اسم موقعك: example.com/path-1/path-2.",
+    en: "Shows after your domain: example.com/path-1/path-2.",
+  },
+  pkFinalUrl: {
+    fr: "Adresse de ta page de vente (https://…)",
+    ar: "عنوان صفحة البيع (https://…)",
+    en: "Your sales page address (https://…)",
+  },
+  pkFinalUrlInvalid: {
+    fr: "Ce n’est pas une adresse https complète.",
+    ar: "هذا ليس عنوان https كاملاً.",
+    en: "This is not a complete https address.",
+  },
+  pkFinalUrlHint: {
+    fr: "L’adresse où ta landing page est en ligne : onglet Landing page, Page prête, puis mise en ligne chez ton hébergeur.",
+    ar: "العنوان الذي تُنشر عليه صفحة الهبوط: تبويب صفحة الهبوط، ثم صفحة جاهزة، ثم النشر لدى مستضيفك.",
+    en: "The address where your landing page is online: Landing page tab, Ready page, then put online at your host.",
+  },
+  pkDisplayTitle: {
+    fr: "Annonce Display",
+    ar: "إعلان Display",
+    en: "Display ad",
+  },
+  pkDisplayNote: {
+    fr: "Google demande des images sans texte, sans logo et sans bouton par-dessus : le produit seul, bien en vue. Les 5 premiers titres servent aussi ici.",
+    ar: "يطلب Google صوراً دون نص أو شعار أو زر فوقها: المنتج وحده وبوضوح. تُستعمل العناوين الخمسة الأولى هنا أيضاً.",
+    en: "Google asks for images with no text, logo or button on top: the product alone, clearly in view. The first 5 headlines are used here too.",
+  },
+  pkLongHeadline: {
+    fr: "Titre long",
+    ar: "العنوان الطويل",
+    en: "Long headline",
+  },
+  pkNoPhotos: {
+    fr: "Ajoute des photos du produit dans le brief pour créer les images.",
+    ar: "أضف صور المنتج في الملخص لإنشاء الصور.",
+    en: "Add product photos in the brief to create the images.",
+  },
+  pkYoutubeTitle: {
+    fr: "Annonce YouTube (Demand Gen)",
+    ar: "إعلان YouTube (Demand Gen)",
+    en: "YouTube ad (Demand Gen)",
+  },
+  pkYoutubeHeadline: {
+    fr: "Titre YouTube",
+    ar: "عنوان YouTube",
+    en: "YouTube headline",
+  },
+  pkVideoYoutube: {
+    fr: "Pour YouTube, une vidéo 16:9 d’au moins 10 secondes (annonces avant les vidéos) ou 9:16 (Shorts), créée dans l’onglet Vidéo. Google Ads la prend sur ta chaîne YouTube.",
+    ar: "لـ YouTube، فيديو 16:9 مدته 10 ثوانٍ على الأقل (إعلانات قبل الفيديوهات) أو 9:16 (Shorts)، تُنشئه في تبويب الفيديو. يأخذه Google Ads من قناتك على YouTube.",
+    en: "For YouTube, a 16:9 video of at least 10 seconds (ads before videos) or 9:16 (Shorts), made in the Video tab. Google Ads takes it from your YouTube channel.",
+  },
+  pkGgStep1: {
+    fr: "Installe Google Ads Editor (gratuit), connecte ton compte Google Ads et télécharge-le.",
+    ar: "ثبّت Google Ads Editor (مجاني)، واربط حساب Google Ads ونزّله.",
+    en: "Install Google Ads Editor (free), connect your Google Ads account and download it.",
+  },
+  pkGgStep2: {
+    fr: "Crée ou choisis une campagne Search nommée « {campaign} » avec un groupe d’annonces « {adGroup} ».",
+    ar: "أنشئ أو اختر حملة بحث باسم «{campaign}» مع مجموعة إعلانات «{adGroup}».",
+    en: "Create or pick a Search campaign named “{campaign}” with an ad group “{adGroup}”.",
+  },
+  pkGgStep3: {
+    fr: "Menu Account > Import > From file (noms anglais de Google) : choisis google-ads-editor-search.csv, vérifie les colonnes, importe, garde les modifications proposées puis publie.",
+    ar: "القائمة Account > Import > From file (أسماء Google بالإنجليزية): اختر google-ads-editor-search.csv، وتحقّق من الأعمدة، واستورد، واحتفظ بالتغييرات المقترحة ثم انشر.",
+    en: "Menu Account > Import > From file: choose google-ads-editor-search.csv, check the columns, import, keep the proposed changes, then post.",
+  },
+  pkGgStep4: {
+    fr: "Pour une campagne Display, crée une annonce display responsive avec les images du pack et les textes de google-display-youtube-texts.csv.",
+    ar: "لحملة Display، أنشئ إعلان Display متجاوباً بصور الحزمة ونصوص google-display-youtube-texts.csv.",
+    en: "For a Display campaign, create a responsive display ad with the pack's images and the texts in google-display-youtube-texts.csv.",
+  },
+  pkGgStep5: {
+    fr: "Pour YouTube, mets ta vidéo sur ta chaîne (non répertoriée suffit), puis choisis-la dans une campagne Demand Gen avec le titre YouTube.",
+    ar: "لـ YouTube، ارفع الفيديو على قناتك (يكفي أن يكون غير مدرج)، ثم اختره في حملة Demand Gen مع عنوان YouTube.",
+    en: "For YouTube, put your video on your channel (unlisted is enough), then pick it in a Demand Gen campaign with the YouTube headline.",
+  },
 };
 
 registerTranslations('campaigns', campaignsTranslations);

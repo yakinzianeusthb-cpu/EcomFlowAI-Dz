@@ -85,3 +85,37 @@ describe('createRateLimiter', () => {
     expect(passed).toBe(1);
   });
 });
+
+describe('createRateLimiter with a shared store', () => {
+  /** Sends one request through a limiter that may count asynchronously. */
+  async function hitAsync(limiter: ReturnType<typeof createRateLimiter>, ip?: string) {
+    const res = fakeRes();
+    let passed = false;
+    await limiter(fakeReq(ip), res as unknown as Response, () => { passed = true; });
+    return { passed, res };
+  }
+
+  it('lets the store decide, and reports the time it says is left', async () => {
+    let count = 0;
+    const store = vi.fn(async () => ({ count: ++count, msLeft: 42_500 }));
+    const limiter = createRateLimiter({ windowMs: 60_000, max: 2, store });
+    expect((await hitAsync(limiter)).passed).toBe(true);
+    expect((await hitAsync(limiter)).passed).toBe(true);
+    const blocked = await hitAsync(limiter);
+    expect(blocked.passed).toBe(false);
+    expect(blocked.res.statusCode).toBe(429);
+    expect(blocked.res.headers['Retry-After']).toBe('43');
+    expect(store).toHaveBeenCalledWith('1.2.3.4', 60_000);
+  });
+
+  it('falls back to counting in memory when the store fails, warning once', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = vi.fn(async () => { throw new Error('relation "rate_limit_hits" does not exist'); });
+    const limiter = createRateLimiter({ windowMs: 60_000, max: 2, store });
+    const results = [];
+    for (let i = 0; i < 3; i++) results.push((await hitAsync(limiter)).passed);
+    expect(results).toEqual([true, true, false]);
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+});

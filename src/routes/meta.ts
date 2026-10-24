@@ -1,10 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../lib/prisma";
-import { parseCookies, purposeSigner, requireAuth, type SessionPayload } from "../lib/session";
+import { parseCookies, purposeSigner, type SessionPayload } from "../lib/session";
+import { requireAuth } from "../lib/requireAuth";
 import { createPaidAccessGuard } from "../lib/planGuard";
 import { createRateLimiter } from "../lib/rateLimit";
 import { UUID, accountKey } from "../lib/routeHelpers";
 import { encryptSecret } from "../lib/crypto";
+import { withAccountLock } from "../lib/accountLimits";
 import { connectionClient, markMetaExpired } from "../lib/metaAccount";
 import {
   META_ERRORS,
@@ -69,11 +71,18 @@ async function ownedCampaign(userId: string, campaignId: string) {
   return { output, data };
 }
 
+/**
+ * Saves the next version of a Meta campaign record. Under the account lock (like every other save), so two saves at
+ * once cannot pick the same version number. Never refused for quota or pruned: these records are the proof that a
+ * live campaign is the user's, and the only way to pause it from here.
+ */
 async function saveCampaignVersion(projectId: string, userId: string, data: Record<string, unknown>) {
-  const last = await prisma.projectOutput.findFirst({ where: { projectId, kind: "meta_campaign" }, orderBy: { version: "desc" }, select: { version: true } });
-  return prisma.projectOutput.create({
-    data: { projectId, userId, kind: "meta_campaign", version: (last?.version ?? 0) + 1, data: data as object, size: Buffer.byteLength(JSON.stringify(data)) },
-    select: { id: true, version: true, createdAt: true, data: true },
+  return withAccountLock(userId, async (tx) => {
+    const last = await tx.projectOutput.findFirst({ where: { projectId, kind: "meta_campaign" }, orderBy: { version: "desc" }, select: { version: true } });
+    return tx.projectOutput.create({
+      data: { projectId, userId, kind: "meta_campaign", version: (last?.version ?? 0) + 1, data: data as object, size: Buffer.byteLength(JSON.stringify(data)) },
+      select: { id: true, version: true, createdAt: true, data: true },
+    });
   });
 }
 

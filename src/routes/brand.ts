@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, SessionPayload } from "../lib/session";
+import { SessionPayload } from "../lib/session";
+import { requireAuth } from "../lib/requireAuth";
 import { BRAND_ERRORS, parseBrandKitInput } from "../lib/brandRules";
 
 /** The brand kit: one per account, reused as context by every generation. */
