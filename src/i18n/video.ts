@@ -958,6 +958,21 @@ export const videoTranslations: TranslationDictionary = {
     ar: "نقل المشهد",
     en: "Move the scene",
   },
+  vidCopyScene: {
+    fr: "Copier la scène",
+    ar: "نسخ المشهد",
+    en: "Copy scene",
+  },
+  vidSceneCopied: {
+    fr: "Scène copiée !",
+    ar: "تم نسخ المشهد!",
+    en: "Scene copied!",
+  },
+  vidCopyAll: {
+    fr: "Tout copier",
+    ar: "نسخ الكل",
+    en: "Copy all",
+  },
 };
 
 registerTranslations('video', videoTranslations);

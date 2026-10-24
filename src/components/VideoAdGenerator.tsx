@@ -70,7 +70,9 @@ import PromptField from './PromptField';
 import PageHeader from './PageHeader';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/video';
+import '../i18n/funnels';
 import { AiCostTag } from './ui/AiCostTag';
+import { sceneToText, scriptToText, type ScriptTextLabels } from '../lib/videoScriptText';
 
 interface SortableSceneCardProps {
   id: string;
@@ -78,14 +80,16 @@ interface SortableSceneCardProps {
   index: number;
   updateSceneField: (index: number, field: string, value: any) => void;
   deleteScene: (index: number) => void;
+  copyScene: (index: number) => void;
 }
 
-const SortableSceneCard = ({ 
-  id, 
-  scene, 
-  index, 
-  updateSceneField, 
-  deleteScene 
+const SortableSceneCard = ({
+  id,
+  scene,
+  index,
+  updateSceneField,
+  deleteScene,
+  copyScene,
 }: SortableSceneCardProps) => {
   const { t } = useLanguage();
   const {
@@ -146,6 +150,16 @@ const SortableSceneCard = ({
                 className="bg-transparent text-xs font-semibold text-dz-emerald focus:outline-none placeholder:text-dz-emerald/40 w-12 text-center"
               />
             </div>
+
+            {/* the scene's four parts in one copy */}
+            <button
+              type="button"
+              onClick={() => copyScene(i)}
+              className="flex items-center gap-1.5 rounded-xl border border-fg/10 bg-fg/[0.04] px-2.5 py-1.5 text-xs font-semibold text-fg-muted transition-all hover:border-dz-emerald/40 hover:text-fg active:scale-95"
+            >
+              <Copy size={13} />
+              {t('vidCopyScene', 'Copier la scène')}
+            </button>
 
             {/* Supprimer Scène */}
             <button
@@ -631,12 +645,37 @@ Style d'accroche / Hook de départ : ${hookType}
     }
   };
 
-  const handleCopy = () => {
-    const textToCopy = JSON.stringify(result, null, 2);
-    navigator.clipboard.writeText(textToCopy);
+  // the headings of the copied text, in the seller's language
+  const scriptLabels: ScriptTextLabels = {
+    scene: (n) => t('vidSceneN', undefined, { n }),
+    visual: t('vidVisuelMiseScene', 'Visuel & Mise en Scène'),
+    actor: t('vidIndicationsActeurCreateur', 'Indications Acteur / Créateur'),
+    voice: t('vidVoixOffDarijaArabe', 'Voix-off (Darija / Arabe)'),
+    franco: t('vidLecturePhonetiqueFranco', 'Lecture Phonétique (Franco)'),
+    overlay: t('vidTexteLEcran', "Texte à l'écran :"),
+  };
+
+  /** Copies `text`; says so, or that the browser blocked the clipboard. */
+  const copyText = async (text: string, done: string): Promise<boolean> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(done);
+      return true;
+    } catch {
+      toast.error(t('lppPromptCopyFailed', 'Copie impossible : ton navigateur a bloqué le presse-papiers.'));
+      return false;
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!(await copyText(scriptToText(result ?? {}, scriptLabels), t('vidScriptCopiePressePapiers', 'Script copié dans le presse-papiers !')))) return;
     setCopied(true);
-    toast.success(t('vidScriptCopiePressePapiers', 'Script copié dans le presse-papiers !'));
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyScene = (index: number) => {
+    const scene = result?.scenes?.[index];
+    if (scene) void copyText(sceneToText(scene, index, scriptLabels), t('vidSceneCopied', 'Scène copiée !'));
   };
 
   const handleExport = () => {
@@ -1176,7 +1215,7 @@ Style d'accroche / Hook de départ : ${hookType}
                   className="text-fg-muted hover:text-fg transition-colors flex items-center gap-1 text-xs bg-fg/5 px-3 py-1.5 rounded-xl border border-fg/10 cursor-pointer"
                 >
                   {copied ? <Check size={14} className="text-dz-emerald" /> : <Copy size={14} />}
-                  {copied ? t('vidCopie', 'Copié') : t('copy', 'Copier')}
+                  {copied ? t('vidCopie', 'Copié') : t('vidCopyAll', 'Tout copier')}
                 </button>
               </div>
             )}
@@ -1370,6 +1409,7 @@ Style d'accroche / Hook de départ : ${hookType}
                               index={activeSceneIdx}
                               updateSceneField={updateSceneField}
                               deleteScene={deleteScene}
+                              copyScene={copyScene}
                             />
                           )}
                         </div>
@@ -1394,6 +1434,7 @@ Style d'accroche / Hook de départ : ${hookType}
                                     index={idx}
                                     updateSceneField={updateSceneField}
                                     deleteScene={deleteScene}
+                                    copyScene={copyScene}
                                   />
                                 ))}
                               </div>
