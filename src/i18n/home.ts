@@ -373,6 +373,86 @@ export const homeTranslations: TranslationDictionary = {
     ar: "الأقسام",
     en: "Sections",
   },
+  homeNavWork: {
+    fr: "Réalisations",
+    ar: "أعمالنا",
+    en: "Our work",
+  },
+  homeWorkTitle: {
+    fr: "Des pages qui vendent déjà.",
+    ar: "صفحات تبيع بالفعل.",
+    en: "Pages that already sell.",
+  },
+  homeWorkText: {
+    fr: "Une vraie landing page longue, faite pour une boutique algérienne. Touche une partie pour voir le travail qu’elle fait.",
+    ar: "صفحة هبوط طويلة حقيقية، صُنعت لمتجر جزائري. اضغط على جزء منها لترى الدور الذي يؤديه.",
+    en: "A real long landing page, made for an Algerian shop. Tap a part to see the job it does.",
+  },
+  homeWorkNote1Title: {
+    fr: "Le titre dans l’image",
+    ar: "العنوان داخل الصورة",
+    en: "The headline in the picture",
+  },
+  homeWorkNote1Text: {
+    fr: "Une promesse courte, lisible même en défilant vite dans le fil Facebook.",
+    ar: "وعد قصير يُقرأ حتى عند التمرير السريع في فيسبوك.",
+    en: "A short promise that reads even while scrolling fast through Facebook.",
+  },
+  homeWorkNote2Title: {
+    fr: "Le produit en situation",
+    ar: "المنتج أثناء الاستعمال",
+    en: "The product in use",
+  },
+  homeWorkNote2Text: {
+    fr: "Ton vrai produit, gardé tel quel par l’IA, dans la scène où il sert.",
+    ar: "منتجك الحقيقي كما هو، في المشهد الذي يُستعمل فيه.",
+    en: "Your real product, kept as it is by the AI, in the scene where it is used.",
+  },
+  homeWorkNote3Title: {
+    fr: "Les avantages, puis le bouton",
+    ar: "المزايا ثم زر الطلب",
+    en: "The benefits, then the button",
+  },
+  homeWorkNote3Text: {
+    fr: "Trois avantages en icônes, puis « اطلب الآن » avant que le client ne décroche.",
+    ar: "ثلاث مزايا بالأيقونات، ثم «اطلب الآن» قبل أن يفقد الزبون اهتمامه.",
+    en: "Three benefits as icons, then « اطلب الآن » before the shopper drifts off.",
+  },
+  homeWorkNote4Title: {
+    fr: "Chaque détail expliqué",
+    ar: "كل تفصيل مشروح",
+    en: "Every detail explained",
+  },
+  homeWorkNote4Text: {
+    fr: "Les questions du client réglées une par une : batterie, fixation, accessoires.",
+    ar: "أسئلة الزبون مُجابة واحدة تلو الأخرى: البطارية، التثبيت، الملحقات.",
+    en: "The shopper’s questions answered one by one: battery, mounting, accessories.",
+  },
+  homeWorkAlt: {
+    fr: "Landing page longue en arabe pour une douche portable de plage, avec son titre, la photo du produit en situation, ses avantages et le bouton de commande",
+    ar: "صفحة هبوط طويلة بالعربية لدوش محمول للشاطئ، بعنوانها وصورة المنتج أثناء الاستعمال ومزاياه وزر الطلب",
+    en: "Long Arabic landing page for a portable beach shower, with its headline, the product in use, its benefits and the order button",
+  },
+  homeWorkMoreTitle: {
+    fr: "Six autres pages, six niches.",
+    ar: "ست صفحات أخرى، ستة مجالات.",
+    en: "Six more pages, six niches.",
+  },
+  homeWorkMoreText: {
+    fr: "Consoles de jeu, soins, plage, voyage en voiture, santé, avis clients : le même format s’adapte à chaque produit.",
+    ar: "ألعاب الفيديو، العناية، الشاطئ، السفر بالسيارة، الصحة، آراء الزبائن: نفس الشكل يتكيّف مع كل منتج.",
+    en: "Game consoles, personal care, beach, road trips, health, customer reviews: the same format fits every product.",
+  },
+  homeWorkMoreAlt: {
+    fr: "Six autres landing pages longues en arabe : console de jeu, douche, plage, voyage en voiture, douleurs du genou et avis clients",
+    ar: "ست صفحات هبوط طويلة أخرى بالعربية: جهاز ألعاب، دوش، شاطئ، سفر بالسيارة، آلام الركبة وآراء الزبائن",
+    en: "Six more long Arabic landing pages: game console, shower, beach, road trip, knee pain and customer reviews",
+  },
+  homeWorkCta: {
+    fr: "Créer ma landing page",
+    ar: "أنشئ صفحة الهبوط الخاصة بي",
+    en: "Create my landing page",
+  },
 };
 
 registerTranslations('home', homeTranslations);

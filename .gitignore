@@ -12,3 +12,6 @@ client_secret*.json
 
 # git worktrees created by coding tools
 .claude/worktrees/
+
+# design inspector output (screenshots, reports)
+.taste-skill/

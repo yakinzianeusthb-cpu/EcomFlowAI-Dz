@@ -7,6 +7,7 @@ import { useDocumentMeta } from '../lib/useDocumentMeta';
 import HomeHeader from './home/HomeHeader';
 import HomeHero from './home/HomeHero';
 import HomePricing from './home/HomePricing';
+import HomeShowcase from './home/HomeShowcase';
 import { LandingVisual, LibraryVisual, VideoVisual } from './home/StudioVisuals';
 import { reveal, useReveal } from './home/useReveal';
 import '../i18n/home';
@@ -105,6 +106,8 @@ export default function LandingPage() {
 
       <main>
         <HomeHero />
+
+        <HomeShowcase titleClass={SECTION_TITLE} />
 
         <section id="workflow" tabIndex={-1} aria-labelledby="home-flow" className="scroll-mt-20 outline-none">
           <div className="mx-auto grid max-w-[1440px] gap-14 px-5 py-28 sm:px-8 lg:grid-cols-12 lg:gap-8 lg:py-44">
