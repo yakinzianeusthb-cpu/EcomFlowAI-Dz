@@ -2,7 +2,7 @@ import { cn } from '../lib/utils';
 
 type Tone = 'brand' | 'mono';
 
-/** The EcomFlow mark: three lines of copy forming an E, on the brand violet ("mono": warm white, for the home page). */
+/** The EcomFlow mark: three lines of copy forming an E, on the brand red ("mono": warm white, for the home page). */
 export function BrandMark({ className, tone = 'brand' }: { className?: string; tone?: Tone }) {
   const mono = tone === 'mono';
   return (

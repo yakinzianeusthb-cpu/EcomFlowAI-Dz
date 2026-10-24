@@ -21,7 +21,7 @@ export default function PageHeader({ section, title, subtitle, actions, classNam
       <div className="flex min-w-0 items-center gap-3">
         <SectionTile id={section} />
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
+          <h1 className="home-display text-[28px] text-fg sm:text-[32px]">{title}</h1>
           {subtitle && <p className="mt-0.5 text-sm text-fg-muted">{subtitle}</p>}
         </div>
       </div>

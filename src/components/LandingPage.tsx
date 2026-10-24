@@ -100,7 +100,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="theme-dark home-site min-h-dvh overflow-x-clip bg-bg text-fg [color-scheme:dark]">
+    <div className="theme-dark min-h-dvh overflow-x-clip bg-bg text-fg [color-scheme:dark]">
       <HomeHeader />
 
       <main>

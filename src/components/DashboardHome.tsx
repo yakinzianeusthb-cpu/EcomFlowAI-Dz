@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, Clapperboard, KeyRound, Lock, Wand2, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Clapperboard, KeyRound, Lock, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { hasActivePlan } from '../lib/access';
 import { attentionItems, type AttentionItem } from '../lib/attention';
@@ -74,28 +74,44 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="space-y-10">
-      <section aria-labelledby="dash-hero" className="ui-card grain overflow-hidden">
-        <div className="p-6 sm:p-8">
-          <p className="eyebrow">{t('dashGreeting', 'Salam,')} {user?.name?.split(' ')[0] ?? ''}</p>
-          <h1 id="dash-hero" className="display-title mt-3 text-4xl text-fg sm:text-5xl">{t('dashHeroTitle', 'Que veux-tu vendre aujourd’hui ?')}</h1>
-          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-fg-muted">{t('dashHeroText', 'Crée une landing page avec les images de chaque section, ou une pub vidéo prête à publier, à partir des photos de ton produit.')}</p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button type="button" onClick={() => go('landing')} className="btn-dz-primary"><Wand2 size={16} /> {t('dashNewLanding', 'Créer une landing page')}</button>
-            <button type="button" onClick={() => go('video')} className="btn-dz-secondary"><Clapperboard size={16} /> {t('dashNewVideo', 'Créer une pub vidéo')}</button>
+    <div className="space-y-12">
+      {/* the home page's first screen at banner size: the red-lit room, the promise in large light type, the white pill */}
+      <section aria-labelledby="dash-hero" className="theme-dark dash-room overflow-hidden rounded-[var(--radius-lg)] text-fg">
+        <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-12 lg:items-end lg:gap-8 lg:p-12">
+          <div className="lg:col-span-8">
+            <p className="text-[13px] text-fg-muted">{t('dashGreeting', 'Salam,')} {user?.name?.split(' ')[0] ?? ''}</p>
+            <h1 id="dash-hero" className="home-display mt-4 max-w-[14ch] text-[clamp(2.25rem,1.3rem+3vw,4.25rem)] text-fg">{t('dashHeroTitle', 'Que veux-tu vendre aujourd’hui ?')}</h1>
+            <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-fg-muted">{t('dashHeroText', 'Crée une landing page avec les images de chaque section, ou une pub vidéo prête à publier, à partir des photos de ton produit.')}</p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <button type="button" onClick={() => go('landing')} className="pill-cta">
+                {t('dashNewLanding', 'Créer une landing page')}
+                <span className="pill-cta-dot"><ArrowUpRight size={18} className="rtl:-scale-x-100" /></span>
+              </button>
+              <button type="button" onClick={() => go('video')} className="pill-ghost"><Clapperboard size={16} /> {t('dashNewVideo', 'Créer une pub vidéo')}</button>
+            </div>
           </div>
+          <dl aria-label={t('dashActivity', 'Ton activité')} className="grid grid-cols-3 gap-4 lg:col-span-4 lg:grid-cols-1 lg:gap-6">
+            {stats.map((s) => (
+              // the label comes first for screen readers; the figure shows above it, like the home page's facts
+              <div key={s.label} className="flex flex-col-reverse">
+                <dt className="mt-2 text-[13px] leading-snug text-fg-muted">{s.label}</dt>
+                <dd className="hero-stat text-fg">{s.value == null ? <Skeleton className="h-12 w-14" /> : <span dir="ltr">{s.value}</span>}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
       <section aria-labelledby="dash-sections">
-        <h2 id="dash-sections" className="mb-4 text-[15px] font-semibold text-fg">{t('dashQuickAccess', 'Accès rapide')}</h2>
+        <h2 id="dash-sections" className="home-display mb-5 text-[26px] text-fg sm:text-[30px]">{t('dashQuickAccess', 'Accès rapide')}</h2>
         {/* 5 sections: the two studios across the top on a phone, then the others two by two */}
         <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {sections.map((s) => (
             <li key={s.tab}>
-              <button type="button" onClick={() => go(s.tab)} className="ui-card ui-card-hover section-card flex h-full w-full flex-col items-start gap-3 p-4 text-start">
+              <button type="button" onClick={() => go(s.tab)} className="section-card group relative flex h-full w-full flex-col items-start gap-4 rounded-[var(--radius-lg)] bg-surface p-5 text-start transition-colors duration-200 hover:bg-surface-2">
                 <SectionTile id={s.tab} size="lg" />
-                <span className="text-sm font-semibold text-fg">{s.label}</span>
+                <ArrowUpRight size={18} aria-hidden="true" className="absolute end-4 top-4 text-fg-faint transition-transform duration-300 group-hover:rotate-45 group-hover:text-fg rtl:-scale-x-100 rtl:group-hover:-rotate-45" />
+                <span className="text-[15px] font-medium text-fg">{s.label}</span>
                 <span className="line-clamp-2 text-[13px] leading-relaxed text-fg-muted max-sm:hidden">{s.text}</span>
               </button>
             </li>
@@ -103,28 +119,14 @@ export default function DashboardHome() {
         </ul>
       </section>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <section aria-labelledby="dash-attention" className="ui-card p-5">
-          <h2 id="dash-attention" className="mb-4 text-[15px] font-semibold text-fg">{t('dashAttention', 'À faire')}</h2>
-          {attention.length === 0 ? (
-            <p className="text-[13px] text-fg-muted">{t('dashAllGood', 'Tout est prêt. Lance une landing page ou une pub vidéo quand tu veux.')}</p>
-          ) : (
-            <ul className="divide-y divide-line">{attention.map(renderItem)}</ul>
-          )}
-        </section>
-
-        <section aria-labelledby="dash-stats" className="ui-card p-5">
-          <h2 id="dash-stats" className="mb-4 text-[15px] font-semibold text-fg">{t('dashActivity', 'Ton activité')}</h2>
-          <dl className="grid grid-cols-3 gap-4">
-            {stats.map((s) => (
-              <div key={s.label}>
-                <dt className="text-xs text-fg-faint">{s.label}</dt>
-                <dd className="mt-1 text-2xl font-semibold tabular-nums text-fg">{s.value == null ? <Skeleton className="h-7 w-10" /> : s.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      </div>
+      <section aria-labelledby="dash-attention" className="rounded-[var(--radius-lg)] bg-surface p-6 sm:p-8">
+        <h2 id="dash-attention" className="home-display mb-5 text-[22px] text-fg">{t('dashAttention', 'À faire')}</h2>
+        {attention.length === 0 ? (
+          <p className="text-[14px] text-fg-muted">{t('dashAllGood', 'Tout est prêt. Lance une landing page ou une pub vidéo quand tu veux.')}</p>
+        ) : (
+          <ul className="divide-y divide-line">{attention.map(renderItem)}</ul>
+        )}
+      </section>
 
       {/* each widget hides itself when it has nothing to show; whatever is left fills the row */}
       <div className="flex flex-col gap-6 xl:flex-row xl:items-start">

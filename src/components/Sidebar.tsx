@@ -12,7 +12,7 @@ import { SectionPicture } from './ui/SectionPicture';
 interface SidebarProps {
   activeTab: NavItem;
   setActiveTab: (tab: NavItem) => void;
-  /** Starts a new campaign. */
+  /** Opens the landing page studio. */
   onNewLanding: () => void;
   /** Called after a navigation click (used to close the mobile drawer). */
   onNavigate?: () => void;
@@ -97,7 +97,7 @@ export default function Sidebar({ activeTab, setActiveTab, onNewLanding, onNavig
             onNewLanding();
             onNavigate?.();
           }}
-          className="btn-dz-primary mb-3 w-full"
+          className="btn-dz-primary mb-3 w-full !rounded-full"
         >
           <Plus size={16} /> {t('navNewLanding', 'Nouvelle landing page')}
         </button>
