@@ -1,27 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Check } from 'lucide-react';
 import type { PlanId } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useDocumentMeta } from '../lib/useDocumentMeta';
-import { configApi } from '../services/api';
 import HomeHeader from './home/HomeHeader';
 import HomeHero from './home/HomeHero';
 import HomePricing from './home/HomePricing';
-import { AdsVisual, BrandVisual, LandingVisual, LibraryVisual, MetaVisual, VideoVisual } from './home/StudioVisuals';
+import { LandingVisual, LibraryVisual, VideoVisual } from './home/StudioVisuals';
 import { reveal, useReveal } from './home/useReveal';
 import '../i18n/home';
-
-/** Is Meta publishing set up on this site? The page only talks about it then. */
-function useMetaPublishing(): boolean {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    configApi.get().then((c) => alive && setEnabled(Boolean(c?.metaPublishing))).catch(() => {});
-    return () => { alive = false; };
-  }, []);
-  return enabled;
-}
 
 /** The home page is always dark: paint the area outside it too (overscroll), whatever the app's theme. */
 function useDarkCanvas() {
@@ -57,7 +45,6 @@ export default function LandingPage() {
   useDocumentMeta({ title: t('metaTitleHome', "EcomFlow AI — Marketing e-commerce propulsé par l'IA"), description: t('metaDescHome') });
   useDarkCanvas();
   useReveal();
-  const metaPublishing = useMetaPublishing();
 
   const choosePlan = (plan: PlanId) => {
     // remembered across sign-up: the app opens the checkout for this plan after the first login
@@ -66,14 +53,12 @@ export default function LandingPage() {
   };
 
   const steps = [
-    { title: t('homeStep1Title', 'Le brief'), text: t('homeStep1Text', 'Ajoute jusqu’à 8 photos. L’IA peut remplir le nom, les avantages, le public et le ton à partir de la première.') },
-    { title: t('homeStep2Title', 'La génération'), text: t('homeStep2Text', 'Landing page, script vidéo et publicités partent du même brief et de ton identité de marque. Chacun peut être relancé seul.') },
-    { title: t('homeStep3Title', 'La retouche'), text: t('homeStep3Text', 'Modifie les textes, réordonne les sections, change de format. Chaque génération est gardée comme une version.') },
+    { title: t('homeStep1Title', 'Le produit'), text: t('homeStep1Text', 'Ajoute les photos de ton produit et quelques infos : son nom, son prix, ses avantages et ton public.') },
+    { title: t('homeStep2Title', 'La génération'), text: t('homeStep2Text', 'L’IA écrit ta landing page section par section, et le script de ta pub vidéo scène par scène.') },
+    { title: t('homeStep3Title', 'Les images'), text: t('homeStep3Text', 'Pour chaque section, crée l’image ici en voyant son coût, ou copie le prompt pour la faire avec un autre outil.') },
     {
       title: t('homeStep4Title', 'L’export'),
-      text: metaPublishing
-        ? t('homeStep4TextMeta', 'Télécharge tout, ou crée la campagne sur Facebook et Instagram : elle reste en pause jusqu’à ta confirmation.')
-        : t('homeStep4Text', 'Télécharge la page HTML, la vidéo, les visuels et les textes publicitaires en CSV.'),
+      text: t('homeStep4Text', 'Télécharge la page HTML prête à publier et ta vidéo, puis mets-les en ligne où tu veux.'),
     },
   ];
   const studios: Studio[] = [
@@ -101,31 +86,17 @@ export default function LandingPage() {
       ],
       visual: <VideoVisual />,
     },
-    {
-      id: 'ads',
-      name: t('menuAds', 'Publicités'),
-      promise: t('homeAdsTitle', 'Des concepts publicitaires et leurs visuels'),
-      text: t('homeAdsText', 'Plusieurs angles, chacun avec son texte principal, son titre, sa description et son bouton d’action. Les visuels sont composés avec tes photos et tes couleurs.'),
-      points: [
-        t('homeAdsPoint1', 'Carré, portrait et story, avec zone de sécurité'),
-        t('homeAdsPoint2', 'Textes exportables en CSV'),
-        t('homeAdsPoint3', 'Visuels enregistrés dans ta bibliothèque'),
-      ],
-      visual: <AdsVisual />,
-    },
   ];
   const faqs = [
     { q: t('homeFaq1Q', 'Faut-il savoir designer ou écrire des pubs ?'), a: t('homeFaq1A', 'Non. Tu fournis les photos et quelques informations, puis tu relis et ajustes ce que l’IA propose.') },
     { q: t('homeFaq2Q', 'Quelle clé IA faut-il ?'), a: t('homeFaq2A', 'Une clé Gemini, créée gratuitement sur Google AI Studio. Elle est enregistrée chiffrée dans ton compte et n’est jamais réaffichée en entier.') },
     {
       q: t('homeFaq3Q', 'Mes publicités partent-elles toutes seules ?'),
-      a: metaPublishing
-        ? t('homeFaq3AMeta', 'Non. Tu télécharges tes contenus, ou tu crées la campagne depuis l’app : elle reste en pause tant que tu ne l’as pas activée.')
-        : t('homeFaq3A', 'Non. Tu télécharges tes contenus et tu les publies toi-même, quand tu veux.'),
+      a: t('homeFaq3A', 'Non. Tu télécharges tes contenus et tu les publies toi-même, quand tu veux.'),
     },
     { q: t('homeFaq4Q', 'Comment se passe le paiement ?'), a: t('homeFaq4A', 'Tu choisis un plan, tu paies avec l’un des moyens indiqués, puis tu envoies le justificatif depuis l’app. Un admin le vérifie et active ton accès.') },
-    { q: t('homeFaq5Q', 'Dans quelles langues ?'), a: t('homeFaq5A', 'L’interface et les contenus générés existent en arabe, en français et en anglais. Chaque campagne choisit sa propre langue.') },
-    { q: t('homeFaq6Q', 'Mes données sont-elles séparées de celles des autres ?'), a: t('homeFaq6A', 'Oui. Chaque campagne, fichier et connexion appartient à ton compte, et le serveur vérifie le propriétaire à chaque requête.') },
+    { q: t('homeFaq5Q', 'Dans quelles langues ?'), a: t('homeFaq5A', 'L’interface et les contenus générés existent en arabe, en français et en anglais. Chaque page et chaque script choisit sa propre langue.') },
+    { q: t('homeFaq6Q', 'Mes données sont-elles séparées de celles des autres ?'), a: t('homeFaq6A', 'Oui. Chaque page, fichier et réglage appartient à ton compte, et le serveur vérifie le propriétaire à chaque requête.') },
   ];
 
   return (
@@ -143,7 +114,7 @@ export default function LandingPage() {
                   {t('homeFlowTitle', 'Du brief à la mise en ligne, au même endroit.')}
                 </h2>
                 <p className="mt-6 max-w-md text-[16px] leading-relaxed text-fg-muted" {...reveal(80)}>
-                  {t('homeFlowIntro', 'Chaque campagne garde ses photos, son brief et toutes les versions de ses contenus : tu peux régénérer, retoucher ou revenir en arrière à tout moment.')}
+                  {t('homeFlowIntro', 'Tes landing pages et tes scripts vidéo restent dans ton historique : tu peux régénérer, retoucher ou y revenir à tout moment.')}
                 </p>
               </div>
             </div>
@@ -160,7 +131,7 @@ export default function LandingPage() {
 
         <section id="studios" tabIndex={-1} aria-labelledby="home-studios" className="scroll-mt-20 bg-surface outline-none">
           <div className="mx-auto max-w-[1440px] px-5 py-28 sm:px-8 lg:py-44">
-            <h2 id="home-studios" className={`${SECTION_TITLE} max-w-3xl`} {...reveal()}>{t('homeStudiosTitle', 'Trois studios, une seule marque.')}</h2>
+            <h2 id="home-studios" className={`${SECTION_TITLE} max-w-3xl`} {...reveal()}>{t('homeStudiosTitle', 'Deux studios pour vendre plus.')}</h2>
             <div className="mt-20 space-y-28 lg:mt-28 lg:space-y-40">
               {studios.map((s, i) => (
                 <article key={s.id} aria-labelledby={`studio-${s.id}`} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
@@ -177,45 +148,17 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section aria-label={t('homeBrandTitle', 'Ton identité de marque, appliquée partout')} className="mx-auto max-w-[1440px] px-5 py-28 sm:px-8 lg:py-36">
+        <section aria-labelledby="home-library" className="mx-auto max-w-[1440px] px-5 py-28 sm:px-8 lg:py-36">
           <div className="grid gap-5 lg:grid-cols-12">
-            <article className="overflow-hidden rounded-[var(--radius-lg)] bg-surface p-7 sm:p-10 lg:col-span-7" {...reveal()}>
-              <h3 className="text-[28px] font-light tracking-tight text-fg">{t('homeBrandTitle', 'Ton identité de marque, appliquée partout')}</h3>
-              <p className="mt-3 max-w-lg text-[16px] leading-relaxed text-fg-muted">
-                {t('homeBrandText', 'Logo, couleurs, polices, ton et public : l’IA les reprend dans chaque landing page, chaque script et chaque publicité.')}
-              </p>
-              <div className="mt-10"><BrandVisual /></div>
-            </article>
-            <article className="rounded-[var(--radius-lg)] bg-surface p-7 sm:p-10 lg:col-span-5" {...reveal(90)}>
-              <h3 className="text-[28px] font-light tracking-tight text-fg">{t('homeLibraryTitle', 'Tous tes fichiers au même endroit')}</h3>
+            <article className="rounded-[var(--radius-lg)] bg-surface p-7 sm:p-10 lg:col-span-12" {...reveal()}>
+              <h3 id="home-library" className="text-[28px] font-light tracking-tight text-fg">{t('homeLibraryTitle', 'Tous tes fichiers au même endroit')}</h3>
               <p className="mt-3 text-[16px] leading-relaxed text-fg-muted">
-                {t('homeLibraryText', 'Photos produit, logos et visuels générés, rangés par campagne et prêts à être réutilisés.')}
+                {t('homeLibraryText', 'Photos produit, logos et images créées par l’IA, rangés au même endroit et prêts à être réutilisés.')}
               </p>
               <div className="mt-9"><LibraryVisual /></div>
             </article>
           </div>
         </section>
-
-        {metaPublishing && (
-          <section aria-labelledby="home-meta" className="bg-surface">
-            <div className="mx-auto grid max-w-[1440px] items-center gap-12 px-5 py-28 sm:px-8 lg:grid-cols-2 lg:gap-20 lg:py-40">
-              <div>
-                <h2 id="home-meta" className={`${SECTION_TITLE} max-w-3xl`}>{t('homeMetaTitle', 'Publie sur Facebook et Instagram sans perdre la main')}</h2>
-                <p className="mt-6 max-w-[62ch] text-[16px] leading-relaxed text-fg-muted">
-                  {t('homeMetaText', 'Connecte ton compte publicitaire avec la connexion officielle de Meta. La campagne et ses annonces sont créées en pause : tu vérifies le budget, les dates et le ciblage avant d’activer.')}
-                </p>
-                <PointList
-                  points={[
-                    t('homeMetaPoint1', 'Connexion officielle, aucun mot de passe partagé'),
-                    t('homeMetaPoint2', 'Activation seulement après ta confirmation'),
-                    t('homeMetaPoint3', 'Statut et statistiques lus directement chez Meta'),
-                  ]}
-                />
-              </div>
-              <div className="rounded-[var(--radius-lg)] bg-bg p-6 sm:p-10"><MetaVisual /></div>
-            </div>
-          </section>
-        )}
 
         <HomePricing onChoose={choosePlan} titleClass={SECTION_TITLE} />
 
@@ -239,7 +182,7 @@ export default function LandingPage() {
               <div className="max-w-2xl">
                 <h2 id="home-final" className={SECTION_TITLE}>{t('homeFinalTitle', 'Ton prochain produit mérite une vraie campagne.')}</h2>
                 <p className="mt-5 text-[16px] leading-relaxed text-fg-muted">
-                  {t('homeFinalText', 'Crée ton compte, ajoute ta clé Gemini et lance ta première campagne à partir d’une photo.')}
+                  {t('homeFinalText', 'Crée ton compte, ajoute ta clé Gemini et lance ta première landing page à partir d’une photo.')}
                 </p>
               </div>
               <Link to="/register" className="pill-cta shrink-0 self-start lg:self-auto">

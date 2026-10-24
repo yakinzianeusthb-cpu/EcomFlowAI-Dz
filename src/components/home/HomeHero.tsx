@@ -62,7 +62,7 @@ export default function HomeHero() {
           </ul>
           <div className="hero-rise" style={rise(480)}>
             <p className="max-w-[23rem] text-[16px] leading-relaxed text-fg-muted lg:hidden xl:block">
-              {t('homeHeroSide', 'Pensé pour la vente en paiement à la livraison en Algérie. Chaque campagne garde ses photos, son brief et toutes ses versions, et rien n’est publié sans ton accord.')}
+              {t('homeHeroSide', 'Pensé pour la vente en paiement à la livraison en Algérie. Tes pages et tes vidéos restent dans ton historique, et rien n’est publié sans ton accord.')}
             </p>
             <Link to="/register" className="pill-cta mt-6 hidden lg:inline-flex">
               {t('homeCtaStart', 'Créer mon compte')}

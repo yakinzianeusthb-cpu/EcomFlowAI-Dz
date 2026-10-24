@@ -9,7 +9,6 @@ import { hashPassword, verifyPassword } from "../lib/password";
 import { sendOtpEmail, sendContactEmail } from "../lib/email";
 import { isPlanActive } from "../lib/access";
 import { isEmailAddress } from "../lib/emailAddress";
-import { metaConfig } from "../lib/meta";
 import { issueOtp, verifyOtpCode, OtpRateLimitedError } from "../lib/otp";
 import {
   clearSessionCookie,
@@ -500,20 +499,17 @@ router.post("/api/auth/logout", (req, res) => {
 });
 
 // GET /api/config — public config (admin payment contacts), DB-backed with env fallback.
-// metaPublishing says whether this site has a Meta app configured (the home page only mentions publishing then).
 router.get("/api/config", publicCache(), async (_req, res) => {
-  const metaPublishing = metaConfig().missing.length === 0;
   try {
     const cfg = await prisma.platformConfig.findUnique({ where: { id: 'singleton' } });
     res.json({
       adminEmail: cfg?.adminEmail || ADMIN_EMAIL,
       adminTelegram: cfg?.adminTelegram || ADMIN_TELEGRAM,
       whatsappNumber: cfg?.whatsappNumber || "",
-      metaPublishing,
     });
   } catch (err) {
     console.error("Get config error:", err);
-    res.json({ adminEmail: ADMIN_EMAIL, adminTelegram: ADMIN_TELEGRAM, whatsappNumber: "", metaPublishing });
+    res.json({ adminEmail: ADMIN_EMAIL, adminTelegram: ADMIN_TELEGRAM, whatsappNumber: "" });
   }
 });
 

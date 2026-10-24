@@ -73,12 +73,22 @@ const PLAN_NOTE: Record<PlanId, string> = {
   custom: 'personnalisé',
 };
 
-/** Formats an amount with the configured currency, e.g. "1 500 DA" or "$ 1 500". */
+const NBSP = '\u00a0';
+/** Left-to-right isolate (LRI … PDI): inside Arabic text the price keeps its own order. */
+const LRI = '\u2066';
+const PDI = '\u2069';
+
+/**
+ * Formats an amount with the configured currency, e.g. "1 500 DA" or "$ 1 500". The groups and the symbol are joined
+ * by no-break spaces and the whole price is isolated left to right: in a right-to-left page the browser would
+ * otherwise show each group as its own piece, in reverse ("DA 500 1"), and could break the price across two lines.
+ */
 export function formatPrice(amount: number, pricing: PricingConfig): string {
-  const grouped = String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  return pricing.currencyPosition === 'before'
-    ? `${pricing.currencySymbol} ${grouped}`
-    : `${grouped} ${pricing.currencySymbol}`;
+  const grouped = String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+  const text = pricing.currencyPosition === 'before'
+    ? `${pricing.currencySymbol}${NBSP}${grouped}`
+    : `${grouped}${NBSP}${pricing.currencySymbol}`;
+  return `${LRI}${text}${PDI}`;
 }
 
 /** Turns a French display text into the visitor's language (the `tf` of useLanguage). */

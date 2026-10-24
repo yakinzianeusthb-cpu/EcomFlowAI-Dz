@@ -26,11 +26,6 @@ export const coreTranslations: TranslationDictionary = {
   },
   
   // Tabs Title in Topbar
-  tabImages: {
-    fr: "Studio Photos Produit",
-    ar: "إستوديو صور المنتجات والتصوير",
-    en: "Product Photo Studio",
-  },
   tabTrends: {
     fr: "Détecteur de Produits Gagnants (Winning Products)",
     ar: "كاشف المنتجات الرابحة واتجاهات السوق",
@@ -247,11 +242,6 @@ export const coreTranslations: TranslationDictionary = {
     fr: "Crée des tunnels de vente et la copie de ta landing page.",
     ar: "أنشئ مسارات البيع ونصوص صفحة الهبوط.",
     en: "Build sales funnels and landing page copy.",
-  },
-  toolImagesBlurb: {
-    fr: "Ton vrai produit mis en scène : lifestyle, fond épuré, premium ou créatif.",
-    ar: "منتجك الحقيقي في مشهد جديد: واقعي، بسيط، فاخر أو إبداعي.",
-    en: "Your real product staged: lifestyle, clean, premium or creative.",
   },
   toolAssemblerBlurb: {
     fr: "Assemble visuellement ta landing page, section par section.",
@@ -821,11 +811,6 @@ export const coreTranslations: TranslationDictionary = {
     ar: "التحليل بالذكاء الاصطناعي",
     en: "AI Analysis",
   },
-  lpKpiCampaigns: {
-    fr: "Campagnes",
-    ar: "الحملات",
-    en: "Campaigns",
-  },
   freeTrialAnnouncementTitle: {
     fr: "🎁 Offre Spéciale : 7 Jours d'Essai Gratuit !",
     ar: "🎁 عرض خاص: 7 أيام تجربة مجانية!",
@@ -856,20 +841,10 @@ export const coreTranslations: TranslationDictionary = {
     ar: "فتح في YouTube",
     en: "Open in YouTube",
   },
-  menuProjects: {
-    fr: "Campagnes",
-    ar: "الحملات",
-    en: "Campaigns",
-  },
   menuAds: {
     fr: "Publicités",
     ar: "الإعلانات",
     en: "Ads",
-  },
-  menuBrand: {
-    fr: "Identité de marque",
-    ar: "هوية العلامة",
-    en: "Brand kit",
   },
   menuAssets: {
     fr: "Fichiers",
@@ -896,10 +871,10 @@ export const coreTranslations: TranslationDictionary = {
     ar: "الأدوات",
     en: "Tools",
   },
-  navNewCampaign: {
-    fr: "Nouvelle campagne",
-    ar: "حملة جديدة",
-    en: "New campaign",
+  navNewLanding: {
+    fr: "Nouvelle landing page",
+    ar: "صفحة هبوط جديدة",
+    en: "New landing page",
   },
   dashAttNoPlan: {
     fr: "Aucun abonnement actif : la génération IA est verrouillée.",
@@ -926,55 +901,15 @@ export const coreTranslations: TranslationDictionary = {
     ar: "أضف مفتاح Gemini الخاص بك: بدونه لا يستطيع الذكاء الاصطناعي إنشاء أي شيء.",
     en: "Add your Gemini key: without it, the AI can’t generate anything.",
   },
-  dashAttMissing: {
-    fr: "« {name} » n’a pas encore : {missing}.",
-    ar: "ما زال ينقص حملة «{name}»: {missing}.",
-    en: "“{name}” is still missing: {missing}.",
-  },
-  dashAttBrand: {
-    fr: "Ajoute ton logo et tes couleurs pour que tout ce que l’IA crée te ressemble.",
-    ar: "أضف شعارك وألوانك ليشبه علامتك كل ما يُنشئه الذكاء الاصطناعي.",
-    en: "Add your logo and colors so everything the AI makes looks like your brand.",
-  },
-  dashAttMeta: {
-    fr: "Connecte Meta pour publier tes campagnes depuis l’app.",
-    ar: "اربط Meta لنشر حملاتك من التطبيق مباشرة.",
-    en: "Connect Meta to publish your campaigns from the app.",
-  },
   dashHeroTitle: {
     fr: "Que veux-tu vendre aujourd’hui ?",
     ar: "ماذا تريد أن تبيع اليوم؟",
     en: "What do you want to sell today?",
   },
   dashHeroText: {
-    fr: "Dépose les photos de ton produit. L’IA prépare la landing page, la vidéo et les publicités, toutes avec la même marque et le même message.",
-    ar: "ضع صور منتجك، وسيُحضّر الذكاء الاصطناعي صفحة الهبوط والفيديو والإعلانات، كلها بنفس العلامة ونفس الرسالة.",
-    en: "Drop your product photos. The AI prepares the landing page, the video and the ads, all with the same brand and the same message.",
-  },
-  dashStartWithout: {
-    fr: "Commencer sans photo",
-    ar: "البدء بدون صورة",
-    en: "Start without a photo",
-  },
-  dashDropPhotos: {
-    fr: "Dépose les photos du produit",
-    ar: "ضع صور المنتج هنا",
-    en: "Drop the product photos",
-  },
-  dashRecent: {
-    fr: "Campagnes récentes",
-    ar: "الحملات الأخيرة",
-    en: "Recent campaigns",
-  },
-  dashNoCampaign: {
-    fr: "Pas encore de campagne.",
-    ar: "لا توجد حملة بعد.",
-    en: "No campaign yet.",
-  },
-  dashNoCampaignText: {
-    fr: "Ta première campagne apparaîtra ici avec sa landing page, sa vidéo et ses publicités.",
-    ar: "ستظهر حملتك الأولى هنا مع صفحة الهبوط والفيديو والإعلانات الخاصة بها.",
-    en: "Your first campaign will show up here with its landing page, video and ads.",
+    fr: "Crée une landing page avec les images de chaque section, ou une pub vidéo prête à publier, à partir des photos de ton produit.",
+    ar: "أنشئ صفحة هبوط مع صور كل قسم، أو إعلان فيديو جاهزاً للنشر، انطلاقاً من صور منتجك.",
+    en: "Create a landing page with an image for each section, or a video ad ready to publish, from your product photos.",
   },
   dashAttention: {
     fr: "À faire",
@@ -982,9 +917,9 @@ export const coreTranslations: TranslationDictionary = {
     en: "To do",
   },
   dashAllGood: {
-    fr: "Tout est prêt. Crée une nouvelle campagne quand tu veux.",
-    ar: "كل شيء جاهز. أنشئ حملة جديدة متى شئت.",
-    en: "Everything is set up. Create a new campaign whenever you like.",
+    fr: "Tout est prêt. Lance une landing page ou une pub vidéo quand tu veux.",
+    ar: "كل شيء جاهز. ابدأ صفحة هبوط أو إعلان فيديو متى شئت.",
+    en: "Everything is set up. Start a landing page or a video ad whenever you like.",
   },
   dashActivity: {
     fr: "Ton activité",
@@ -995,6 +930,21 @@ export const coreTranslations: TranslationDictionary = {
     fr: "Accès rapide",
     ar: "وصول سريع",
     en: "Quick access",
+  },
+  dashNewLanding: {
+    fr: "Créer une landing page",
+    ar: "إنشاء صفحة هبوط",
+    en: "Create a landing page",
+  },
+  dashNewVideo: {
+    fr: "Créer une pub vidéo",
+    ar: "إنشاء إعلان فيديو",
+    en: "Create a video ad",
+  },
+  dashAssetsBlurb: {
+    fr: "Tes photos produit et les images créées par l’IA, au même endroit.",
+    ar: "صور منتجاتك والصور التي أنشأها الذكاء الاصطناعي، في مكان واحد.",
+    en: "Your product photos and the images the AI made, in one place.",
   },
 };
 

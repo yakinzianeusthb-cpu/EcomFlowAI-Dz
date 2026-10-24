@@ -13,7 +13,7 @@ interface SidebarProps {
   activeTab: NavItem;
   setActiveTab: (tab: NavItem) => void;
   /** Starts a new campaign. */
-  onNewCampaign: () => void;
+  onNewLanding: () => void;
   /** Called after a navigation click (used to close the mobile drawer). */
   onNavigate?: () => void;
 }
@@ -66,7 +66,7 @@ function PlanStatus() {
   );
 }
 
-export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavigate }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, onNewLanding, onNavigate }: SidebarProps) {
   const { t } = useLanguage();
   const toast = useToast();
   const { user, logout } = useAuth();
@@ -94,12 +94,12 @@ export default function Sidebar({ activeTab, setActiveTab, onNewCampaign, onNavi
         <button
           type="button"
           onClick={() => {
-            onNewCampaign();
+            onNewLanding();
             onNavigate?.();
           }}
           className="btn-dz-primary mb-3 w-full"
         >
-          <Plus size={16} /> {t('navNewCampaign', 'Nouvelle campagne')}
+          <Plus size={16} /> {t('navNewLanding', 'Nouvelle landing page')}
         </button>
 
         {NAV_GROUPS.map((group) => (

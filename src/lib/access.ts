@@ -11,10 +11,8 @@
 export const PAID_TOOLS = new Set([
   'video',
   'landing',
-  'ads',
   'assembler',
   'trends',
-  'images',
   'darja',
   'analyzer',
   'scout',

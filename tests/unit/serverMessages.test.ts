@@ -3,10 +3,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { languageFromCookies, localizeBody, SERVER_MESSAGES } from '../../src/i18n/serverMessages';
 import { localizeResponses } from '../../src/lib/localizeResponses';
-import { PROJECT_ERRORS } from '../../src/lib/projectRules';
 import { ASSET_ERRORS } from '../../src/lib/assetRules';
-import { BRAND_ERRORS } from '../../src/lib/brandRules';
-import { META_ERRORS } from '../../src/lib/meta';
 import { SAVED_WORK_ERRORS } from '../../src/lib/savedWork';
 
 describe('languageFromCookies', () => {
@@ -78,7 +75,7 @@ describe('SERVER_MESSAGES', () => {
     const root = path.resolve(__dirname, '../..');
     const files = ['server.ts', 'src/routes/auth.ts', 'src/routes/catalog.ts', 'src/routes/dashboard.ts', 'src/routes/history.ts',
       'src/routes/sessions.ts', 'src/lib/admin.ts', 'src/lib/settingsWrite.ts', 'src/lib/session.ts', 'src/lib/otp.ts', 'src/lib/rateLimit.ts', 'src/lib/planGuard.ts',
-      'src/routes/projects.ts', 'src/routes/assets.ts', 'src/routes/brand.ts', 'src/routes/meta.ts'];
+      'src/routes/assets.ts', 'src/routes/preferences.ts'];
     const PATTERNS = [
       /\b(?:error|message):\s*(["'])((?:\\.|(?!\1).)+)\1/g,       // { error: "..." }
       /\b[A-Z_]*(?:MSG|MESSAGE)\w*\s*=\s*(["'])((?:\\.|(?!\1).)+)\1/g, // const NO_KEY_MSG = "..."
@@ -101,8 +98,8 @@ describe('SERVER_MESSAGES', () => {
     expect([...new Set(missing)]).toEqual([]);
   });
 
-  it('covers every validation message of projects, files and the brand kit', () => {
-    for (const message of [...Object.values(PROJECT_ERRORS), ...Object.values(ASSET_ERRORS), ...Object.values(BRAND_ERRORS), ...Object.values(META_ERRORS), ...Object.values(SAVED_WORK_ERRORS)]) {
+  it('covers every validation message of files and saved work', () => {
+    for (const message of [...Object.values(ASSET_ERRORS), ...Object.values(SAVED_WORK_ERRORS)]) {
       expect(SERVER_MESSAGES[message], message).toBeDefined();
     }
   });

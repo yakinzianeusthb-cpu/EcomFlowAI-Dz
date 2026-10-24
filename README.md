@@ -1,11 +1,9 @@
 # EcomFlow AI
 
-An AI campaign workspace for cash-on-delivery (COD) online sellers in Algeria. A seller creates a **campaign** from a
-product brief and photos; from that one brief the AI writes the landing page, the video-ad script and a pack of ad
-concepts, all in the seller's brand (logo, colours, tone). Every output is saved as a version, can be edited and
-regenerated, and is exported (HTML page, video file, ad visuals, CSV of the ad copy) or, when the site has a Meta app,
-created as a paused Facebook/Instagram campaign. Around it: three studios (landing pages, video ads, ads), a brand kit,
-a file library, a landing-page builder and a COD margin calculator. The interface is available in Arabic (default,
+AI tools for cash-on-delivery (COD) online sellers in Algeria. From a product's name and photos, two studios write and
+build what a seller needs to sell it: a **landing page** (a self-contained HTML file with a COD order form, with AI
+images for each section) and a **video ad** (script, then a real video file made in the browser). Around them: a file
+library, a landing-page assembler and a COD margin calculator. The interface is available in Arabic (default,
 right-to-left), French and English.
 
 ## Stack
@@ -48,12 +46,11 @@ are printed in the server console. To make someone an administrator:
 
 ```
 server.ts, scripts/vercel-entry.ts   Express app, and the Vercel entry that reuses it (outside api/: Vercel would treat that folder as its own)
-src/routes/                API routes (auth, admin, settings, projects, assets, brand, meta, history...)
+src/routes/                API routes (auth, admin, settings, assets, history, preferences...)
 src/lib/                   Server and shared logic: sessions, plan rules, OTP, crypto, e-mail, rate limiting,
-                           campaign/asset/brand validation (projectRules, assetRules, brandRules), Meta (meta.ts),
-                           ad packs and ad visuals (adPack, adCreative, adCreativeRender, adExport)
-src/components/projects/   The campaign workspace: list, new campaign, brief, landing / video / ads / publish tabs
-src/components/ads/, brand/, assets/, meta/   Ads studio, brand kit, file library, Meta connection
+                           file validation (assetRules), landing pages (landing*), video (video*), pricing
+src/components/assets/     The file library
+src/components/landing/    Parts of the landing page publisher (templates, section images, reviews...)
 src/components/home/       The public home page: the 3D hero (see below) and illustrations drawn in code, not screenshots
 src/pages/, src/components/  Other screens; one file per tool (VideoAdGenerator, LandingPageGenerator...)
 src/i18n/                  Translations, one module per area (see below)
@@ -83,93 +80,19 @@ crystal cube, seen through a fluted glass panel, lit red from the corners.
 - **Figures** on the first screen are facts about the product (58 wilayas, 4 video formats, 3 languages), not
   invented usage numbers.
 
-## Campaigns, brand kit and files
+## Files
 
-- **Data:** `Project` (the brief), `Asset` (an image, its bytes stored in Postgres), `ProjectOutput` (one row per saved
-  version of a landing page, video script, ad pack or Meta campaign; the last 20 versions of each kind are kept),
-  `BrandKit` (one per account) and `MetaConnection` (one per account, token encrypted).
-- **Ownership:** every query is filtered by the signed-in account; ids sent by the browser are only used inside that
-  filter, so one account can never read, change or delete another's campaigns, files or Meta campaigns.
-- **Files:** JPG, PNG and WebP only, checked from the bytes rather than the name; 3 MB per image, 80 per campaign and
-  250 MB per account (25 MB without an active plan). Files are served with `nosniff` and a sandboxing content-security policy.
-- **Storage limits:** saved outputs count against 100 MB per account (10 MB without a plan). The older tools keep at
-  most 100 landing-page and 100 chat sessions per account (1 MB and 2 MB each) and the newest 50 history entries. Each
-  quota check runs under a per-account database lock, so requests sent at the same time cannot overshoot it.
-- **Deleting a campaign** first pauses its Meta ads. If the app cannot reach Meta, it refuses and says so, and the
-  seller can still choose "delete anyway" (the ad then keeps running until paused in Ads Manager).
+- **Data:** `Asset` (an image, its bytes stored in Postgres), one row per file, filtered by the signed-in account; ids
+  sent by the browser are only used inside that filter, so one account can never read, change or delete another's files.
+- **Files:** JPG, PNG and WebP only, checked from the bytes rather than the name; 3 MB per image and 250 MB per account
+  (25 MB without an active plan). Files are served with `nosniff` and a sandboxing content-security policy.
+- **Storage limits:** the older tools keep at most 100 landing-page and 100 chat sessions per account (1 MB and 2 MB
+  each) and the newest 50 history entries. Each quota check runs under a per-account database lock, so requests sent at
+  the same time cannot overshoot it.
 - **Videos** made in the browser are downloaded, not stored on the server.
-- The ad visuals (square 1080×1080, portrait 1080×1350, story 1080×1920 with a protected safe zone) are drawn in the
-  browser from the campaign photos, the brand colours and the concept text, so they cost no AI quota.
-
-## Meta publishing
-
-Optional. Without `META_APP_ID`, `META_APP_SECRET` and `META_REDIRECT_URI` (or `SITE_URL`), the publish tab says that
-direct publishing is not set up and explains how to publish by hand; the home page does not mention it.
-
-How it works:
-
-1. **Connect:** the seller is sent to Meta's own login with a signed, ten-minute `state` tied to their account and to a
-   nonce cookie. The callback exchanges the code on the server for a long-lived token (about 60 days), stores it
-   encrypted, and never sends it to the browser. Every Graph call carries an `appsecret_proof`.
-2. **Create:** the seller picks one of the ad accounts and Pages Meta returns, an objective (traffic, sales with a pixel,
-   or awareness), a daily budget in the account's currency, dates, countries and ages. The image, campaign, ad set,
-   creative and ad are all created **PAUSED** (budget sent in minor units, no special ad category, Advantage+ audience
-   set explicitly).
-3. **Activate:** only after the seller has seen the final settings and ticked a confirmation; the server also refuses
-   activation without `confirm: true`. The status shown is the ad's own status from Meta (in review, active, rejected,
-   paused), and the results shown are Meta's insights.
-4. **Disconnect** revokes the app's permissions at Meta and deletes the token.
-
-To go live with real sellers, Meta requires, on the app: Business Verification, App Review of the requested
-permissions (`ads_management`, `ads_read`, `business_management`, `pages_show_list`, `pages_read_engagement`,
-`pages_manage_ads`) with **Advanced Access**, and the redirect URI `{SITE_URL}/api/meta/callback` in the Facebook Login
-settings. Until then only people with a role on the app can connect. The integration was tested end to end against a
-local stand-in for the Graph API (`META_GRAPH_BASE_URL` / `META_DIALOG_BASE_URL`, ignored in production), never against
-Meta itself: watch the first real connection and campaign.
-
-## TikTok, Snapchat and Google packs
-
-The campaign's **Publier** tab has a platform switch: Facebook · Instagram (the Meta publishing above), TikTok,
-Snapchat and Google · YouTube. The three others are **ready-to-upload packs**, not direct publishing: the seller
-downloads a zip and imports it in the platform's own ads manager (no developer app, no review, works for everyone).
-
-- **Copy:** one AI call (**Préparer les packs**) adapts the concepts picked on that screen (by default those saved as
-  chosen in the Ads tab) to all three platforms at once, so it costs one request of the seller's Gemini quota. It is
-  saved inside the ads output (`platforms` in `AdsOutput`), so it follows the ads' versions; a new set of concepts
-  makes it stale and the tab asks to prepare it again. If the ads change while the AI is writing (regenerated, edited),
-  nothing is saved and the seller is asked to prepare again, so an older pack never overwrites newer ads. Edits stay a
-  draft until **Enregistrer les modifications** (kept for the browser session, so leaving the tab does not lose them);
-  the sales page address is kept across rewrites. Each save is a new ads version, and **Nouveaux concepts** starts
-  without packs (the sales page address has to be typed again).
-- **Limits** (`src/lib/adPlatforms.ts`, from each platform's documentation, October 2026): TikTok caption 100
-  characters (TikTok shows that much before "See more"; no hashtags, @ or links on non-Spark ads), display name 20;
-  Snapchat headline 34, brand name 25 (the app uses one 20-character name for all three); Google search headlines 30
-  (3 to 15), descriptions 90 (2 to 4), display paths 15, display long headline 90, business name 25, YouTube (Demand
-  Gen) headline 40 and call to action 10. The AI's answer is cleaned before anyone sees it: emoji, hashtags and "!" in
-  Google headlines removed, texts cut at a word boundary, a Google headline that is too long dropped rather than cut,
-  missing texts rebuilt from the concepts. A pack cannot be downloaded while a text is over its limit or empty, while a
-  hand edit brings back what the platform refuses (hashtags, @ or links on TikTok; emoji or line breaks in Google
-  texts), while Google has fewer than 3 headlines or 2 descriptions, a repeated one, a "!" in a headline or a malformed
-  display path, or (Google) without an https sales page. The Google Ads Editor file only escapes real formula starts,
-  so a headline like "-30 %" keeps its sign.
-- **Pictures**, drawn in the browser from the campaign photos and brand kit, like the Meta visuals:
-  - TikTok: carousel images, vertical 720 × 1280 at about 100 KB (TikTok's carousel specs), with a safe zone that keeps
-    the text out of what TikTok covers (`TIKTOK_SAFE_ZONE`: 10 % top, 30 % bottom, 13 % each side). TikTok's feed
-    works best with a 9:16 video: the pack sends the seller to the Video tab, and warns when the browser records WebM,
-    which TikTok and Snapchat do not accept (they take MP4).
-  - Snapchat: one full-screen 1080 × 1920 image per concept; the Stories safe zone (269 px top, 384 px bottom) already
-    clears what Snapchat covers.
-  - Google: clean images, landscape 1200 × 628 and square 1200 × 1200 per product photo, with **no text, logo or button
-    on them** (Google's guidance for display images): the whole product, over a blurred copy of itself when the shapes
-    differ (`plainImageLayout`).
-- **Zips** (`src/lib/adPlatformExport.ts`, made with `fflate`): the texts as CSV (UTF-8 with a byte-order mark), the
-  pictures, and `guide.txt` with the import steps in the interface language. Google's zip has
-  `google-ads-editor-search.csv`, one responsive search ad with the column names Google Ads Editor recognises
-  (`Campaign`, `Ad group`, `Headline 1`…, `Description 1`…, `Path 1`, `Path 2`, `Final URL`) for **Account > Import > From
-  file**, and `google-display-youtube-texts.csv` for the display and YouTube ads, which are set up by hand.
-- The packs were checked in a real browser (headless Chrome) against the local server: preparing, the limits blocking
-  the download, editing and saving, the three zips and their contents, and the Arabic, right-to-left page. They were
-  not uploaded to TikTok, Snapchat or Google: check the first real import, since the platforms change their rules.
+- The campaign workspace, ads studio, brand kit, Meta publishing and the TikTok / Snapchat / Google packs were removed
+  (October 2026). Their tables (`projects`, `project_outputs`, `brand_kits`, `meta_connections`) stay in the schema so
+  no data is dropped; nothing reads them any more.
 
 ## Plans and access
 
@@ -186,7 +109,7 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
   form never changes the password of a verified or Google account.
 - The user object the API returns never includes the password hash or the payment proof (only the admin pages show
   the proof, through their own routes).
-- Gemini keys and ad-platform tokens are encrypted at rest (`TOKEN_ENCRYPTION_KEY`, falling back to `SESSION_SECRET`).
+- Gemini and image-service keys are encrypted at rest (`TOKEN_ENCRYPTION_KEY`, falling back to `SESSION_SECRET`).
 - **Browser security:** the built `index.html` carries a content security policy (scripts only from this site, or one
   of the inline scripts allowed by hash, including the order-form script of generated landing pages, which runs in the
   live preview). Security headers (`nosniff`, `X-Frame-Options`, HSTS, `Permissions-Policy`) are set by Express and,
@@ -197,6 +120,8 @@ which sets the plan status and its expiry date (no expiry date means a lifetime 
   code and contact limits are counted in Postgres (`rate_limit_hits`, keys stored as hashes, `src/lib/rateLimitStore.ts`)
   so every server instance shares them; if that table is missing they fall back to counting in memory. The other limits
   count in memory, per instance.
+- **Plan prices** (set in `/admin`) are written as one left-to-right unit (`formatPrice` in `src/lib/pricing.ts` wraps
+  them in Unicode isolates and groups digits with no-break spaces), so Arabic text never reverses "1 500 DA".
 - **Preferences** (`PUT /api/preferences`) are checked field by field (`src/lib/preferencesRules.ts`): a value of the
   wrong shape or size is refused with a 400 or 413 instead of reaching the database.
 
@@ -238,11 +163,6 @@ Every section of the app has its own picture, a 3D emoji from Microsoft's Fluent
 phone top bar (`src/lib/sections.ts`). They are 128 px WebP files (about 3 KB each), so they look the same on every
 phone and computer.
 
-**Studio Photos Produit** (Studios menu, `src/components/ProductImageGen.tsx`): with the seller's product photo, the
-image model stages that exact product in a style (lifestyle, minimalist, premium, creative) and format
-(`productPhotoPrompt` in `src/lib/productPhotoPrompt.ts`: same shape, colours, logo and printed text, no added words or
-prices). Without a photo it imagines a product from its name, and the page says so. It needs a key with billing.
-
 What the two main tools produce:
 
 - **Video ads:** the AI writes the script, then **Créer la vidéo** turns it into a real video file in the browser (MP4,
@@ -272,7 +192,14 @@ What the two main tools produce:
     garble small Arabic). Each poster can be redone or removed, and once they are all there they download as one long
     JPG for a shop's product description. The publisher warns when the product photos are under 700 px wide, since
     the canvas shows them large.
-  - **Impact**, **Élégance**, **Nuit**: classic web pages (text beside pictures), light, ivory or dark.
+  - **Impact**, **Élégance**, **Nuit**: classic web pages (text beside pictures), light, ivory or dark; with a billed
+    key, each shown section can get an AI picture from the product photo (`sectionImagePrompt`).
+  - **Section by section** (`src/components/landing/SectionImages.tsx`, which replaced the old Studio Photos Produit):
+    every section tile has **Générer** (this section only, its cost beside it) and **Copier le prompt** (the exact words
+    the AI would get, to make the image in ChatGPT, Midjourney or another tool with the product photo attached), plus
+    Refaire and Retirer once an image is there. The cost line follows the image service chosen in Paramètres: about
+    $0.04 an image with Gemini (`src/lib/imageCost.ts`, Google's price at the default 1K size), "at your service's rate"
+    for OpenAI and FLUX, whose prices the app does not know.
   - Around any template, the seller sets the delivery price (by wilaya, free or fixed), ticks the promises the page
     makes (58 wilayas, check before paying, guarantee; cash on delivery is always there) and can add real customer
     reviews, as text or screenshots. An order opens the seller's WhatsApp with every detail and the total filled in,
@@ -306,15 +233,13 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (704 in 61 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+`npm test` runs the unit tests (579 in 52 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
 delivery, settings validation, pricing, translations, AI error handling, the video timeline, music and AI video jobs, the
 landing page HTML, its templates, colours and order totals,
-campaign / file / brand-kit validation, ad packs, ad layouts and CSV export, the TikTok / Snapchat / Google packs (limits,
-clean-up of the AI's answer, spreadsheets, zip, safe zones), the Meta payloads, budgets and login state,
-the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
+file validation, image costs, the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
 components, the Express routes and `server.ts` are **not** covered by unit tests; they were checked in a real browser
-against a real database during development (campaign workflow, data ownership between two accounts, the Meta flow
-against a stand-in Graph API, accessibility with axe on 80 screen variants), and that browser harness is not part of
+against a real database during development (data ownership between two accounts, accessibility with axe on 80 screen
+variants), and that browser harness is not part of
 this repository.
 
 ## Deployment
@@ -326,10 +251,10 @@ development secret. `SITE_URL` should be the public address of the site so link 
 absolute image URL.
 
 **Database update for this version:** run `npx prisma db push` once against the production database. It only adds
-tables (`projects`, `assets`, `project_outputs`, `brand_kits`, `meta_connections`) and five columns to `api_settings`
+tables (`assets`, plus the unused `projects`, `project_outputs`, `brand_kits` and `meta_connections`) and five columns to `api_settings`
 (`image_provider`, defaulting to `gemini`, and the empty key columns of the other image services), and leaves existing
 data alone; until it runs, the settings page cannot load. Read
-the plan Prisma prints before confirming, and stop if it mentions dropping or resetting anything. Campaign images are
+the plan Prisma prints before confirming, and stop if it mentions dropping or resetting anything. Library images are
 stored in Postgres (up to 250 MB per account), so keep an eye on the database size on small plans.
 
 The same `npx prisma db push` also adds the `rate_limit_hits` table (shared sign-in rate limits). Nothing else depends
@@ -349,11 +274,8 @@ on it: until it exists, those limits count in memory as before and the server lo
 - The landing page prompt asks the AI for testimonials, guarantees and urgency lines. The page leaves those out or
   replaces them (see "Landing pages" above), but other AI text (paragraphs, benefits) can still invent details such as
   delivery times or stock; only the seller can tell, so the publisher asks them to check.
-- Meta publishing has not been run against the real Graph API (no Meta app or credentials during development), and it
-  needs Meta's App Review before sellers outside the app's own team can connect (see "Meta publishing").
 - The home page illustrations are drawings of the product, not screenshots. The old logo, hero and showcase pictures
   (`src/images/`) are no longer used and were removed; they remain in the git history.
 - The hidden tools Produits Gagnants and Calendrier are static previews: they now say so on screen (their figures are
-  examples). Studio Photos no longer shows a random stock photo when its AI image fails, and the catalog no longer
-  fills itself with sample products.
+  examples). The catalog no longer fills itself with sample products.
 - The home page is a client-rendered app: first paint depends on the JavaScript loading.

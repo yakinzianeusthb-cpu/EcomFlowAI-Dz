@@ -16,20 +16,16 @@ import { useLanguage } from './context/LanguageContext';
 import { useAuth, type PlanId } from './context/AuthContext';
 import { cn } from './lib/utils';
 import { isToolPaid, canUsePaidTools } from './lib/access';
-import { TAB_PATHS, TAB_TITLES, projectPath, tabFromPath, type NavItem } from './lib/nav';
+import { TAB_PATHS, TAB_TITLES, tabFromPath, type NavItem } from './lib/nav';
 import { useDocumentMeta } from './lib/useDocumentMeta';
 
 // Lazy load tools: each one is its own chunk.
 const DashboardHome = lazy(() => import('./components/DashboardHome'));
-const ProjectsHub = lazy(() => import('./components/projects/ProjectsHub'));
-const AdsStudioPage = lazy(() => import('./components/ads/AdsStudioPage'));
-const BrandKitPage = lazy(() => import('./components/brand/BrandKitPage'));
 const AssetLibrary = lazy(() => import('./components/assets/AssetLibrary'));
 const VideoAdGenerator = lazy(() => import('./components/VideoAdGenerator'));
 const LandingPageGenerator = lazy(() => import('./components/LandingPageGenerator'));
 const LandingAssembler = lazy(() => import('./components/LandingAssembler'));
 const MarketTrends = lazy(() => import('./components/MarketTrends'));
-const ProductImageGen = lazy(() => import('./components/ProductImageGen'));
 const MarginCalculator = lazy(() => import('./components/MarginCalculator'));
 const Settings = lazy(() => import('./components/Settings'));
 const DarjaAdGenerator = lazy(() => import('./components/DarjaAdGenerator'));
@@ -44,7 +40,6 @@ const PlanCheckout = lazy(() => import('./components/PlanCheckout'));
 
 // Pages people open most; fetched quietly while the dashboard is being read so the first click is instant.
 const WARM_UP_TOOLS = [
-  () => import('./components/projects/ProjectsHub'),
   () => import('./components/VideoAdGenerator'),
   () => import('./components/LandingPageGenerator'),
 ];
@@ -52,9 +47,9 @@ const WARM_UP_TOOLS = [
 const WARM_UP_DELAY_MS = 3500;
 const DRAWER_ANIMATION_MS = 200;
 
-// Screens that show data other screens change (campaigns, files, brand kit): mounted fresh on each visit instead of
+// Screens that show data other screens change (the dashboard, the files): mounted fresh on each visit instead of
 // kept alive, so they never show yesterday's list. Tools holding work in progress stay alive between visits.
-const FRESH_ON_VISIT = new Set<NavItem>(['dashboard', 'ads', 'brand', 'assets']);
+const FRESH_ON_VISIT = new Set<NavItem>(['dashboard', 'assets']);
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -141,7 +136,7 @@ export default function AppShell() {
   const { user, isMock } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { tab: activeTab, projectId } = tabFromPath(location.pathname);
+  const { tab: activeTab } = tabFromPath(location.pathname);
   const [visitedTabs, setVisitedTabs] = useState<Set<NavItem>>(() => new Set<NavItem>([activeTab]));
   const [navOpen, setNavOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -151,7 +146,7 @@ export default function AppShell() {
   const closeNav = useCallback(() => setNavOpen(false), []);
 
   const setActiveTab = useCallback((tab: NavItem) => navigate(TAB_PATHS[tab]), [navigate]);
-  const newCampaign = useCallback(() => navigate(projectPath('new')), [navigate]);
+  const newLanding = useCallback(() => navigate(TAB_PATHS.landing), [navigate]);
 
   useEffect(() => {
     // other screens ask for a page with an event, so they do not need the router
@@ -207,17 +202,14 @@ export default function AppShell() {
     mainRef.current?.scrollTo({ top: 0 });
   }, [location.pathname]);
 
-  // Screens kept alive between visits so work in progress survives (the campaign pages reload from the server instead).
+  // Screens kept alive between visits so work in progress survives.
   const components = useMemo<Partial<Record<NavItem, ReactNode>>>(
     () => ({
       dashboard: <DashboardHome />,
       video: <VideoAdGenerator />,
       landing: <LandingPageGenerator />,
-      ads: <AdsStudioPage />,
-      brand: <BrandKitPage />,
       assets: <AssetLibrary />,
       assembler: <LandingAssembler />,
-      images: <ProductImageGen />,
       calculator: <MarginCalculator />,
       trends: <MarketTrends />,
       settings: <Settings />,
@@ -252,12 +244,12 @@ export default function AppShell() {
 
       {/* Desktop sidebar */}
       <aside aria-label={t('coNavigationPrincipale', 'Navigation principale')} className="hidden w-64 shrink-0 border-e border-line lg:block">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onNewCampaign={newCampaign} />
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onNewLanding={newLanding} />
       </aside>
 
       {/* Mobile drawer */}
       <MobileDrawer open={navOpen} onClose={closeNav}>
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onNewCampaign={newCampaign} onNavigate={closeNav} />
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onNewLanding={newLanding} onNavigate={closeNav} />
       </MobileDrawer>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -308,7 +300,6 @@ export default function AppShell() {
                   </div>
                 }
               >
-                {activeTab === 'projects' && <ProjectsHub key={projectId ?? 'list'} projectId={projectId} />}
                 {(Object.entries(components) as [NavItem, ReactNode][]).map(([key, component]) => {
                   const isVisible = activeTab === key;
 

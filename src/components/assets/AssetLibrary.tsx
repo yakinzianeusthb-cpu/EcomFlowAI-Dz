@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookImage, Download, FolderOpen, Loader2, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { BookImage, Download, Loader2, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { DATE_LOCALE, formatRelative } from '../../i18n/dates';
-import { projectPath } from '../../lib/nav';
 import { cn } from '../../lib/utils';
-import { assetDownloadUrl, assetsApi, assetUrl, type AssetMeta, type AssetPage } from '../../services/campaigns';
+import { assetDownloadUrl, assetsApi, assetUrl, type AssetMeta, type AssetPage } from '../../services/assets';
 import PageHeader from '../PageHeader';
 import { ConfirmButton, EmptyState, ImageDrop, Segmented, Skeleton } from '../ui/primitives';
 import '../../i18n/campaigns';
@@ -19,11 +17,10 @@ const formatBytes = (bytes: number, language: keyof typeof DATE_LOCALE) => {
   return mb >= 1 ? `${mb.toLocaleString(locale, { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(bytes / 1024)).toLocaleString(locale)} KB`;
 };
 
-/** Every stored image: product photos, ad creatives, logos and AI images, with their campaign. */
+/** Every stored image: product photos, logos and AI images. */
 export default function AssetLibrary() {
   const { t, language } = useLanguage();
   const toast = useToast();
-  const navigate = useNavigate();
   const [kind, setKind] = useState<KindFilter>('all');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState<AssetPage | null>(null);
@@ -125,11 +122,6 @@ export default function AssetLibrary() {
                   <div className="flex flex-1 flex-col p-3">
                     <p className="truncate text-[13px] font-medium text-fg" title={a.name}>{a.name}</p>
                     <p className="mt-0.5 text-xs text-fg-faint">{formatRelative(a.createdAt, language)} · {formatBytes(a.size, language)}</p>
-                    {a.projectName && (
-                      <button type="button" onClick={() => navigate(projectPath(a.projectId!))} className="mt-1 inline-flex items-center gap-1 truncate text-start text-xs font-medium text-primary-ink hover:underline">
-                        <FolderOpen size={12} className="shrink-0" /> <span className="truncate">{a.projectName}</span>
-                      </button>
-                    )}
                     <div className="mt-auto flex items-center justify-end gap-1 pt-2">
                       <a href={assetDownloadUrl(a.id)} aria-label={t('libDownload', 'Télécharger {name}', { name: a.name })} className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-fg-muted hover:bg-surface-2 hover:text-fg"><Download size={15} /></a>
                       <ConfirmButton icon={Trash2} label="" ariaLabel={t('libDeleteName', 'Supprimer {name}', { name: a.name })} confirmLabel={t('libDeleteConfirm', 'Supprimer')} cancelLabel={t('cmpCancel', 'Annuler')} onConfirm={() => void remove(a)} className="!px-2" />

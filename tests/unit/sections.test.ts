@@ -8,7 +8,7 @@ const DIR = path.resolve(__dirname, '../../src/assets/sections');
 
 describe('section pictures', () => {
   it('gives every page and every menu entry its own picture', () => {
-    const ids = [...Object.keys(TAB_TITLES), ...PRIMARY_NAV.map((entry) => entry.id), 'admin', 'newCampaign'] as SectionId[];
+    const ids = [...Object.keys(TAB_TITLES), ...PRIMARY_NAV.map((entry) => entry.id), 'admin'] as SectionId[];
     for (const id of ids) expect(sectionPicture(id), id).toMatch(/\.webp/);
     // the menu entries never share a picture
     const files = PRIMARY_NAV.map((entry) => SECTION_ART[entry.id].file);

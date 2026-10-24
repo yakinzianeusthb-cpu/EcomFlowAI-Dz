@@ -34,10 +34,7 @@ import { preferencesRouter } from "./src/routes/preferences";
 import { sessionsRouter } from "./src/routes/sessions";
 import { settingsRouter } from "./src/routes/settings";
 import adminRouter from "./src/routes/admin";
-import { projectsRouter } from "./src/routes/projects";
 import { assetsRouter } from "./src/routes/assets";
-import { brandRouter } from "./src/routes/brand";
-import { metaRouter } from "./src/routes/meta";
 
 const signVideoJob = purposeSigner("video-job");
 
@@ -138,7 +135,7 @@ if (process.env.VERCEL !== "1") app.use(compression());
 // Request bodies: 1 MB by default. The routes that take images (uploads, AI calls with photos, payment proofs, admin
 // content, saved work) accept up to 10 MB, and only for a signed-in request: an anonymous client can never make the
 // server parse a large body.
-const LARGE_BODY_PATHS = ["/api/ai/", "/api/assets", "/api/meta/campaigns", "/api/user/payment-proof", "/api/admin/", "/api/catalog", "/api/preferences", "/api/lp-sessions", "/api/chat-sessions", "/api/projects/"];
+const LARGE_BODY_PATHS = ["/api/ai/", "/api/assets", "/api/user/payment-proof", "/api/admin/", "/api/catalog", "/api/preferences", "/api/lp-sessions", "/api/chat-sessions"];
 const smallJson = express.json({ limit: "1mb" });
 const largeJson = express.json({ limit: "10mb" });
 app.use((req, res, next) => {
@@ -166,10 +163,7 @@ app.use(preferencesRouter);
 app.use(sessionsRouter);
 app.use(settingsRouter);
 app.use(adminRouter);
-app.use(projectsRouter);
 app.use(assetsRouter);
-app.use(brandRouter);
-app.use(metaRouter);
 
 async function makeAiClient(apiKey?: string) {
   const { GoogleGenAI } = await import("@google/genai");

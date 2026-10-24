@@ -4,14 +4,12 @@ import {
   Clapperboard,
   Wand2,
   Layers,
-  Camera,
   Calculator,
   TrendingUp,
   MessageSquare,
   ShoppingBag,
   Radar,
   Calendar,
-  Megaphone,
 } from 'lucide-react';
 
 export interface AiTool {
@@ -31,9 +29,7 @@ export const AI_TOOLS: AiTool[] = [
   { id: 'analyzer', label: 'Consultant Expert IA', blurb: "Analyse ton produit et reçois des recommandations d'expert.", icon: Bot, paid: true },
   { id: 'video', label: 'Créatifs Pubs Vidéo', blurb: 'Génère des publicités vidéo TikTok/Facebook à fort potentiel.', icon: Clapperboard, paid: true },
   { id: 'landing', label: 'Tunnel de Vente & LP', blurb: 'Crée des tunnels de vente et des copies de landing page.', icon: Wand2, paid: true },
-  { id: 'ads', label: 'Publicités', blurb: 'Concepts, textes et visuels publicitaires prêts pour Meta.', icon: Megaphone, paid: true },
   { id: 'assembler', label: 'Constructeur de LP', blurb: 'Assemble visuellement ta landing page section par section.', icon: Layers, paid: true },
-  { id: 'images', label: 'Studio Photos', blurb: 'Génère des visuels produit professionnels pour tes annonces.', icon: Camera, paid: true },
   { id: 'darja', label: 'Annonces Darja', blurb: "Rédige des annonces en darja qui parlent à ton audience.", icon: MessageSquare, paid: true },
   { id: 'scout', label: 'Scout Telegram', blurb: 'Découvre des produits gagnants depuis Telegram.', icon: Radar, paid: true },
   { id: 'trends', label: 'Produits Gagnants', blurb: 'Repère les tendances et les produits gagnants du marché.', icon: TrendingUp, paid: true },

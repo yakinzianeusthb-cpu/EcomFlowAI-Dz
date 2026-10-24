@@ -12,7 +12,9 @@ import { fileToUploadDataUrl } from '../lib/imageCompress';
 import { stackImages } from '../lib/longImage';
 import { generateSectionImage } from '../services/gemini';
 import { chosenImageProvider, imageFromService } from '../services/imageService';
-import { KEEPS_PRODUCT, type AspectRatio } from '../lib/imageProviders';
+import { KEEPS_PRODUCT, type AspectRatio, type ImageProvider } from '../lib/imageProviders';
+import { formatImageCost } from '../lib/imageCost';
+import { DATE_LOCALE } from '../i18n/dates';
 import { cn } from '../lib/utils';
 import PageOptions from './landing/PageOptions';
 import PosterColorsPicker from './landing/PosterColorsPicker';
@@ -63,7 +65,7 @@ function loadSettings(): PublisherSettings {
 
 /** The generated structure as a real landing page: its look and promises, a live preview and a self-contained HTML file to publish. */
 export default function LandingPublisher({ lpData, productName, photos, language, sectionImages, defaultPrice }: Props) {
-  const { t } = useLanguage();
+  const { t, language: uiLanguage } = useLanguage();
   const [aiImages, setAiImages] = useState<(string | null)[]>(() => (lpData.sections ?? []).map((_, i) => sectionImages?.[i] ?? null));
   // posters of the long-image template, kept apart: their words are drawn in, so other templates cannot use them
   const [posterImages, setPosterImages] = useState<(string | null)[]>(() => (lpData.sections ?? []).map(() => null));
@@ -89,6 +91,14 @@ export default function LandingPublisher({ lpData, productName, photos, language
     });
     return () => { alive = false; };
   }, [photos]);
+
+  // the chosen image service, to show what an image costs before the seller makes it
+  const [service, setService] = useState<ImageProvider | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void chosenImageProvider().then((provider) => { if (alive) setService(provider); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => { try { localStorage.setItem(WHATSAPP_KEY, whatsapp); } catch { /* storage unavailable */ } }, [whatsapp]);
   useEffect(() => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* storage unavailable */ } }, [settings]);
@@ -139,32 +149,37 @@ export default function LandingPublisher({ lpData, productName, photos, language
   const images = isPoster ? posterImages : aiImages;
   const pageLang = pageLanguage(language, (lpData.sections ?? []).flatMap((s) => [s.title ?? '', s.content ?? '']));
 
+  // the posters are drawn in the page's canvas colours, so they melt into it
+  const posterColors = landingColors(palette, 'poster');
+  /** What the AI receives for a section: drawn here, or copied by the seller into another image tool. */
+  const promptFor = (i: number) => {
+    const section = (lpData.sections ?? [])[i];
+    return isPoster
+      ? posterImagePrompt(section, posterText(section, TEXT[pageLang]), { language: pageLang, hero: i === 0, colors: [posterColors.canvas, posterColors.highlight] })
+      : sectionImagePrompt(section);
+  };
+
   const makeImages = async (indices: number[]) => {
     setAiError('');
-    const sections = lpData.sections ?? [];
     // the kind is fixed when the run starts: switching templates meanwhile does not mix posters and pictures
     const poster = isPoster;
     const setImages = poster ? setPosterImages : setAiImages;
-    // the posters are drawn in the page's canvas colours, so they melt into it
-    const colors = landingColors(palette, 'poster');
     // Gemini unless the seller chose another service; one that cannot keep the product is never used for the page.
     // The first section shows as running while the choice is read, so the click answers at once.
     if (indices.length) setAiRunning(indices[0]);
-    const service = await chosenImageProvider();
-    if (!KEEPS_PRODUCT[service]) {
+    const provider = await chosenImageProvider();
+    setService(provider);
+    if (!KEEPS_PRODUCT[provider]) {
       setAiRunning(null);
       setAiError(t('lppServiceNoPhoto', 'Le service d’images choisi dans Paramètres (Cloudflare) ne garde pas ton produit : choisis Gemini, OpenAI ou FLUX pour les images de ta page.'));
       return;
     }
     const draw = (prompt: string, aspectRatio?: AspectRatio) =>
-      service === 'gemini' ? generateSectionImage(prompt, photos[0], aspectRatio) : imageFromService({ prompt, reference: photos[0], aspectRatio: aspectRatio ?? '1:1' });
+      provider === 'gemini' ? generateSectionImage(prompt, photos[0], aspectRatio) : imageFromService({ prompt, reference: photos[0], aspectRatio: aspectRatio ?? '1:1' });
     for (const i of indices) {
       setAiRunning(i);
       try {
-        const section = sections[i];
-        const raw = poster
-          ? await draw(posterImagePrompt(section, posterText(section, TEXT[pageLang]), { language: pageLang, hero: i === 0, colors: [colors.canvas, colors.highlight] }), posterAspect(i === 0))
-          : await draw(sectionImagePrompt(section));
+        const raw = await draw(promptFor(i), poster ? posterAspect(i === 0) : undefined);
         const image = await compressDataUrl(raw);
         setImages((prev) => prev.map((v, j) => (j === i ? image : v)));
       } catch (err) {
@@ -201,6 +216,9 @@ export default function LandingPublisher({ lpData, productName, photos, language
       hasPhoto={photos.length > 0}
       onGenerate={(indices) => void makeImages(indices)}
       onRemove={removeImage}
+      promptOf={promptFor}
+      service={service}
+      costOf={(count) => (service ? formatImageCost(service, DATE_LOCALE[uiLanguage], count) : null)}
       onLongImage={postersDone ? () => void downloadLongImage() : null}
       longImageBusy={longImageBusy}
     />

@@ -1039,9 +1039,64 @@ export const funnelsTranslations: TranslationDictionary = {
     en: "The image service chosen in Settings (Cloudflare) does not keep your product: choose Gemini, OpenAI or FLUX for your page's images.",
   },
   lppPosterIntro: {
-    fr: "L'IA dessine chaque section comme une affiche à partir de ta photo, avec son titre, ses avantages et un bouton de commande, comme les longues images des boutiques. Il faut une clé Gemini avec facturation (environ 0,04 $ par affiche), ou le service choisi dans Paramètres.",
-    ar: "يرسم الذكاء الاصطناعي كل قسم كملصق انطلاقاً من صورتك، مع عنوانه ومزاياه وزر الطلب، مثل الصور الطويلة للمتاجر. يلزم مفتاح Gemini مع تفعيل الفوترة (حوالي 0.04 دولار للملصق)، أو الخدمة المختارة في الإعدادات.",
-    en: "The AI draws each section as a poster from your photo, with its title, benefits and an order button, like shops' long images. You need a Gemini key with billing (about $0.04 per poster), or the service chosen in Settings.",
+    fr: "L'IA dessine chaque section comme une affiche à partir de ta photo, avec son titre, ses avantages et un bouton de commande, comme les longues images des boutiques. Il faut une clé Gemini avec facturation, ou le service choisi dans Paramètres.",
+    ar: "يرسم الذكاء الاصطناعي كل قسم كملصق انطلاقاً من صورتك، مع عنوانه ومزاياه وزر الطلب، مثل الصور الطويلة للمتاجر. يلزم مفتاح Gemini مع تفعيل الفوترة، أو الخدمة المختارة في الإعدادات.",
+    en: "The AI draws each section as a poster from your photo, with its title, benefits and an order button, like shops' long images. You need a Gemini key with billing, or the service chosen in Settings.",
+  },
+  lppGenerateOne: {
+    fr: "Générer",
+    ar: "إنشاء",
+    en: "Generate",
+  },
+  lppGenerateLabel: {
+    fr: "Générer l'image de la section {n}",
+    ar: "إنشاء صورة القسم {n}",
+    en: "Generate the image for section {n}",
+  },
+  lppCopyPrompt: {
+    fr: "Copier le prompt",
+    ar: "نسخ البرومبت",
+    en: "Copy the prompt",
+  },
+  lppCopyPromptLabel: {
+    fr: "Copier le prompt de la section {n}",
+    ar: "نسخ برومبت القسم {n}",
+    en: "Copy the prompt for section {n}",
+  },
+  lppPromptCopiedShort: {
+    fr: "Copié",
+    ar: "تم النسخ",
+    en: "Copied",
+  },
+  lppPromptCopied: {
+    fr: "Prompt copié. Colle-le dans ton outil d’images avec la photo de ton produit.",
+    ar: "تم نسخ البرومبت. الصقه في أداة الصور التي تستعملها مع صورة منتجك.",
+    en: "Prompt copied. Paste it into your image tool along with your product photo.",
+  },
+  lppPromptCopyFailed: {
+    fr: "Copie impossible : ton navigateur a bloqué le presse-papiers.",
+    ar: "تعذّر النسخ: متصفحك منع الوصول إلى الحافظة.",
+    en: "Could not copy: your browser blocked the clipboard.",
+  },
+  lppPromptChoice: {
+    fr: "Pour chaque section : génère l’image ici, ou copie son prompt pour la créer dans un autre outil (ChatGPT, Midjourney…).",
+    ar: "لكل قسم: أنشئ الصورة هنا، أو انسخ البرومبت الخاص به لإنشائها في أداة أخرى (ChatGPT، Midjourney…).",
+    en: "For each section: generate the image here, or copy its prompt to make it in another tool (ChatGPT, Midjourney…).",
+  },
+  lppCostEach: {
+    fr: "Coût : environ",
+    ar: "التكلفة: حوالي",
+    en: "Cost: about",
+  },
+  lppCostEachTail: {
+    fr: "par image, payé sur ta clé {service}.",
+    ar: "للصورة، تُدفع من مفتاح {service} الخاص بك.",
+    en: "per image, billed to your {service} key.",
+  },
+  lppCostService: {
+    fr: "Coût : selon le tarif de ton service {service}, payé sur ton compte.",
+    ar: "التكلفة: حسب تسعيرة خدمة {service}، تُدفع من حسابك.",
+    en: "Cost: at your {service} plan's rate, billed to your account.",
   },
   lppPosterGenerate: {
     fr: "Créer les affiches IA ({count})",

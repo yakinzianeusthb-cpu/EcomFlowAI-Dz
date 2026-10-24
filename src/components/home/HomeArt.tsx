@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId } from 'react';
 import { cn } from '../../lib/utils';
 
 /** A drawn bedside lamp: the example product of the home page illustrations (a drawing, not a photo or an AI output). */
@@ -44,14 +44,6 @@ export function ProductPhoto({ className, artClassName, backdrop = 'night' }: { 
     <div className={cn('overflow-hidden', BACKDROPS[backdrop], className)}>
       <LampArt className={cn('size-full p-[12%]', artClassName)} />
     </div>
-  );
-}
-
-export function Chip({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span className={cn('inline-flex items-center gap-1 rounded-[var(--radius-xs)] border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-fg-muted', className)}>
-      {children}
-    </span>
   );
 }
 

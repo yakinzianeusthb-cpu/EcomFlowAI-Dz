@@ -5,8 +5,8 @@
  */
 import type { NavItem } from './nav';
 
-/** Every part of the app that has a picture: its pages, the admin area and the new-campaign page. */
-export type SectionId = NavItem | 'admin' | 'newCampaign';
+/** Every part of the app that has a picture: its pages and the admin area. */
+export type SectionId = NavItem | 'admin';
 
 // emitted as files, never inlined in the script: they load in parallel and are cached for good like the other build files
 const FILES = import.meta.glob<string>('../assets/sections/*.webp', { eager: true, query: '?no-inline', import: 'default' });
@@ -20,12 +20,8 @@ interface SectionArt {
 
 export const SECTION_ART: Record<SectionId, SectionArt> = {
   dashboard: { file: 'house', glow: '#f43f5e' },
-  projects: { file: 'package', glow: '#f59e0b' },
-  newCampaign: { file: 'sparkles', glow: '#fbbf24' },
   landing: { file: 'shopping-bags', glow: '#38bdf8' },
   video: { file: 'clapper-board', glow: '#a78bfa' },
-  ads: { file: 'megaphone', glow: '#f97316' },
-  brand: { file: 'artist-palette', glow: '#ec4899' },
   assets: { file: 'framed-picture', glow: '#22c55e' },
   assembler: { file: 'puzzle-piece', glow: '#10b981' },
   calculator: { file: 'money-bag', glow: '#eab308' },
@@ -33,7 +29,6 @@ export const SECTION_ART: Record<SectionId, SectionArt> = {
   contact: { file: 'speech-balloon', glow: '#a5b4fc' },
   admin: { file: 'shield', glow: '#60a5fa' },
   trends: { file: 'fire', glow: '#f97316' },
-  images: { file: 'camera-with-flash', glow: '#94a3b8' },
   darja: { file: 'memo', glow: '#60a5fa' },
   analyzer: { file: 'brain', glow: '#f472b6' },
   catalog: { file: 'books', glow: '#22c55e' },

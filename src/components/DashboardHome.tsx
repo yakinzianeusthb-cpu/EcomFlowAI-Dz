@@ -1,22 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarClock, KeyRound, Link2, Lock, Palette, Sparkles, type LucideIcon } from 'lucide-react';
+import { CalendarClock, Clapperboard, KeyRound, Lock, Wand2, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { hasActivePlan } from '../lib/access';
 import { attentionItems, type AttentionItem } from '../lib/attention';
-import { TAB_PATHS, projectPath, type NavItem } from '../lib/nav';
+import { TAB_PATHS, type NavItem } from '../lib/nav';
 import { useLanguage } from '../context/LanguageContext';
-import { DATE_LOCALE, formatDate } from '../i18n/dates';
+import { formatDate } from '../i18n/dates';
 import { dashboardApi, settingsApi, type AiUsageSummary } from '../services/api';
-import { metaApi, projectsApi, type MetaStatus, type ProjectSummary } from '../services/campaigns';
 import { AnnouncementsWidget, GuidesWidget, HotDealsWidget } from './DashboardContentWidgets';
-import { ImageDrop, Skeleton } from './ui/primitives';
-import { SectionPicture, SectionTile } from './ui/SectionPicture';
-import { ProjectCard } from './projects/ProjectList';
-import { useBrandKit } from './projects/useProject';
-import { setPendingPhotos } from './projects/pendingPhotos';
-import { outputLabel } from './projects/labels';
-import '../i18n/campaigns';
+import { Skeleton } from './ui/primitives';
+import { SectionTile } from './ui/SectionPicture';
 
 const openCheckout = () => window.dispatchEvent(new CustomEvent('dz_open_checkout'));
 
@@ -36,83 +30,45 @@ export default function DashboardHome() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const { kit } = useBrandKit();
   const [usage, setUsage] = useState<AiUsageSummary | null>(null);
-  const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
-  const [meta, setMeta] = useState<MetaStatus | null>(null);
-  const [projectsFailed, setProjectsFailed] = useState(false);
   const [usageFailed, setUsageFailed] = useState(false);
 
-  const loadProjects = () => {
-    setProjectsFailed(false);
-    projectsApi.list().then(setProjects).catch(() => setProjectsFailed(true));
-  };
   useEffect(() => {
     dashboardApi.aiUsage().then(setUsage).catch(() => setUsageFailed(true));
-    loadProjects();
     settingsApi.get().then((s) => setHasKey(Boolean(s?.geminiApiKey))).catch(() => {});
-    metaApi.status().then(setMeta).catch(() => {});
   }, []);
 
   const go = (tab: NavItem) => navigate(TAB_PATHS[tab]);
-  const startWith = (files: File[]) => {
-    setPendingPhotos(files);
-    navigate(projectPath('new'));
-  };
 
-  const active = (projects ?? []).filter((p) => p.status !== 'archived');
-  // without the campaign list the rest can still be checked (plan, key, brand, Meta)
-  const attention = projects || projectsFailed
-    ? attentionItems({
-        hasGeminiKey: hasKey,
-        plan: { active: hasActivePlan(user), pending: user?.planStatus === 'pending', expiresAt: user?.planExpiresAt ? String(user.planExpiresAt) : null },
-        brand: kit ? { brandName: kit.brandName, colors: kit.colors, logoAssetId: kit.logoAssetId } : null,
-        projects: active,
-        meta,
-      })
-    : null;
+  const attention = attentionItems({
+    hasGeminiKey: hasKey,
+    plan: { active: hasActivePlan(user), pending: user?.planStatus === 'pending', expiresAt: user?.planExpiresAt ? String(user.planExpiresAt) : null },
+  });
 
   const renderItem = (item: AttentionItem) => {
     switch (item.id) {
       case 'no-plan':
         return <AttentionRow key={item.id} icon={Lock} tone="warning" action={t('sidebarSubUpgrade', 'Voir les plans')} onAction={openCheckout}>{t('dashAttNoPlan', 'Aucun abonnement actif : la génération IA est verrouillée.')}</AttentionRow>;
       case 'plan-pending':
-        return <AttentionRow key={item.id} icon={CalendarClock} action={t('cmpOpen', 'Ouvrir')} onAction={openCheckout}>{t('dashAttPending', 'Ton paiement est en cours de vérification par un admin.')}</AttentionRow>;
+        return <AttentionRow key={item.id} icon={CalendarClock} action={t('dashOpen', 'Ouvrir')} onAction={openCheckout}>{t('dashAttPending', 'Ton paiement est en cours de vérification par un admin.')}</AttentionRow>;
       case 'plan-ending':
         return <AttentionRow key={item.id} icon={CalendarClock} tone="warning" action={t('dashRenew', 'Renouveler')} onAction={openCheckout}>{t('dashAttEnding', 'Ton abonnement se termine le {date}.', { date: user?.planExpiresAt ? formatDate(user.planExpiresAt, language, { day: 'numeric', month: 'long' }) : '' })}</AttentionRow>;
       case 'no-key':
         return <AttentionRow key={item.id} icon={KeyRound} tone="warning" action={t('menuSettings', 'Paramètres')} onAction={() => go('settings')}>{t('dashAttNoKey', 'Ajoute ta clé Gemini : sans elle, l’IA ne peut rien générer.')}</AttentionRow>;
-      case 'missing-outputs':
-        return (
-          <AttentionRow key={item.id} icon={Sparkles} action={t('cmpOpen', 'Ouvrir')} onAction={() => navigate(projectPath(item.projectId))}>
-            {t('dashAttMissing', '« {name} » n’a pas encore : {missing}.', { name: item.projectName, missing: new Intl.ListFormat(DATE_LOCALE[language], { type: 'conjunction' }).format(item.missing.map((k) => outputLabel(k, t))) })}
-          </AttentionRow>
-        );
-      case 'brand-empty':
-        return <AttentionRow key={item.id} icon={Palette} action={t('cmpOpen', 'Ouvrir')} onAction={() => go('brand')}>{t('dashAttBrand', 'Ajoute ton logo et tes couleurs pour que tout ce que l’IA crée te ressemble.')}</AttentionRow>;
-      case 'meta-connect':
-        return <AttentionRow key={item.id} icon={Link2} action={t('metaConnect', 'Connecter Meta')} onAction={() => go('settings')}>{t('dashAttMeta', 'Connecte Meta pour publier tes campagnes depuis l’app.')}</AttentionRow>;
-      case 'meta-expired':
-        return <AttentionRow key={item.id} icon={Link2} tone="warning" action={t('metaReconnect', 'Reconnecter Meta')} onAction={() => go('settings')}>{t('metaExpiredText', 'L’accès donné par Meta a expiré. Reconnecte ton compte pour continuer à publier.')}</AttentionRow>;
     }
   };
 
   const stats = [
-    { label: t('menuProjects', 'Campagnes'), value: projects ? active.length : projectsFailed ? '—' : null },
     { label: t('dashKpiLandingPages', 'Landing pages'), value: usageFailed ? '—' : usage?.landingPages },
     { label: t('dashKpiVideoScripts', 'Scripts vidéo'), value: usageFailed ? '—' : usage?.videoScripts },
     { label: t('dashKpiTotalGen', 'Générations IA'), value: usageFailed ? '—' : usage?.totalGenerations },
   ];
   // every section of the menu, each with its picture, so the one you want is found at a glance
   const sections: { tab: NavItem; label: string; text: string }[] = [
-    { tab: 'projects', label: t('menuProjects', 'Campagnes'), text: t('cmpListSubtitle', 'Une campagne réunit un produit, ses photos et tout ce que l’IA crée pour le vendre : landing page, vidéo et publicités.') },
     { tab: 'landing', label: t('menuLanding', 'Landing pages'), text: t('toolLandingBlurb', 'Crée des tunnels de vente et la copie de ta landing page.') },
-    { tab: 'images', label: t('tabImages', 'Studio Photos Produit'), text: t('toolImagesBlurb', 'Ton vrai produit mis en scène : lifestyle, fond épuré, premium ou créatif.') },
     { tab: 'video', label: t('menuVideo', 'Pubs vidéo'), text: t('toolVideoBlurb', 'Génère des scripts de pubs vidéo TikTok et Facebook à fort potentiel.') },
-    { tab: 'ads', label: t('menuAds', 'Publicités'), text: t('adsStudioSubtitle', 'Concepts, textes et visuels prêts pour Facebook et Instagram, à partir d’une de tes campagnes.') },
-    { tab: 'brand', label: t('menuBrand', 'Identité de marque'), text: t('brkSubtitle', 'Ton logo, tes couleurs et ta façon de parler. Chaque landing page, script et publicité les reprend.') },
-    { tab: 'assets', label: t('menuAssets', 'Fichiers'), text: t('libSubtitle', 'Toutes tes photos produit, tes visuels publicitaires et ton logo, au même endroit.') },
+    { tab: 'assets', label: t('menuAssets', 'Fichiers'), text: t('dashAssetsBlurb', 'Tes photos produit et les images créées par l’IA, au même endroit.') },
     { tab: 'assembler', label: t('menuAssembler', 'Constructeur de page'), text: t('toolAssemblerBlurb', 'Assemble visuellement ta landing page, section par section.') },
     { tab: 'calculator', label: t('menuCalculator', 'Calcul de marge COD'), text: t('toolCalculatorBlurb', 'Calcule tes marges et ton profit net en paiement à la livraison.') },
   ];
@@ -120,25 +76,23 @@ export default function DashboardHome() {
   return (
     <div className="space-y-10">
       <section aria-labelledby="dash-hero" className="ui-card grain overflow-hidden">
-        <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-center">
-          <div>
-            <p className="eyebrow">{t('dashGreeting', 'Salam,')} {user?.name?.split(' ')[0] ?? ''}</p>
-            <h1 id="dash-hero" className="display-title mt-3 text-4xl text-fg sm:text-5xl">{t('dashHeroTitle', 'Que veux-tu vendre aujourd’hui ?')}</h1>
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-fg-muted">{t('dashHeroText', 'Dépose les photos de ton produit. L’IA prépare la landing page, la vidéo et les publicités, toutes avec la même marque et le même message.')}</p>
-            <button type="button" onClick={() => navigate(projectPath('new'))} className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary-ink hover:underline">
-              {t('dashStartWithout', 'Commencer sans photo')} <ArrowRight size={14} className="rtl:rotate-180" />
-            </button>
+        <div className="p-6 sm:p-8">
+          <p className="eyebrow">{t('dashGreeting', 'Salam,')} {user?.name?.split(' ')[0] ?? ''}</p>
+          <h1 id="dash-hero" className="display-title mt-3 text-4xl text-fg sm:text-5xl">{t('dashHeroTitle', 'Que veux-tu vendre aujourd’hui ?')}</h1>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-fg-muted">{t('dashHeroText', 'Crée une landing page avec les images de chaque section, ou une pub vidéo prête à publier, à partir des photos de ton produit.')}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button type="button" onClick={() => go('landing')} className="btn-dz-primary"><Wand2 size={16} /> {t('dashNewLanding', 'Créer une landing page')}</button>
+            <button type="button" onClick={() => go('video')} className="btn-dz-secondary"><Clapperboard size={16} /> {t('dashNewVideo', 'Créer une pub vidéo')}</button>
           </div>
-          <ImageDrop onFiles={startWith} label={t('dashDropPhotos', 'Dépose les photos du produit')} hint={t('cmpPhotoFormats', 'JPG, PNG ou WebP · glisse-les ici ou clique')} className="min-h-52 bg-surface" />
         </div>
       </section>
 
       <section aria-labelledby="dash-sections">
         <h2 id="dash-sections" className="mb-4 text-[15px] font-semibold text-fg">{t('dashQuickAccess', 'Accès rapide')}</h2>
-        {/* 9 sections: 3 rows of 3; on a phone, the campaigns across the top, then 4 rows of 2 */}
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        {/* 5 sections: the two studios across the top on a phone, then the others two by two */}
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {sections.map((s) => (
-            <li key={s.tab} className="max-md:first:col-span-2">
+            <li key={s.tab}>
               <button type="button" onClick={() => go(s.tab)} className="ui-card ui-card-hover section-card flex h-full w-full flex-col items-start gap-3 p-4 text-start">
                 <SectionTile id={s.tab} size="lg" />
                 <span className="text-sm font-semibold text-fg">{s.label}</span>
@@ -149,58 +103,27 @@ export default function DashboardHome() {
         </ul>
       </section>
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section aria-labelledby="dash-recent">
-          <div className="mb-4 flex items-baseline justify-between gap-3">
-            <h2 id="dash-recent" className="text-[15px] font-semibold text-fg">{t('dashRecent', 'Campagnes récentes')}</h2>
-            {active.length > 0 && (
-              <button type="button" onClick={() => go('projects')} className="inline-flex items-center gap-1 text-[13px] font-medium text-primary-ink hover:underline">
-                {t('dashViewAll', 'Tout voir')} <ArrowRight size={14} className="rtl:rotate-180" />
-              </button>
-            )}
-          </div>
-          {projectsFailed ? (
-            <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-line p-6 text-[13px] text-fg-muted">
-              <p className="flex-1">{t('cmpLoadFailed', 'Impossible de charger tes campagnes.')}</p>
-              <button type="button" onClick={loadProjects} className="btn-dz-secondary !min-h-9 !py-1.5 !text-[13px]">{t('cmpRetry', 'Réessayer')}</button>
-            </div>
-          ) : projects === null ? (
-            <div className="grid gap-5 sm:grid-cols-2">{[0, 1].map((i) => <Skeleton key={i} className="aspect-[4/3] w-full" />)}</div>
-          ) : active.length === 0 ? (
-            <div className="rounded-[var(--radius-lg)] border border-dashed border-line-strong p-8 text-center">
-              <SectionPicture id="projects" size={44} className="mx-auto" />
-              <p className="mt-3 text-sm font-medium text-fg">{t('dashNoCampaign', 'Pas encore de campagne.')}</p>
-              <p className="mt-1 text-[13px] text-fg-muted">{t('dashNoCampaignText', 'Ta première campagne apparaîtra ici avec sa landing page, sa vidéo et ses publicités.')}</p>
-            </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <section aria-labelledby="dash-attention" className="ui-card p-5">
+          <h2 id="dash-attention" className="mb-4 text-[15px] font-semibold text-fg">{t('dashAttention', 'À faire')}</h2>
+          {attention.length === 0 ? (
+            <p className="text-[13px] text-fg-muted">{t('dashAllGood', 'Tout est prêt. Lance une landing page ou une pub vidéo quand tu veux.')}</p>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2">{active.slice(0, 4).map((p) => <ProjectCard key={p.id} project={p} />)}</div>
+            <ul className="divide-y divide-line">{attention.map(renderItem)}</ul>
           )}
         </section>
 
-        <div className="space-y-6">
-          <section aria-labelledby="dash-attention" className="ui-card p-5">
-            <h2 id="dash-attention" className="mb-4 text-[15px] font-semibold text-fg">{t('dashAttention', 'À faire')}</h2>
-            {attention === null ? (
-              <div className="space-y-3"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-4/5" /></div>
-            ) : attention.length === 0 ? (
-              <p className="text-[13px] text-fg-muted">{t('dashAllGood', 'Tout est prêt. Crée une nouvelle campagne quand tu veux.')}</p>
-            ) : (
-              <ul className="divide-y divide-line">{attention.map(renderItem)}</ul>
-            )}
-          </section>
-
-          <section aria-labelledby="dash-stats" className="ui-card p-5">
-            <h2 id="dash-stats" className="mb-4 text-[15px] font-semibold text-fg">{t('dashActivity', 'Ton activité')}</h2>
-            <dl className="grid grid-cols-2 gap-4">
-              {stats.map((s) => (
-                <div key={s.label}>
-                  <dt className="text-xs text-fg-faint">{s.label}</dt>
-                  <dd className="mt-1 text-2xl font-semibold tabular-nums text-fg">{s.value == null ? <Skeleton className="h-7 w-10" /> : s.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        </div>
+        <section aria-labelledby="dash-stats" className="ui-card p-5">
+          <h2 id="dash-stats" className="mb-4 text-[15px] font-semibold text-fg">{t('dashActivity', 'Ton activité')}</h2>
+          <dl className="grid grid-cols-3 gap-4">
+            {stats.map((s) => (
+              <div key={s.label}>
+                <dt className="text-xs text-fg-faint">{s.label}</dt>
+                <dd className="mt-1 text-2xl font-semibold tabular-nums text-fg">{s.value == null ? <Skeleton className="h-7 w-10" /> : s.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
 
       {/* each widget hides itself when it has nothing to show; whatever is left fills the row */}

@@ -4,7 +4,6 @@ import { useToast } from '../context/ToastContext';
 import { settingsApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import PageHeader from './PageHeader';
-import MetaConnection, { useMetaReturnNotice, useMetaStatus } from './meta/MetaConnection';
 import ImageServiceSettings, { type ImageServiceDraft, type SavedImageKeys } from './settings/ImageServiceSettings';
 import { DEFAULT_IMAGE_PROVIDER, isImageProvider } from '../lib/imageProviders';
 import { StatusChip } from './ui/primitives';
@@ -12,7 +11,7 @@ import '../i18n/settings';
 import '../i18n/campaigns';
 
 /**
- * Workspace name, the Gemini key and the Meta connection. Secrets are never sent back to the browser: the page
+ * Workspace name, the Gemini key and the image service. Secrets are never sent back to the browser: the page
  * only knows whether one is set, and a blank field keeps the stored value.
  */
 export default function Settings() {
@@ -25,8 +24,6 @@ export default function Settings() {
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [images, setImages] = useState<ImageServiceDraft>({ provider: DEFAULT_IMAGE_PROVIDER, openaiApiKey: '', falApiKey: '', cloudflareAccountId: '', cloudflareApiToken: '' });
   const [savedImageKeys, setSavedImageKeys] = useState<SavedImageKeys>({ openai: false, fal: false, cloudflare: false });
-  const meta = useMetaStatus();
-  useMetaReturnNotice(meta.reload);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,11 +115,6 @@ export default function Settings() {
           {saving === 'saving' ? <Loader2 size={16} className="animate-spin" /> : saving === 'saved' ? <CheckCircle2 size={16} /> : <Save size={16} />}
           {saving === 'saved' ? t('stgEnregistre', 'Enregistré') : t('stgSauvegarderParametres', 'Sauvegarder les Paramètres')}
         </button>
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="eyebrow">{t('stgIntegrations', 'Intégrations')}</h2>
-        <MetaConnection status={meta.status} failed={meta.failed} reload={meta.reload} />
       </div>
     </div>
   );

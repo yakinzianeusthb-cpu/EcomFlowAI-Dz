@@ -22,7 +22,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
-const APP_PATHS = ['/projects/*', '/studio/*', '/brand', '/assets', '/tools/*', '/settings', '/support', '/lab/*'];
+const APP_PATHS = ['/studio/*', '/assets', '/tools/*', '/settings', '/support', '/lab/*'];
 
 function FullScreenSplash() {
   return (

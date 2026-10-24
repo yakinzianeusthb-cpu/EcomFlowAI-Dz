@@ -2,20 +2,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PLANS, DEFAULT_PRICING, buildPlans, formatPrice, type PricingConfig } from '../../src/lib/pricing';
 import { dataUrlToBlob, isImageProof, isPdfProof } from '../../src/lib/proof';
 
+// what a reader sees: the direction marks are invisible and no-break spaces look like spaces
+const visible = (price: string) => price.replace(/[\u2066\u2069]/g, '').replace(/\u00a0/g, ' ');
+
 describe('formatPrice', () => {
   it('puts the symbol after the amount by default, grouping thousands with spaces', () => {
-    expect(formatPrice(1500, DEFAULT_PRICING)).toBe('1 500 DA');
-    expect(formatPrice(15000, DEFAULT_PRICING)).toBe('15 000 DA');
-    expect(formatPrice(1234567, DEFAULT_PRICING)).toBe('1 234 567 DA');
+    expect(visible(formatPrice(1500, DEFAULT_PRICING))).toBe('1 500 DA');
+    expect(visible(formatPrice(15000, DEFAULT_PRICING))).toBe('15 000 DA');
+    expect(visible(formatPrice(1234567, DEFAULT_PRICING))).toBe('1 234 567 DA');
   });
 
   it('does not group small amounts', () => {
-    expect(formatPrice(0, DEFAULT_PRICING)).toBe('0 DA');
-    expect(formatPrice(999, DEFAULT_PRICING)).toBe('999 DA');
+    expect(visible(formatPrice(0, DEFAULT_PRICING))).toBe('0 DA');
+    expect(visible(formatPrice(999, DEFAULT_PRICING))).toBe('999 DA');
   });
 
   it('can put the symbol before the amount', () => {
-    expect(formatPrice(1500, { ...DEFAULT_PRICING, currencySymbol: '$', currencyPosition: 'before' })).toBe('$ 1 500');
+    expect(visible(formatPrice(1500, { ...DEFAULT_PRICING, currencySymbol: '$', currencyPosition: 'before' }))).toBe('$ 1 500');
+  });
+
+  it('keeps its order in Arabic text: isolated left to right, groups and symbol joined by no-break spaces', () => {
+    expect(formatPrice(1500, DEFAULT_PRICING)).toBe('\u20661\u00a0500\u00a0DA\u2069');
+    expect(formatPrice(1500, DEFAULT_PRICING)).not.toContain(' ');
   });
 });
 
@@ -25,7 +33,7 @@ describe('buildPlans', () => {
   it('lists the three self-service plans with the configured prices', () => {
     const plans = buildPlans(pricing);
     expect(plans.map((p) => p.id)).toEqual(['monthly', 'quarterly', 'lifetime']);
-    expect(plans.map((p) => p.price)).toEqual(['2 000 DA', '5 000 DA', '20 000 DA']);
+    expect(plans.map((p) => visible(p.price))).toEqual(['2 000 DA', '5 000 DA', '20 000 DA']);
   });
 
   it('keeps the French texts when no translator is given', () => {
@@ -43,12 +51,12 @@ describe('buildPlans', () => {
     expect(monthly.tagline).toBe('POUR TESTER');
     expect(monthly.per).toBe("30 JOURS D'ACCÈS");
     expect(monthly.note).toBe('/ MOIS');
-    expect(monthly.price).toBe('2 000 DA');
+    expect(visible(monthly.price)).toBe('2 000 DA');
   });
 
   it('provides default plans for the moment before pricing has loaded', () => {
     expect(DEFAULT_PLANS).toHaveLength(3);
-    expect(DEFAULT_PLANS[0].price).toBe('1 500 DA');
+    expect(visible(DEFAULT_PLANS[0].price)).toBe('1 500 DA');
   });
 });
 

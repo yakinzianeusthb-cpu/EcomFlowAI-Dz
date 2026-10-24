@@ -11,7 +11,6 @@ import './checkout';
 import './contact';
 import './funnels';
 import './home';
-import './images';
 import './settings';
 import './video';
 

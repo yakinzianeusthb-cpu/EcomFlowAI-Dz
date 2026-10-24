@@ -1,8 +1,7 @@
-import { Check, GripVertical } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { keepNumbersTogether } from '../../lib/numberSpacing';
 import { cn } from '../../lib/utils';
-import { Chip, ProductPhoto, TextLines } from './HomeArt';
+import { ProductPhoto, TextLines } from './HomeArt';
 import '../../i18n/home';
 
 // Illustrations for the studio rows of the home page. They are drawings of the interface, hidden from screen readers:
@@ -78,84 +77,6 @@ export function VideoVisual() {
         <span className="w-2/5 rounded-full bg-primary/55" />
         <span className="w-2/5 rounded-full bg-primary/25" />
       </div>
-    </div>
-  );
-}
-
-export function AdsVisual() {
-  const { t } = useLanguage();
-  const formats = [
-    { ratio: 'aspect-square', width: 'w-[31%]', label: '1:1', story: false, backdrop: 'linen' as const },
-    { ratio: 'aspect-[4/5]', width: 'w-[31%]', label: '4:5', story: false, backdrop: 'night' as const },
-    { ratio: 'aspect-[9/16]', width: 'w-[27%]', label: '9:16', story: true, backdrop: 'ember' as const },
-  ];
-  return (
-    <div aria-hidden="true" data-ui className="flex items-end justify-center gap-3 sm:gap-4" dir="ltr">
-      {formats.map((f) => (
-        <div key={f.label} className={f.width}>
-          <div className={cn('relative overflow-hidden rounded-[var(--radius-sm)] shadow-[var(--shadow-md)]', f.ratio)}>
-            <ProductPhoto className="absolute inset-0" artClassName="-translate-y-[10%]" backdrop={f.backdrop} />
-            {f.story && (
-              <>
-                <span className="absolute inset-x-0 top-[14%] border-t border-dashed border-white/45" />
-                <span className="absolute inset-x-0 bottom-[20%] border-t border-dashed border-white/45" />
-              </>
-            )}
-            <div className={cn('absolute inset-x-0 bg-linear-to-t from-black/80 to-transparent p-2.5 pt-8', f.story ? 'bottom-[20%]' : 'bottom-0')}>
-              <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-white" dir="auto">{t('homeDemoHeadline', 'Une lumière douce pour chaque soir')}</p>
-              <span className="mt-1.5 inline-flex rounded-[3px] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#17161a]" dir="auto">{t('homeDemoShop', 'Acheter')}</span>
-            </div>
-          </div>
-          <p className="mt-2 text-center text-xs tabular-nums text-fg-faint">{f.label}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function MetaVisual() {
-  const { t } = useLanguage();
-  const rows = [
-    { label: t('homeMetaBudget', 'Budget quotidien'), value: <span dir="ltr">{keepNumbersTogether('1 500 DA')}</span> },
-    { label: t('homeMetaCountry', 'Pays ciblé'), value: t('homeMetaCountryValue', 'Algérie') },
-    { label: t('homeMetaAge', 'Âge'), value: <span dir="ltr">18–45</span> },
-    { label: t('homeMetaStatus', 'Statut'), value: <span className="rounded-[var(--radius-xs)] bg-warning/12 px-1.5 py-0.5 text-xs font-medium text-warning-ink">{t('homeMetaPaused', 'En pause')}</span> },
-  ];
-  return (
-    <div aria-hidden="true" data-ui className="mx-auto w-full max-w-sm rounded-[var(--radius-md)] border border-line bg-surface p-5 shadow-[var(--shadow-lg)]">
-      <p className="text-sm font-semibold text-fg">{t('homeMetaCardTitle', 'Avant d’activer')}</p>
-      <dl className="mt-3 divide-y divide-line text-[13px]">
-        {rows.map((r) => (
-          <div key={r.label} className="flex items-center justify-between gap-3 py-2.5">
-            <dt className="text-fg-muted">{r.label}</dt>
-            <dd className="font-medium text-fg">{r.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-3 flex items-center gap-2 text-[13px] text-fg">
-        <span className="grid size-4 place-items-center rounded-[4px] bg-primary text-white"><Check size={11} strokeWidth={3} /></span>
-        {t('homeMetaCheck', 'J’ai vérifié ces réglages')}
-      </p>
-      <span className="mt-4 flex w-full justify-center rounded-[var(--radius-sm)] bg-primary py-2 text-sm font-semibold text-white">{t('homeMetaActivate', 'Activer')}</span>
-    </div>
-  );
-}
-
-// an example seller's brand: the green and red of the Algerian flag, sand, ivory and ink
-const SWATCHES = ['bg-[#006233]', 'bg-[#d21034]', 'bg-[#e3c995]', 'bg-[#f1ece2]', 'bg-[#17161a]'];
-
-export function BrandVisual() {
-  const { t } = useLanguage();
-  return (
-    <div aria-hidden="true" data-ui className="flex flex-wrap items-end gap-x-8 gap-y-5">
-      <div className="flex -space-x-2 rtl:space-x-reverse">
-        {SWATCHES.map((c) => <span key={c} className={cn('size-10 rounded-full border border-line-strong ring-2 ring-surface', c)} />)}
-      </div>
-      <div>
-        <p className="display-title text-4xl leading-none text-fg" dir="ltr">Aa</p>
-        <p className="mt-1.5 text-xs text-fg-faint" dir="ltr">Instrument Serif · Geist</p>
-      </div>
-      <Chip className="text-xs">{t('homeBrandTone', 'Chaleureux · premium')}</Chip>
     </div>
   );
 }

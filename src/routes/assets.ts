@@ -118,39 +118,6 @@ router.get("/api/assets/:id/file", requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/assets/:id/copy — reuse one of the user's images in a project (a copy, so each project owns its files).
-router.post("/api/assets/:id/copy", requireAuth, uploadLimiter, async (req, res) => {
-  const user = req.user as SessionPayload;
-  const id = req.params.id as string;
-  const projectId = req.body?.projectId;
-  if (!UUID.test(id)) return res.status(404).json({ error: ASSET_ERRORS.notFound });
-  if (typeof projectId !== "string" || !UUID.test(projectId)) return res.status(404).json({ error: ASSET_ERRORS.project });
-  try {
-    const [source, project] = await Promise.all([
-      prisma.asset.findFirst({ where: { id, userId: user.sub } }),
-      prisma.project.findFirst({ where: { id: projectId, userId: user.sub }, select: { id: true } }),
-    ]);
-    if (!source) return res.status(404).json({ error: ASSET_ERRORS.notFound });
-    if (!project) return res.status(404).json({ error: ASSET_ERRORS.project });
-    const quota = await storageQuota(user.sub);
-    const result = await withAccountLock(user.sub, async (tx) => {
-      if ((await tx.asset.count({ where: { projectId } })) >= MAX_ASSETS_PER_PROJECT) return { status: 400, error: ASSET_ERRORS.projectFull } as const;
-      if ((await storageUsed(user.sub, tx)) + source.size > quota) return { status: 413, error: ASSET_ERRORS.quota } as const;
-      const asset = await tx.asset.create({
-        data: { userId: user.sub, projectId, kind: source.kind === "logo" ? "other" : source.kind, name: source.name, mimeType: source.mimeType, size: source.size, width: source.width, height: source.height, data: source.data },
-        select: ASSET_META,
-      });
-      return { asset };
-    });
-    if ("error" in result) return res.status(result.status).json({ error: result.error });
-    await prisma.project.update({ where: { id: projectId }, data: { updatedAt: new Date() } });
-    res.status(201).json(result.asset);
-  } catch (err) {
-    console.error("Copy asset error:", err);
-    res.status(500).json({ error: SERVER_ERROR });
-  }
-});
-
 // DELETE /api/assets/:id — remove a file (and unset it as the brand logo if it was).
 router.delete("/api/assets/:id", requireAuth, async (req, res) => {
   const user = req.user as SessionPayload;
