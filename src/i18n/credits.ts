@@ -288,6 +288,16 @@ export const creditsTranslations: TranslationDictionary = {
     ar: "تم: لدى هذا الحساب الآن {balance} نقطة.",
     en: "Done: this account now has {balance} points.",
   },
+  crdFreeAdmin: {
+    fr: "gratuit (admin)",
+    ar: "مجاني (مسؤول)",
+    en: "free (admin)",
+  },
+  crdPtsRange: {
+    fr: "≈ {min} à {max} pts",
+    ar: "≈ من {min} إلى {max} نقطة",
+    en: "≈ {min} to {max} pts",
+  },
 };
 
 registerTranslations('credits', creditsTranslations);

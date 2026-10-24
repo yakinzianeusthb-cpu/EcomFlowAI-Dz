@@ -87,6 +87,7 @@ import { KEEPS_PRODUCT, isAspectRatio, type ImageProvider } from '../lib/imagePr
 import { chosenImageProvider } from '../services/imageService';
 import { drawSectionImage } from '../services/sectionImage';
 import { useCredits } from '../services/credits';
+import { AiCostTag } from './ui/AiCostTag';
 import '../i18n/credits';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/funnels';
@@ -1131,7 +1132,7 @@ export default function LandingPageGenerator() {
     setSectionPictures((prev) => Object.fromEntries(Object.entries(prev).filter(([key]) => key !== id)));
   const credits = useCredits();
   const pictureCost = credits?.mode === 'points'
-    ? t('crdPts', '{count} pts', { count: credits.settings.imageCost })
+    ? credits.free ? t('crdFreeAdmin', 'gratuit (admin)') : t('crdPts', '{count} pts', { count: credits.settings.imageCost })
     : imageService ? formatImageCost(imageService, DATE_LOCALE[uiLanguage]) : null;
 
   const deleteSection = (index: number) => {
@@ -2198,6 +2199,7 @@ export default function LandingPageGenerator() {
               <>
                 <Sparkles size={16} className="group-hover:rotate-12 transition-transform animate-pulse text-yellow-300" />
                 <span>{t('lpgGenererLandingPageMagique', 'Générer la landing page magique')}</span>
+                <AiCostTag blocks={[3, 4]} />
               </>
             )}
           </button>

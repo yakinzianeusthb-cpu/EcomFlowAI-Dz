@@ -212,7 +212,7 @@ export default function LandingPublisher({ lpData, productName, photos, language
       onRemove={removeImage}
       promptOf={promptFor}
       service={service}
-      costOf={(count) => (onPoints ? t('crdPts', '{count} pts', { count: count * onPoints.settings.imageCost }) : service ? formatImageCost(service, DATE_LOCALE[uiLanguage], count) : null)}
+      costOf={(count) => (onPoints ? (onPoints.free ? t('crdFreeAdmin', 'gratuit (admin)') : t('crdPts', '{count} pts', { count: count * onPoints.settings.imageCost })) : service ? formatImageCost(service, DATE_LOCALE[uiLanguage], count) : null)}
       points={onPoints ? { each: onPoints.settings.imageCost, balance: onPoints.balance } : null}
       onLongImage={postersDone ? () => void downloadLongImage() : null}
       longImageBusy={longImageBusy}

@@ -18,6 +18,10 @@ export interface CreditPurchase {
 export interface CreditsState {
   balance: number;
   mode: AiAccessMode;
+  /** an administrator: the platform's key without spending points */
+  free: boolean;
+  /** the engine that writes the texts (src/lib/textEngines.ts); only Gemini's texts are paid in points */
+  textEngine: string;
   /** the admin has set the platform's key, so points can be bought and spent */
   available: boolean;
   settings: CreditSettings;

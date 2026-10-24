@@ -29,16 +29,21 @@ const publicPurchase = (p: { id: string; packId: string; points: number; price: 
 router.get('/api/credits', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.sub;
-    const [user, access, platform, pending, entries] = await Promise.all([
+    const [user, access, platform, pending, entries, engine] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId }, select: { credits: true } }),
       resolveAiAccess(userId),
       platformCredits(),
       prisma.creditPurchase.findFirst({ where: { userId, status: 'pending' }, orderBy: { createdAt: 'desc' } }),
       prisma.creditEntry.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: RECENT_ENTRIES, select: { delta: true, reason: true, createdAt: true } }),
+      prisma.apiSettings.findUnique({ where: { userId }, select: { textProvider: true } }),
     ]);
     res.json({
       balance: user?.credits ?? 0,
       mode: accessMode(access),
+      // administrators use the platform's key without spending points
+      free: access.mode === 'points' && access.free,
+      // texts written by another engine run on the seller's own key for it, never on points
+      textEngine: engine?.textProvider ?? 'gemini',
       // points can be bought only once the admin has set the platform's key
       available: platform.key !== null,
       settings: platform.settings,

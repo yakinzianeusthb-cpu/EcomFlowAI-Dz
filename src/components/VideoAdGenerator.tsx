@@ -70,6 +70,7 @@ import PromptField from './PromptField';
 import PageHeader from './PageHeader';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/video';
+import { AiCostTag } from './ui/AiCostTag';
 
 interface SortableSceneCardProps {
   id: string;
@@ -1145,6 +1146,7 @@ Style d'accroche / Hook de départ : ${hookType}
                     <>
                       <Sparkles size={14} className="group-hover:rotate-12 transition-transform" />
                       <span>{t('vidGenererScriptAds', 'Générer Script Ads')}</span>
+                      <AiCostTag blocks={[1, 2]} />
                     </>
                   )}
                 </button>
