@@ -202,6 +202,11 @@ What the two main tools produce:
     Refaire and Retirer once an image is there. The cost line follows the image service chosen in Paramètres: about
     $0.04 an image with Gemini (`src/lib/imageCost.ts`, Google's price at the default 1K size), "at your service's rate"
     for OpenAI and FLUX, whose prices the app does not know.
+  - **In the structure editor** (`src/components/landing/SectionPromptRow.tsx`), each section card offers the same two
+    choices beside its prompt: **Générer l'image** (from that section's prompt and the first product photo, in the
+    format picked in the form, cost shown) or **Copier le prompt**. The picture shows in the card (download, redo,
+    remove) and goes into the ready page; it is not saved in the history. Both places draw through
+    `src/services/sectionImage.ts`.
   - Around any template, the seller sets the delivery price (by wilaya, free or fixed), ticks the promises the page
     makes (58 wilayas, check before paying, guarantee; cash on delivery is always there) and can add real customer
     reviews, as text or screenshots. An order opens the seller's WhatsApp with every detail and the total filled in,

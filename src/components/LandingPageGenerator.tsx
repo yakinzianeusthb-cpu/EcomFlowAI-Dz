@@ -80,9 +80,15 @@ import { lpSessionsApi, preferencesApi } from '../services/api';
 import PromptField from './PromptField';
 import RichText from './RichText';
 import PageHeader from './PageHeader';
+import SectionPromptRow from './landing/SectionPromptRow';
+import { sectionImagePrompt } from '../lib/landingImages';
+import { formatImageCost } from '../lib/imageCost';
+import { KEEPS_PRODUCT, isAspectRatio, type ImageProvider } from '../lib/imageProviders';
+import { chosenImageProvider } from '../services/imageService';
+import { drawSectionImage } from '../services/sectionImage';
 import { useLanguage } from '../context/LanguageContext';
 import '../i18n/funnels';
-import { formatDate } from '../i18n/dates';
+import { DATE_LOCALE, formatDate } from '../i18n/dates';
 
 interface LPSession {
   id: string;
@@ -156,6 +162,14 @@ interface SortableSectionProps {
   deleteSection: (index: number) => void;
   moveSection?: (index: number, direction: 'up' | 'down') => void;
   duplicateSection?: (index: number) => void;
+  /** this section's AI picture, and how to make it (see SectionPromptRow) */
+  picture: string | null;
+  pictureBusy: boolean;
+  pictureLocked: boolean;
+  hasPhoto: boolean;
+  pictureCost: string | null;
+  onMakePicture: (id: string, section: any) => void;
+  onRemovePicture: (id: string) => void;
 }
 
 const SortableSection = ({
@@ -168,7 +182,14 @@ const SortableSection = ({
   handleCtaChange,
   deleteSection,
   moveSection,
-  duplicateSection
+  duplicateSection,
+  picture,
+  pictureBusy,
+  pictureLocked,
+  hasPhoto,
+  pictureCost,
+  onMakePicture,
+  onRemovePicture
 }: SortableSectionProps) => {
   const { t } = useLanguage();
   const {
@@ -323,22 +344,21 @@ const SortableSection = ({
         {!isCollapsed && (
           <div className="p-3 sm:p-5 md:p-6">
             <div className="space-y-3 sm:space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 bg-fg/[0.04] rounded-lg sm:rounded-xl border border-fg/5 gap-1.5 sm:gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    <p className="text-xs sm:text-xs font-semibold text-fg-muted">{t('lpgPromptIaSection', 'Prompt IA de la Section')}</p>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const promptToCopy = s.prompt || (typeof s.imagePrompt === 'object' ? JSON.stringify(s.imagePrompt, null, 2) : '');
-                      navigator.clipboard.writeText(promptToCopy);
-                      toast.success(t('lpgPromptCopie', 'Prompt copié !'));
-                    }}
-                    className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-md sm:rounded-lg text-xs sm:text-xs transition-all flex items-center justify-center gap-1 shadow-md shadow-dz-emerald/15 active:scale-95 shrink-0"
-                  >
-                    <Copy size={11} className="sm:size-[12px]" /> {t('lpgCopierPrompt', 'Copier le Prompt')}
-                  </button>
-                </div>
+                <SectionPromptRow
+                  index={i}
+                  onCopy={() => {
+                    const promptToCopy = s.prompt || (typeof s.imagePrompt === 'object' ? JSON.stringify(s.imagePrompt, null, 2) : '');
+                    navigator.clipboard.writeText(promptToCopy);
+                    toast.success(t('lpgPromptCopie', 'Prompt copié !'));
+                  }}
+                  picture={picture}
+                  busy={pictureBusy}
+                  locked={pictureLocked}
+                  hasPhoto={hasPhoto}
+                  cost={pictureCost}
+                  onGenerate={() => onMakePicture(id, s)}
+                  onRemove={() => onRemovePicture(id)}
+                />
 
                 {s.cta && (
                   <div className="p-2.5 sm:p-4 bg-dz-emerald/5 border border-dz-emerald/20 rounded-xl sm:rounded-2xl space-y-2.5 sm:space-y-3.5 relative overflow-hidden">
@@ -449,6 +469,16 @@ export default function LandingPageGenerator() {
   const [completingAnalysis, setCompletingAnalysis] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('16:9');
+  // AI pictures made from the structure editor, by section id (they follow a section when it moves); not saved in the
+  // history (a session is capped at 1 MB), they go into the ready page and can be downloaded
+  const [sectionPictures, setSectionPictures] = useState<Record<string, string>>({});
+  const [pictureRunning, setPictureRunning] = useState<string | null>(null);
+  const [imageService, setImageService] = useState<ImageProvider | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void chosenImageProvider().then((provider) => { if (alive) setImageService(provider); });
+    return () => { alive = false; };
+  }, []);
   const [result, setResult] = useState('');
   const [lpData, setLpData] = useState<any>(null);
   const [mobileViewTab, setMobileViewTab] = useState<'settings' | 'result'>('settings');
@@ -1074,6 +1104,30 @@ export default function LandingPageGenerator() {
     newSections[index] = { ...newSections[index], [field]: value };
     setLpData({ ...lpData, sections: newSections });
   };
+
+  /** One section's picture, from its own prompt and the first product photo, in the format chosen in the form. */
+  const makeSectionPicture = async (id: string, section: any) => {
+    const photo = imagePreviews[0];
+    if (!photo) return;
+    setPictureRunning(id);
+    try {
+      const provider = await chosenImageProvider();
+      setImageService(provider);
+      if (!KEEPS_PRODUCT[provider]) {
+        toast.error(t('lppServiceNoPhoto', 'Le service d’images choisi dans Paramètres (Cloudflare) ne garde pas ton produit : choisis Gemini, OpenAI ou FLUX pour les images de ta page.'));
+        return;
+      }
+      const picture = await drawSectionImage(provider, sectionImagePrompt(section), photo, isAspectRatio(aspectRatio) ? aspectRatio : undefined);
+      setSectionPictures((prev) => ({ ...prev, [id]: picture }));
+    } catch (err) {
+      toast.error((err as Error)?.message || t('shAiError', 'Erreur IA. Réessaie.'));
+    } finally {
+      setPictureRunning(null);
+    }
+  };
+  const removeSectionPicture = (id: string) =>
+    setSectionPictures((prev) => Object.fromEntries(Object.entries(prev).filter(([key]) => key !== id)));
+  const pictureCost = imageService ? formatImageCost(imageService, DATE_LOCALE[uiLanguage]) : null;
 
   const deleteSection = (index: number) => {
     if (!lpData) return;
@@ -2196,7 +2250,7 @@ export default function LandingPageGenerator() {
                 {layoutMode === 'page' ? (
                   <motion.div key="ready-page" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                     <Suspense fallback={<div className="grid place-items-center p-10"><Loader2 className="animate-spin text-fg-faint" size={20} /></div>}>
-                      <LandingPublisher lpData={lpData} productName={productNameAr || productName} photos={imagePreviews} language={language} />
+                      <LandingPublisher lpData={lpData} productName={productNameAr || productName} photos={imagePreviews} language={language} sectionImages={lpData.sections.map((s: any) => sectionPictures[s.id || s.title] ?? null)} />
                     </Suspense>
                   </motion.div>
                 ) : layoutMode === 'mockup' ? (
@@ -2321,6 +2375,13 @@ export default function LandingPageGenerator() {
                                 deleteSection={deleteSection}
                                 moveSection={moveSection}
                                 duplicateSection={duplicateSection}
+                                picture={sectionPictures[s.id || s.title] ?? null}
+                                pictureBusy={pictureRunning === (s.id || s.title)}
+                                pictureLocked={pictureRunning !== null}
+                                hasPhoto={imagePreviews.length > 0}
+                                pictureCost={pictureCost}
+                                onMakePicture={(id, section) => void makeSectionPicture(id, section)}
+                                onRemovePicture={removeSectionPicture}
                               />
                             ))}
 

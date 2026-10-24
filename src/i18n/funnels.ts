@@ -1043,6 +1043,51 @@ export const funnelsTranslations: TranslationDictionary = {
     ar: "يرسم الذكاء الاصطناعي كل قسم كملصق انطلاقاً من صورتك، مع عنوانه ومزاياه وزر الطلب، مثل الصور الطويلة للمتاجر. يلزم مفتاح Gemini مع تفعيل الفوترة، أو الخدمة المختارة في الإعدادات.",
     en: "The AI draws each section as a poster from your photo, with its title, benefits and an order button, like shops' long images. You need a Gemini key with billing, or the service chosen in Settings.",
   },
+  lpgGenerateImage: {
+    fr: "Générer l'image",
+    ar: "إنشاء الصورة",
+    en: "Generate the image",
+  },
+  lpgRedoImage: {
+    fr: "Refaire l'image",
+    ar: "إعادة إنشاء الصورة",
+    en: "Redo the image",
+  },
+  lpgImageRunning: {
+    fr: "Création de l’image…",
+    ar: "جارٍ إنشاء الصورة…",
+    en: "Creating the image…",
+  },
+  lpgImageChoice: {
+    fr: "Génère une photo pro de ton produit ici avec ce prompt, ou copie-le pour la créer dans un autre outil.",
+    ar: "أنشئ صورة احترافية لمنتجك هنا بهذا البرومبت، أو انسخه لإنشائها في أداة أخرى.",
+    en: "Generate a professional photo of your product here with this prompt, or copy it to make it in another tool.",
+  },
+  lpgImageNeedPhoto: {
+    fr: "Ajoute une photo de ton produit dans le formulaire pour générer l’image ici : l’IA garde ton vrai produit.",
+    ar: "أضف صورة منتجك في النموذج لإنشاء الصورة هنا: يحافظ الذكاء الاصطناعي على منتجك الحقيقي.",
+    en: "Add a photo of your product in the form to generate the image here: the AI keeps your real product.",
+  },
+  lpgImageAlt: {
+    fr: "Image IA de la section {n}",
+    ar: "صورة القسم {n} بالذكاء الاصطناعي",
+    en: "AI image for section {n}",
+  },
+  lpgDownloadImage: {
+    fr: "Télécharger l'image",
+    ar: "تحميل الصورة",
+    en: "Download the image",
+  },
+  lpgRemoveImage: {
+    fr: "Retirer l'image",
+    ar: "إزالة الصورة",
+    en: "Remove the image",
+  },
+  lpgImageInPage: {
+    fr: "Déjà placée dans ta page (onglet « Page prête »).",
+    ar: "موضوعة في صفحتك (تبويب «صفحة جاهزة»).",
+    en: "Already placed in your page (“Ready page” tab).",
+  },
   lppGenerateOne: {
     fr: "Générer",
     ar: "إنشاء",

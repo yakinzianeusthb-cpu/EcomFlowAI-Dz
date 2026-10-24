@@ -8,11 +8,10 @@ import { buildLandingHtml, pageLanguage, posterText, sectionRoles, type LpSectio
 import { posterAspect, posterImagePrompt, sectionImagePrompt, type ImageSection } from '../lib/landingImages';
 import { DEFAULT_SETTINGS, readSettings, type PublisherSettings } from '../lib/landingSettings';
 import { POSTER_PALETTE, landingColors } from '../lib/landingTheme';
-import { fileToUploadDataUrl } from '../lib/imageCompress';
 import { stackImages } from '../lib/longImage';
-import { generateSectionImage } from '../services/gemini';
-import { chosenImageProvider, imageFromService } from '../services/imageService';
-import { KEEPS_PRODUCT, type AspectRatio, type ImageProvider } from '../lib/imageProviders';
+import { chosenImageProvider } from '../services/imageService';
+import { drawSectionImage } from '../services/sectionImage';
+import { KEEPS_PRODUCT, type ImageProvider } from '../lib/imageProviders';
 import { formatImageCost } from '../lib/imageCost';
 import { DATE_LOCALE } from '../i18n/dates';
 import { cn } from '../lib/utils';
@@ -47,12 +46,6 @@ interface Props {
   sectionImages?: (string | null)[];
   /** Price shown when the page opens (the campaign's price). */
   defaultPrice?: string;
-}
-
-/** AI images come back as large PNGs; a 1080 px JPEG keeps the page light on phones. */
-async function compressDataUrl(dataUrl: string): Promise<string> {
-  const blob = await (await fetch(dataUrl)).blob();
-  return fileToUploadDataUrl(new File([blob], 'section.png', { type: blob.type || 'image/png' }), { maxDimension: 1080, quality: 0.82 });
 }
 
 function loadSettings(): PublisherSettings {
@@ -174,13 +167,10 @@ export default function LandingPublisher({ lpData, productName, photos, language
       setAiError(t('lppServiceNoPhoto', 'Le service d’images choisi dans Paramètres (Cloudflare) ne garde pas ton produit : choisis Gemini, OpenAI ou FLUX pour les images de ta page.'));
       return;
     }
-    const draw = (prompt: string, aspectRatio?: AspectRatio) =>
-      provider === 'gemini' ? generateSectionImage(prompt, photos[0], aspectRatio) : imageFromService({ prompt, reference: photos[0], aspectRatio: aspectRatio ?? '1:1' });
     for (const i of indices) {
       setAiRunning(i);
       try {
-        const raw = await draw(promptFor(i), poster ? posterAspect(i === 0) : undefined);
-        const image = await compressDataUrl(raw);
+        const image = await drawSectionImage(provider, promptFor(i), photos[0], poster ? posterAspect(i === 0) : undefined);
         setImages((prev) => prev.map((v, j) => (j === i ? image : v)));
       } catch (err) {
         const e = err as { message?: string; status?: number };
