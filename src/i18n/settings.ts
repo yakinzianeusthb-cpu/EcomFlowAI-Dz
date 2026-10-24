@@ -106,6 +106,106 @@ export const settingsTranslations: TranslationDictionary = {
     ar: "حفظ الإعدادات",
     en: "Save settings",
   },
+  stgTxtTitle: {
+    fr: "Moteur IA des textes",
+    ar: "محرك الذكاء الاصطناعي للنصوص",
+    en: "AI engine for texts",
+  },
+  stgTxtSubtitle: {
+    fr: "L’IA qui écrit tes landing pages, tes scripts vidéo et tes analyses. Choisis celle avec qui tu travailles.",
+    ar: "الذكاء الاصطناعي الذي يكتب صفحات الهبوط وسكريبتات الفيديو والتحليلات. اختر الذي تعمل معه.",
+    en: "The AI that writes your landing pages, video scripts and analyses. Choose the one you work with.",
+  },
+  stgTxtGemini: {
+    fr: "Par défaut. Gratuit pour les textes avec une clé Google AI Studio, ou avec tes points.",
+    ar: "افتراضي. مجاني للنصوص بمفتاح Google AI Studio، أو بنقاطك.",
+    en: "Default. Free for texts with a Google AI Studio key, or with your points.",
+  },
+  stgTxtOpenai: {
+    fr: "GPT : très bon rédacteur, lit tes photos. Payant sur ton compte OpenAI.",
+    ar: "GPT: كاتب ممتاز ويقرأ صورك. مدفوع من حسابك في OpenAI.",
+    en: "GPT: a very good writer that reads your photos. Paid on your OpenAI account.",
+  },
+  stgTxtAnthropic: {
+    fr: "Claude : excellent pour les textes de vente, lit tes photos. Payant sur ton compte Anthropic.",
+    ar: "Claude: ممتاز لنصوص البيع ويقرأ صورك. مدفوع من حسابك في Anthropic.",
+    en: "Claude: excellent for sales copy, reads your photos. Paid on your Anthropic account.",
+  },
+  stgTxtMistral: {
+    fr: "Modèles européens, à l’aise en français. Payant sur ton compte Mistral.",
+    ar: "نماذج أوروبية متمكنة من الفرنسية. مدفوع من حسابك في Mistral.",
+    en: "European models, at ease in French. Paid on your Mistral account.",
+  },
+  stgTxtDeepseek: {
+    fr: "Très économique, mais ne lit pas les photos : les textes seulement.",
+    ar: "اقتصادي جداً، لكنه لا يقرأ الصور: النصوص فقط.",
+    en: "Very cheap, but it does not read photos: texts only.",
+  },
+  stgTxtXai: {
+    fr: "Grok, de xAI : lit tes photos. Payant sur ton compte xAI.",
+    ar: "Grok من xAI: يقرأ صورك. مدفوع من حسابك في xAI.",
+    en: "Grok, by xAI: reads your photos. Paid on your xAI account.",
+  },
+  stgTxtOpenrouter: {
+    fr: "Des centaines de modèles (Llama, Qwen, Claude, GPT…) avec une seule clé.",
+    ar: "مئات النماذج (Llama وQwen وClaude وGPT…) بمفتاح واحد.",
+    en: "Hundreds of models (Llama, Qwen, Claude, GPT…) with a single key.",
+  },
+  stgTxtKey: {
+    fr: "Clé API {service}",
+    ar: "مفتاح API لـ {service}",
+    en: "{service} API key",
+  },
+  stgTxtModel: {
+    fr: "Modèle",
+    ar: "النموذج",
+    en: "Model",
+  },
+  stgTxtLoadModels: {
+    fr: "Charger les modèles",
+    ar: "تحميل النماذج",
+    en: "Load models",
+  },
+  stgTxtModelsLoaded: {
+    fr: "{count} modèles disponibles avec ta clé : tape pour chercher dans la liste.",
+    ar: "{count} نموذج متاح بمفتاحك: اكتب للبحث في القائمة.",
+    en: "{count} models available with your key: type to search the list.",
+  },
+  stgTxtModelHint: {
+    fr: "Vide = {model}, le modèle conseillé. « Charger les modèles » liste ceux de ta clé.",
+    ar: "فارغ = {model}، النموذج المقترح. «تحميل النماذج» يعرض نماذج مفتاحك.",
+    en: "Empty = {model}, the recommended model. “Load models” lists your key’s models.",
+  },
+  stgTxtSaveFirst: {
+    fr: "Enregistre d’abord ta clé pour voir la liste de ses modèles. Vide = {model}.",
+    ar: "احفظ مفتاحك أولاً لرؤية قائمة نماذجه. فارغ = {model}.",
+    en: "Save your key first to see its list of models. Empty = {model}.",
+  },
+  stgTxtNoModels: {
+    fr: "Aucun modèle trouvé pour cette clé.",
+    ar: "لم يُعثر على أي نموذج لهذا المفتاح.",
+    en: "No model found for this key.",
+  },
+  stgTxtNoVision: {
+    fr: "Ce moteur ne lit pas les photos : l’analyse de tes photos produit se fera sans elles.",
+    ar: "هذا المحرك لا يقرأ الصور: سيتم تحليل منتجك بدونها.",
+    en: "This engine does not read photos: your product analysis will be done without them.",
+  },
+  stgTxtKeyNote: {
+    fr: "La clé est chiffrée et ne quitte jamais le serveur. Les vidéos IA utilisent toujours Gemini.",
+    ar: "المفتاح مشفّر ولا يغادر الخادم أبداً. تستعمل فيديوهات الذكاء الاصطناعي دائماً Gemini.",
+    en: "The key is encrypted and never leaves the server. AI videos always use Gemini.",
+  },
+  stgTxtGeminiNote: {
+    fr: "Les textes utilisent ta clé Gemini ci-dessous, ou tes points si tu n’as pas de clé.",
+    ar: "تستعمل النصوص مفتاح Gemini أدناه، أو نقاطك إن لم يكن لديك مفتاح.",
+    en: "Texts use your Gemini key below, or your points if you have no key.",
+  },
+  stgImgSubtitleEngines: {
+    fr: "L’IA qui crée tes photos, tes images et tes affiches. Les vidéos IA utilisent toujours Gemini.",
+    ar: "الذكاء الاصطناعي الذي يصنع صورك وملصقاتك. تستعمل فيديوهات الذكاء الاصطناعي دائماً Gemini.",
+    en: "The AI that makes your photos, images and posters. AI videos always use Gemini.",
+  },
 };
 
 registerTranslations('settings', settingsTranslations);

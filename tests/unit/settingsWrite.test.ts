@@ -60,6 +60,15 @@ describe('buildSettingsWrite', () => {
     expect(() => build({ imageProvider: 'midjourney' })).toThrow(/inconnu/i);
   });
 
+  it('stores the text engine and its model, encrypts the engines\' keys, and refuses unknown values', () => {
+    const { updateData } = build({ textProvider: 'anthropic', textModel: ' claude-sonnet-5-5 ', anthropicApiKey: 'sk-ant-1', openrouterApiKey: 'sk-or-1' });
+    expect(updateData).toMatchObject({ textProvider: 'anthropic', textModel: 'claude-sonnet-5-5', anthropicApiKey: 'enc(sk-ant-1)', openrouterApiKey: 'enc(sk-or-1)' });
+    expect(build({ textModel: '' }).updateData.textModel).toBeNull();
+    expect(build({}).updateData).not.toHaveProperty('textProvider');
+    expect(() => build({ textProvider: 'skynet' })).toThrow(/inconnu/i);
+    expect(() => build({ textModel: '../../etc' })).toThrow(/invalide/i);
+  });
+
   it('encrypts the other image services\' keys like the Gemini key', () => {
     const { updateData } = build({ openaiApiKey: 'sk-1', falApiKey: 'fal-1', cloudflareApiToken: 'cf-1' });
     expect(updateData).toMatchObject({ openaiApiKey: 'enc(sk-1)', falApiKey: 'enc(fal-1)', cloudflareApiToken: 'enc(cf-1)' });

@@ -10,6 +10,7 @@
  */
 
 import { isCloudflareAccountId, isImageProvider } from "./imageProviders";
+import { TEXT_ENGINE_ERRORS, isModelId, isTextProvider } from "./textEngines";
 
 export const DEFAULT_WORKSPACE_NAME = "E-com DZ Workspace";
 
@@ -24,6 +25,11 @@ export const SECRET_FIELDS = [
   "openaiApiKey",
   "falApiKey",
   "cloudflareApiToken",
+  "anthropicApiKey",
+  "mistralApiKey",
+  "deepseekApiKey",
+  "xaiApiKey",
+  "openrouterApiKey",
 ] as const;
 
 /** Non-secret identifier fields. */
@@ -83,6 +89,20 @@ export function buildSettingsWrite({ userId, body, existing, encrypt }: BuildArg
     if (!isImageProvider(body.imageProvider)) throw new SettingsValidationError("Service d'images inconnu.");
     createData.imageProvider = body.imageProvider;
     updateData.imageProvider = body.imageProvider;
+  }
+
+  if (body.textProvider !== undefined) {
+    if (!isTextProvider(body.textProvider)) throw new SettingsValidationError(TEXT_ENGINE_ERRORS.provider);
+    createData.textProvider = body.textProvider;
+    updateData.textProvider = body.textProvider;
+  }
+
+  // the model chosen for the text engine; empty means the engine's default
+  if (body.textModel !== undefined) {
+    const model = body.textModel == null ? "" : String(body.textModel).trim();
+    if (model && !isModelId(model)) throw new SettingsValidationError(TEXT_ENGINE_ERRORS.modelId);
+    createData.textModel = model || null;
+    updateData.textModel = model || null;
   }
 
   if (createData.workspaceName === undefined) createData.workspaceName = DEFAULT_WORKSPACE_NAME;

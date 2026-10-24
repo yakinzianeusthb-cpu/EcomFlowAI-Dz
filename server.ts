@@ -18,6 +18,9 @@ import { canUsePaidTools } from "./src/lib/access";
 import { CREDIT_ERRORS, textCharge, videoCharge } from "./src/lib/credits";
 import { addCreditsOnce, openBill, resolveAiAccess, type AiAccess, type Bill } from "./src/lib/creditStore";
 import { finalImage } from "./src/lib/generatedImage";
+import { TEXT_ENGINES, TEXT_ENGINE_ERRORS, isTextProvider, modelFor, type TextProvider } from "./src/lib/textEngines";
+import { fromGemini } from "./src/lib/textEngineRequest";
+import { TextEngineError, callTextEngine, listTextModels } from "./src/lib/textEngineCall";
 import { localizeResponses } from "./src/lib/localizeResponses";
 import { languageFromCookies, localizeBody } from "./src/i18n/serverMessages";
 import { SAVED_WORK_ERRORS } from "./src/lib/savedWork";
@@ -25,7 +28,7 @@ import { IMAGE_MODEL_FALLBACKS, TEXT_MODEL_FALLBACKS, aiErrorResponse, generateW
 import {
   DEFAULT_IMAGE_PROVIDER, IMAGE_ERRORS, KEEPS_PRODUCT, OPENAI_DRAW_MODELS, OPENAI_EDIT_MODELS, PROMPT_MAX, PROVIDER_HOSTS,
   cloudflareCall, falCall, isAspectRatio, isCloudflareAccountId, isImageProvider, isModelUnavailable, openAiCall,
-  providerError, readImage, readReference, type ProviderCall,
+  providerError, readImage, readReference, type AspectRatio, type ImageRequest, type ProviderCall,
 } from "./src/lib/imageProviders";
 import {
   GOOGLE_API_BASE, VIDEO_ERRORS, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJobDetails, signJob,
@@ -211,6 +214,34 @@ async function settleText(bill: Bill | null, access: AiAccess, usage: { totalTok
   await bill.topUp(textCharge(usage?.totalTokenCount, access.settings.textCost) - access.settings.textCost, "text");
 }
 
+/** A stored secret, decrypted (null when missing or unreadable). Used on the server only. */
+function revealSecret(blob: string | null | undefined): string | null {
+  if (!blob || !isEncryptedSecret(blob)) return null;
+  try {
+    return decryptSecret(blob);
+  } catch {
+    return null;
+  }
+}
+
+const ENGINE_KEY_SELECT = { textProvider: true, textModel: true, openaiApiKey: true, anthropicApiKey: true, mistralApiKey: true, deepseekApiKey: true, xaiApiKey: true, openrouterApiKey: true } as const;
+
+/** The engine that writes this seller's texts (src/lib/textEngines.ts), the model and its key. */
+async function textEngineOf(userId: string): Promise<{ provider: TextProvider; model: string; key: string | null }> {
+  const row = await prisma.apiSettings.findUnique({ where: { userId }, select: ENGINE_KEY_SELECT });
+  const provider = isTextProvider(row?.textProvider) ? row.textProvider : "gemini";
+  if (provider === "gemini") return { provider, model: "", key: null };
+  const blob = (row as Record<string, string | null> | null)?.[TEXT_ENGINES[provider].keyField];
+  return { provider, model: modelFor(provider, row?.textModel), key: revealSecret(blob) };
+}
+
+/** Sends an error already worded for the seller (a text engine's or an image service's); false for any other error. */
+function sendWordedError(res: express.Response, error: unknown): boolean {
+  if (!(error instanceof TextEngineError)) return false;
+  res.status(error.status).json({ error: error.message });
+  return true;
+}
+
 /** Points pay for the AI, the plan opens the tools: a seller on points needs a live plan too (admins excepted). */
 async function hasLivePlan(userId: string) {
   return canUsePaidTools(await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true, planStatus: true, planExpiresAt: true } }));
@@ -225,15 +256,6 @@ app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res
   let bill: Bill | null = null;
   try {
     const user = req.user as SessionPayload;
-    const access = await resolveAiAccess(user.sub);
-    if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
-    if (access.mode === "points") {
-      if (!(await hasLivePlan(user.sub))) return res.status(403).json({ error: PLAN_REQUIRED_MESSAGE, code: "PLAN_REQUIRED" });
-      bill = openBill(user.sub, access.free);
-      if (!(await bill.reserve(access.settings.textCost, "text"))) return res.status(402).json(NO_CREDITS);
-    }
-    const ai = await makeAiClient(access.apiKey);
-
     const { Type } = await import("@google/genai");
     const { image, currentName, purchasePrice, sellingPrice } = req.body;
 
@@ -266,22 +288,40 @@ app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res
       });
     }
 
+    const config = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          description: { type: Type.STRING },
+          category: { type: Type.STRING },
+          targetCPA: { type: Type.STRING }
+        },
+        required: ["name", "description", "category", "targetCPA"]
+      }
+    };
+
+    // the engine the seller chose for texts; Gemini (own key or points) when it is Gemini
+    const engine = await textEngineOf(user.sub);
+    if (engine.provider !== "gemini") {
+      if (!engine.key) return res.status(400).json({ error: TEXT_ENGINE_ERRORS.noKey });
+      const answer = await callTextEngine(engine.provider, engine.key, engine.model, fromGemini({ parts: contents }, config));
+      return res.json(JSON.parse(answer.text || "{}"));
+    }
+
+    const access = await resolveAiAccess(user.sub);
+    if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
+    if (access.mode === "points") {
+      if (!(await hasLivePlan(user.sub))) return res.status(403).json({ error: PLAN_REQUIRED_MESSAGE, code: "PLAN_REQUIRED" });
+      bill = openBill(user.sub, access.free);
+      if (!(await bill.reserve(access.settings.textCost, "text"))) return res.status(402).json(NO_CREDITS);
+    }
+    const ai = await makeAiClient(access.apiKey);
     const { result: response } = await generateWithFallback(TEXT_MODEL_FALLBACKS, (model) => ai.models.generateContent({
       model,
       contents: { parts: contents },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            description: { type: Type.STRING },
-            category: { type: Type.STRING },
-            targetCPA: { type: Type.STRING }
-          },
-          required: ["name", "description", "category", "targetCPA"]
-        }
-      }
+      config,
     }), logModelFallback);
 
     const result = JSON.parse(response.text || '{}');
@@ -290,6 +330,7 @@ app.post("/api/ai/generate-product", requireAuth, aiRateLimiter, async (req, res
     res.json(result);
   } catch (error) {
     await refundQuietly(bill);
+    if (sendWordedError(res, error)) return;
     console.error("AI Generation Error:", error);
     // a wrong key or a used-up quota gets its own message; anything else stays generic
     const { status, error: message } = aiErrorResponse(error);
@@ -312,9 +353,21 @@ app.post("/api/ai/generate", requireAuth, requirePaidAccess, aiRateLimiter, asyn
       return res.status(400).json({ error: "Modèle non autorisé." });
     }
     const user = req.user as SessionPayload;
-    const access = await resolveAiAccess(user.sub);
-    if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
     const isImage = IMAGE_MODEL_FALLBACKS.includes(model);
+    if (!isImage) {
+      // texts go to the engine the seller chose (src/lib/textEngines.ts); Gemini goes on below
+      const engine = await textEngineOf(user.sub);
+      if (engine.provider !== "gemini") {
+        if (!engine.key) return res.status(400).json({ error: TEXT_ENGINE_ERRORS.noKey });
+        return res.json(await callTextEngine(engine.provider, engine.key, engine.model, fromGemini(contents, config)));
+      }
+    }
+    const access = await resolveAiAccess(user.sub);
+    if (access.mode === "none") {
+      // no Gemini at all: an image is drawn by the seller's image service when there is one
+      const drawn = isImage ? await imageFromGeminiRequest(user, contents, config) : null;
+      return drawn ? res.json(drawn) : res.status(400).json({ error: NO_KEY_MSG });
+    }
     if (access.mode === "points") {
       // an image costs a fixed price; text costs its first block now and the rest once its length is known
       bill = openBill(user.sub, access.free);
@@ -339,6 +392,7 @@ app.post("/api/ai/generate", requireAuth, requirePaidAccess, aiRateLimiter, asyn
     });
   } catch (error: any) {
     await refundQuietly(bill);
+    if (sendWordedError(res, error)) return;
     console.error("AI Proxy Error:", error);
     // Every model was tried (see generateWithFallback). Say why in plain words; never pass upstream details on.
     const { status, error: message } = aiErrorResponse(error);
@@ -363,22 +417,15 @@ async function imageServiceOf(session: SessionPayload) {
     where: { userId: session.sub },
     select: { imageProvider: true, openaiApiKey: true, falApiKey: true, cloudflareAccountId: true, cloudflareApiToken: true },
   });
-  const secret = (blob?: string | null) => {
-    if (!blob || !isEncryptedSecret(blob)) return null;
-    try {
-      return decryptSecret(blob);
-    } catch {
-      return null;
-    }
-  };
   return {
     provider: isImageProvider(row?.imageProvider) ? row.imageProvider : DEFAULT_IMAGE_PROVIDER,
-    openai: secret(row?.openaiApiKey),
-    fal: secret(row?.falApiKey),
+    openai: revealSecret(row?.openaiApiKey),
+    fal: revealSecret(row?.falApiKey),
     cloudflareAccount: row?.cloudflareAccountId ?? null,
-    cloudflare: secret(row?.cloudflareApiToken),
+    cloudflare: revealSecret(row?.cloudflareApiToken),
   };
 }
+type ImageService = Awaited<ReturnType<typeof imageServiceOf>>;
 
 /** One call to an image service; a refusal is thrown with the service's status and text (kept on the server). */
 async function sendImageCall(call: ProviderCall): Promise<unknown> {
@@ -403,23 +450,20 @@ async function falPictureFromLink(answer: unknown): Promise<string | null> {
   return bytes.length && bytes.length <= DOWNLOAD_MAX_BYTES ? `data:${type.split(";")[0]};base64,${bytes.toString("base64")}` : null;
 }
 
-app.post("/api/ai/image", requireAuth, requirePaidAccess, aiRateLimiter, async (req, res) => {
-  const { prompt, reference: photo, aspectRatio } = req.body || {};
-  if (typeof prompt !== "string" || !prompt.trim() || prompt.length > PROMPT_MAX || !isAspectRatio(aspectRatio)) {
-    return res.status(400).json({ error: IMAGE_ERRORS.badRequest });
-  }
-  const reference = readReference(photo);
-  if (reference === "invalid") return res.status(400).json({ error: IMAGE_ERRORS.badImage });
+/**
+ * One picture from the seller's image service (not Gemini) as a data URL. A missing key, a service that would not keep
+ * the product, a refusal or a timeout is thrown already worded for the seller (TextEngineError); the service's own
+ * words stay here, since they may quote part of the key.
+ */
+async function drawWithService(service: ImageService, request: { prompt: string; reference: ImageRequest["reference"]; aspectRatio: AspectRatio }): Promise<string> {
+  if (service.provider === "gemini") throw new TextEngineError(409, IMAGE_ERRORS.geminiChosen);
+  // a service that only draws from words would not keep the seller's product
+  if (request.reference && !KEEPS_PRODUCT[service.provider]) throw new TextEngineError(400, IMAGE_ERRORS.noReference);
   try {
-    const service = await imageServiceOf(req.user as SessionPayload);
-    if (service.provider === "gemini") return res.status(409).json({ error: IMAGE_ERRORS.geminiChosen });
-    // a service that only draws from words would not keep the seller's product
-    if (reference && !KEEPS_PRODUCT[service.provider]) return res.status(400).json({ error: IMAGE_ERRORS.noReference });
-    const request = { prompt: prompt.trim(), reference, aspectRatio };
     let answer: unknown;
     if (service.provider === "openai") {
-      if (!service.openai) return res.status(400).json({ error: IMAGE_ERRORS.noKey });
-      const models = reference ? OPENAI_EDIT_MODELS : OPENAI_DRAW_MODELS;
+      if (!service.openai) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
+      const models = request.reference ? OPENAI_EDIT_MODELS : OPENAI_DRAW_MODELS;
       for (const [i, model] of models.entries()) {
         try {
           answer = await sendImageCall(openAiCall(request, service.openai, model, providerHost("openai")));
@@ -431,21 +475,74 @@ app.post("/api/ai/image", requireAuth, requirePaidAccess, aiRateLimiter, async (
         }
       }
     } else if (service.provider === "fal") {
-      if (!service.fal) return res.status(400).json({ error: IMAGE_ERRORS.noKey });
+      if (!service.fal) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
       answer = await sendImageCall(falCall(request, service.fal, providerHost("fal")));
     } else {
-      if (!service.cloudflare || !isCloudflareAccountId(service.cloudflareAccount)) return res.status(400).json({ error: IMAGE_ERRORS.noKey });
+      if (!service.cloudflare || !isCloudflareAccountId(service.cloudflareAccount)) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
       answer = await sendImageCall(cloudflareCall(request, service.cloudflareAccount, service.cloudflare, providerHost("cloudflare")));
     }
     const image = readImage(service.provider, answer) ?? (service.provider === "fal" ? await falPictureFromLink(answer) : null);
-    if (!image) return res.status(502).json({ error: IMAGE_ERRORS.failed });
-    res.json({ image, provider: service.provider });
+    if (!image) throw new TextEngineError(502, IMAGE_ERRORS.failed);
+    return image;
   } catch (error: any) {
-    // the service's own words stay here: they may quote part of the key
+    if (error instanceof TextEngineError) throw error;
     console.error("AI Image Error:", error?.status ?? error?.name ?? "unknown");
-    if (error?.name === "TimeoutError") return res.status(504).json({ error: IMAGE_ERRORS.busy });
+    if (error?.name === "TimeoutError") throw new TextEngineError(504, IMAGE_ERRORS.busy);
     const { status, error: message } = typeof error?.status === "number" ? providerError(error.status, error.text ?? "") : { status: 502, error: IMAGE_ERRORS.failed };
-    res.status(status).json({ error: message });
+    throw new TextEngineError(status, message);
+  }
+}
+
+/**
+ * A Gemini image request (the tools' shape) drawn by the seller's image service instead, for sellers without any
+ * Gemini key or points; null when their image service is Gemini too. Answers in Gemini's shape.
+ */
+async function imageFromGeminiRequest(session: SessionPayload, contents: unknown, config: unknown) {
+  const service = await imageServiceOf(session);
+  if (service.provider === "gemini") return null;
+  const parts = fromGemini(contents, {}).messages.flatMap((m) => m.parts);
+  const prompt = parts.map((p) => p.text ?? "").filter(Boolean).join("\n").slice(0, PROMPT_MAX).trim();
+  const photo = parts.find((p) => p.image)?.image;
+  const reference = photo ? readReference(`data:${photo.mimeType};base64,${photo.data}`) : null;
+  if (!prompt || reference === "invalid") throw new TextEngineError(400, IMAGE_ERRORS.badRequest);
+  const ratio = (config as { imageConfig?: { aspectRatio?: unknown } } | null)?.imageConfig?.aspectRatio;
+  const image = await drawWithService(service, { prompt, reference, aspectRatio: isAspectRatio(ratio) ? ratio : "1:1" });
+  const match = /^data:([^;]+);base64,(.+)$/s.exec(image);
+  if (!match) throw new TextEngineError(502, IMAGE_ERRORS.failed);
+  return { text: "", candidates: [{ content: { role: "model", parts: [{ inlineData: { mimeType: match[1], data: match[2] } }] } }], usageMetadata: null };
+}
+
+app.post("/api/ai/image", requireAuth, requirePaidAccess, aiRateLimiter, async (req, res) => {
+  const { prompt, reference: photo, aspectRatio } = req.body || {};
+  if (typeof prompt !== "string" || !prompt.trim() || prompt.length > PROMPT_MAX || !isAspectRatio(aspectRatio)) {
+    return res.status(400).json({ error: IMAGE_ERRORS.badRequest });
+  }
+  const reference = readReference(photo);
+  if (reference === "invalid") return res.status(400).json({ error: IMAGE_ERRORS.badImage });
+  try {
+    const service = await imageServiceOf(req.user as SessionPayload);
+    const image = await drawWithService(service, { prompt: prompt.trim(), reference, aspectRatio });
+    res.json({ image, provider: service.provider });
+  } catch (error) {
+    if (sendWordedError(res, error)) return;
+    console.error("AI Image Error:", error);
+    res.status(502).json({ error: IMAGE_ERRORS.failed });
+  }
+});
+
+// GET /api/ai/models?provider=… — a text engine's current models, read with the seller's saved key (settings page).
+app.get("/api/ai/models", requireAuth, aiRateLimiter, async (req, res) => {
+  const provider = req.query.provider;
+  if (!isTextProvider(provider) || provider === "gemini") return res.status(400).json({ error: TEXT_ENGINE_ERRORS.provider });
+  try {
+    const row = await prisma.apiSettings.findUnique({ where: { userId: (req.user as SessionPayload).sub }, select: ENGINE_KEY_SELECT });
+    const key = revealSecret((row as Record<string, string | null> | null)?.[TEXT_ENGINES[provider].keyField]);
+    if (!key) return res.status(400).json({ error: TEXT_ENGINE_ERRORS.noKey });
+    res.json({ models: (await listTextModels(provider, key)).slice(0, 500) });
+  } catch (error) {
+    if (sendWordedError(res, error)) return;
+    console.error("AI Models Error:", error);
+    res.status(502).json({ error: TEXT_ENGINE_ERRORS.failed });
   }
 });
 

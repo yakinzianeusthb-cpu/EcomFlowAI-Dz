@@ -2,6 +2,7 @@ import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { encryptSecret, maskSecret } from "../lib/crypto";
 import { DEFAULT_IMAGE_PROVIDER } from "../lib/imageProviders";
+import { DEFAULT_TEXT_PROVIDER } from "../lib/textEngines";
 import { SessionPayload } from "../lib/session";
 import { requireAuth } from "../lib/requireAuth";
 import {
@@ -28,6 +29,13 @@ const DEFAULT_SETTINGS = {
   falApiKey: "",
   cloudflareAccountId: "",
   cloudflareApiToken: "",
+  textProvider: DEFAULT_TEXT_PROVIDER,
+  textModel: "",
+  anthropicApiKey: "",
+  mistralApiKey: "",
+  deepseekApiKey: "",
+  xaiApiKey: "",
+  openrouterApiKey: "",
   workspaceName: DEFAULT_WORKSPACE_NAME,
   customApiToken: "",
 };

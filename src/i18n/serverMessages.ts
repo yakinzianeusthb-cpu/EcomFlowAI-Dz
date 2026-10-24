@@ -100,6 +100,16 @@ const FRENCH_SOURCED: Array<[string, string, string]> = [
   ["Nombre de points invalide.", "Invalid number of points.", "عدد النقاط غير صالح."],
   ["Aucun compte avec cet email.", "No account with this email.", "لا يوجد حساب بهذا البريد الإلكتروني."],
   ["Clé Gemini invalide.", "Invalid Gemini key.", "مفتاح Gemini غير صالح."],
+  // text engines (src/lib/textEngines.ts)
+  ["Ajoute la clé du moteur IA choisi dans Paramètres (ou choisis Google Gemini).", "Add the key of the chosen AI engine in Settings (or choose Google Gemini).", "أضف مفتاح محرك الذكاء الاصطناعي المختار في الإعدادات (أو اختر Google Gemini)."],
+  ["La clé du moteur IA choisi est refusée : vérifie-la dans Paramètres.", "The chosen AI engine refuses the key: check it in Settings.", "مفتاح محرك الذكاء الاصطناعي المختار مرفوض: تحقق منه في الإعدادات."],
+  ["Le moteur IA choisi refuse : plus de crédit ou facturation à activer sur ton compte chez ce service.", "The chosen AI engine refuses: no credit left, or billing must be enabled on your account with that service.", "يرفض محرك الذكاء الاصطناعي المختار: نفد الرصيد أو يجب تفعيل الفوترة في حسابك لدى هذه الخدمة."],
+  ["Le moteur IA choisi est surchargé ou ton quota est atteint. Réessaie dans un moment.", "The chosen AI engine is overloaded or your quota is reached. Try again in a moment.", "محرك الذكاء الاصطناعي المختار مزدحم أو بلغت حصتك. أعد المحاولة بعد قليل."],
+  ["Ce modèle n'existe pas chez le moteur IA choisi, ou ta clé n'y a pas accès : choisis-en un autre dans Paramètres.", "This model does not exist with the chosen AI engine, or your key cannot use it: choose another one in Settings.", "هذا النموذج غير موجود لدى المحرك المختار، أو لا يملك مفتاحك صلاحية استعماله: اختر نموذجاً آخر في الإعدادات."],
+  ["Le moteur IA choisi n'a pas pu répondre. Réessaie.", "The chosen AI engine could not answer. Try again.", "تعذّر على محرك الذكاء الاصطناعي المختار الرد. أعد المحاولة."],
+  ["Le moteur IA a refusé cette demande. Reformule-la.", "The AI engine refused this request. Rephrase it.", "رفض محرك الذكاء الاصطناعي هذا الطلب. أعد صياغته."],
+  ["Moteur IA inconnu.", "Unknown AI engine.", "محرك ذكاء اصطناعي غير معروف."],
+  ["Nom de modèle invalide.", "Invalid model name.", "اسم النموذج غير صالح."],
 
   // Contact form
   ["Nom invalide.", "Invalid name.", "الاسم غير صالح."],

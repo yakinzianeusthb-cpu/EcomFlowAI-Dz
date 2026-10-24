@@ -5,6 +5,8 @@ import { settingsApi } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import PageHeader from './PageHeader';
 import ImageServiceSettings, { type ImageServiceDraft, type SavedImageKeys } from './settings/ImageServiceSettings';
+import TextEngineSettings, { EMPTY_ENGINE_KEYS, type SavedEngineKeys, type TextEngineDraft } from './settings/TextEngineSettings';
+import { DEFAULT_TEXT_PROVIDER, isTextProvider } from '../lib/textEngines';
 import { DEFAULT_IMAGE_PROVIDER, isImageProvider } from '../lib/imageProviders';
 import { StatusChip } from './ui/primitives';
 import '../i18n/settings';
@@ -24,6 +26,8 @@ export default function Settings() {
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [images, setImages] = useState<ImageServiceDraft>({ provider: DEFAULT_IMAGE_PROVIDER, openaiApiKey: '', falApiKey: '', cloudflareAccountId: '', cloudflareApiToken: '' });
   const [savedImageKeys, setSavedImageKeys] = useState<SavedImageKeys>({ openai: false, fal: false, cloudflare: false });
+  const [engine, setEngine] = useState<TextEngineDraft>({ provider: DEFAULT_TEXT_PROVIDER, model: '', keys: EMPTY_ENGINE_KEYS });
+  const [savedEngineKeys, setSavedEngineKeys] = useState<SavedEngineKeys>({ openai: false, anthropic: false, mistral: false, deepseek: false, xai: false, openrouter: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +39,11 @@ export default function Settings() {
         setHasGeminiKey(Boolean(saved.geminiApiKey));
         setImages((d) => ({ ...d, provider: isImageProvider(saved.imageProvider) ? saved.imageProvider : DEFAULT_IMAGE_PROVIDER, cloudflareAccountId: saved.cloudflareAccountId ?? '' }));
         setSavedImageKeys({ openai: Boolean(saved.openaiApiKey), fal: Boolean(saved.falApiKey), cloudflare: Boolean(saved.cloudflareApiToken) && Boolean(saved.cloudflareAccountId) });
+        setEngine((d) => ({ ...d, provider: isTextProvider(saved.textProvider) ? saved.textProvider : DEFAULT_TEXT_PROVIDER, model: saved.textModel ?? '' }));
+        setSavedEngineKeys({
+          openai: Boolean(saved.openaiApiKey), anthropic: Boolean(saved.anthropicApiKey), mistral: Boolean(saved.mistralApiKey),
+          deepseek: Boolean(saved.deepseekApiKey), xai: Boolean(saved.xaiApiKey), openrouter: Boolean(saved.openrouterApiKey),
+        });
       })
       .catch(() => toast.error(t('stgErreurLorsSauvegarde', 'Erreur lors de la sauvegarde')))
       .finally(() => !cancelled && setLoaded(true));
@@ -44,8 +53,13 @@ export default function Settings() {
   const save = async () => {
     setSaving('saving');
     try {
-      const typed = { openaiApiKey: images.openaiApiKey.trim(), falApiKey: images.falApiKey.trim(), cloudflareApiToken: images.cloudflareApiToken.trim() };
-      await settingsApi.update({ workspaceName, geminiApiKey: geminiKey.trim(), imageProvider: images.provider, cloudflareAccountId: images.cloudflareAccountId.trim(), ...typed });
+      // one OpenAI key serves both the texts and the images: whichever field was typed in
+      const typed = { openaiApiKey: images.openaiApiKey.trim() || engine.keys.openai.trim(), falApiKey: images.falApiKey.trim(), cloudflareApiToken: images.cloudflareApiToken.trim() };
+      const engineKeys = { anthropicApiKey: engine.keys.anthropic.trim(), mistralApiKey: engine.keys.mistral.trim(), deepseekApiKey: engine.keys.deepseek.trim(), xaiApiKey: engine.keys.xai.trim(), openrouterApiKey: engine.keys.openrouter.trim() };
+      await settingsApi.update({
+        workspaceName, geminiApiKey: geminiKey.trim(), imageProvider: images.provider, cloudflareAccountId: images.cloudflareAccountId.trim(), ...typed,
+        textProvider: engine.provider, textModel: engine.provider === 'gemini' ? '' : engine.model.trim(), ...engineKeys,
+      });
       if (geminiKey.trim()) setHasGeminiKey(true);
       setGeminiKey('');
       setSavedImageKeys((s) => ({
@@ -54,6 +68,11 @@ export default function Settings() {
         cloudflare: Boolean(images.cloudflareAccountId.trim()) && (s.cloudflare || Boolean(typed.cloudflareApiToken)),
       }));
       setImages((d) => ({ ...d, openaiApiKey: '', falApiKey: '', cloudflareApiToken: '' }));
+      setSavedEngineKeys((k) => ({
+        openai: k.openai || Boolean(typed.openaiApiKey), anthropic: k.anthropic || Boolean(engineKeys.anthropicApiKey), mistral: k.mistral || Boolean(engineKeys.mistralApiKey),
+        deepseek: k.deepseek || Boolean(engineKeys.deepseekApiKey), xai: k.xai || Boolean(engineKeys.xaiApiKey), openrouter: k.openrouter || Boolean(engineKeys.openrouterApiKey),
+      }));
+      setEngine((d) => ({ ...d, keys: EMPTY_ENGINE_KEYS }));
       setSaving('saved');
       toast.success(t('stgParametresEnregistresAvecSucce', 'Paramètres enregistrés avec succès !'));
       setTimeout(() => setSaving('idle'), 2500);
@@ -78,6 +97,8 @@ export default function Settings() {
         <label className="block text-[13px] font-medium text-fg" htmlFor="setting-workspaceName">{t('stgNomWorkspace', 'Nom du Workspace')}</label>
         <input id="setting-workspaceName" className="input-dz mt-1.5" value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder={t('stgExMonAgenceE', 'Ex : Mon agence e-commerce...')} maxLength={80} />
       </section>
+
+      <TextEngineSettings draft={engine} onChange={setEngine} saved={savedEngineKeys} loaded={loaded} />
 
       <section aria-labelledby="stg-gemini" className="ui-card p-5">
         <div className="mb-4 flex flex-wrap items-center gap-3">

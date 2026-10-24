@@ -187,6 +187,28 @@ video always use Gemini. `src/lib/imageProviders.ts` builds each request and rea
 These were tested against a local stand-in that follows each service's documentation (`IMAGE_PROVIDERS_BASE_URL`, used
 only outside production), not with real keys.
 
+**Text engines.** In Paramètres → **Moteur IA des textes** each seller picks who writes their landing pages, video
+scripts and analyses (`src/lib/textEngines.ts`): Google Gemini (default, the only one points can pay for), OpenAI,
+Anthropic Claude, Mistral, DeepSeek, xAI Grok or OpenRouter (hundreds of models with one key), with the service's logo
+(`src/assets/ai-logos`, MIT, licence file beside them). Each runs on the seller's own key (encrypted, never sent back);
+one OpenAI key serves both texts and images. AI video always uses Gemini.
+
+- **No tool changed:** the tools still build Gemini-shaped requests; `src/lib/textEngineRequest.ts` turns them into each
+  service's request (system prompt, conversation, product photos, JSON mode with the schema written into the
+  instructions) and the answer back into Gemini's shape. Claude goes through Anthropic's official SDK
+  (`@anthropic-ai/sdk`: medium effort, and the server-side `fallbacks: "default"` on the models that take it), OpenAI
+  through its Responses API, the others through their chat-completions APIs (`src/lib/textEngineCall.ts`). DeepSeek's
+  chat model reads no images, so the photos are left out for it.
+- **Models:** each engine has a default (Claude Opus 5.5, GPT-6 Luna, Mistral Large, DeepSeek Chat, Grok 4.3,
+  OpenRouter's auto router); **Charger les modèles** lists the models the seller's saved key can use (`GET /api/ai/models`),
+  and any id can be typed. Model ids are checked (letters, digits, `. _ : / -`).
+- **Errors** come back in plain words (wrong key, no credit, quota, unknown model, refusal); the service's own message,
+  which can quote part of the key, stays in the server log.
+- **Images without Gemini:** a seller with no Gemini key and no points whose image service is OpenAI or FLUX gets every
+  image the tools ask Gemini for drawn by that service instead.
+- Tested end to end against a local stand-in for each service (`TEXT_PROVIDERS_BASE_URL`, outside production only; 22
+  checks), not with real keys: watch the first real call of each engine.
+
 Every section of the app has its own picture, a 3D emoji from Microsoft's Fluent Emoji set (MIT licence, kept in
 `src/assets/sections/LICENSE.txt`), shown in the menu, the dashboard's **Accès rapide** grid, each page header and the
 phone top bar (`src/lib/sections.ts`). They are 128 px WebP files (about 3 KB each), so they look the same on every
@@ -267,7 +289,7 @@ uses a dictionary it does not import.
 
 ## Tests
 
-`npm test` runs the unit tests (590 in 53 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
+`npm test` runs the unit tests (604 in 54 files): plan rules, sessions, OTP, encryption, passwords, rate limiting, e-mail
 delivery, settings validation, pricing, translations, AI error handling, the video timeline, music and AI video jobs, the
 landing page HTML, its templates, colours and order totals,
 file validation, image costs, the dashboard's "to do" list and more. Coverage of `src/lib`, `src/i18n` and `server-telegram.ts` is above 80 %. React
@@ -285,7 +307,7 @@ development secret. `SITE_URL` should be the public address of the site so link 
 absolute image URL.
 
 **Database update for this version:** run `npx prisma db push` once against the production database. It only adds
-tables (`credit_purchases` and `credit_entries` for points, `assets`, plus the unused `projects`, `project_outputs`, `brand_kits` and `meta_connections`) and five columns to `api_settings`
+tables (`credit_purchases` and `credit_entries` for points, the text-engine columns of `api_settings`, `assets`, plus the unused `projects`, `project_outputs`, `brand_kits` and `meta_connections`) and five columns to `api_settings`
 (`image_provider`, defaulting to `gemini`, and the empty key columns of the other image services), plus `users.credits` (0)
 and the points settings on `platform_config` (defaults as above), and leaves existing
 data alone; until it runs, the settings page and every AI call fail (they read the new columns). Read

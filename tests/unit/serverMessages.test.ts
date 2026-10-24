@@ -7,6 +7,7 @@ import { ASSET_ERRORS } from '../../src/lib/assetRules';
 import { SAVED_WORK_ERRORS } from '../../src/lib/savedWork';
 import { CREDIT_ERRORS } from '../../src/lib/credits';
 import { PROOF_ERRORS } from '../../src/lib/paymentProof';
+import { TEXT_ENGINE_ERRORS } from '../../src/lib/textEngines';
 
 describe('languageFromCookies', () => {
   it('reads the language the app saved', () => {
@@ -101,7 +102,7 @@ describe('SERVER_MESSAGES', () => {
   });
 
   it('covers every validation message of files and saved work', () => {
-    for (const message of [...Object.values(ASSET_ERRORS), ...Object.values(SAVED_WORK_ERRORS), ...Object.values(CREDIT_ERRORS), ...Object.values(PROOF_ERRORS)]) {
+    for (const message of [...Object.values(ASSET_ERRORS), ...Object.values(SAVED_WORK_ERRORS), ...Object.values(CREDIT_ERRORS), ...Object.values(PROOF_ERRORS), ...Object.values(TEXT_ENGINE_ERRORS)]) {
       expect(SERVER_MESSAGES[message], message).toBeDefined();
     }
   });

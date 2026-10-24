@@ -3,6 +3,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { IMAGE_PROVIDERS, IMAGE_PROVIDER_NAMES, type ImageProvider } from '../../lib/imageProviders';
 import { cn } from '../../lib/utils';
 import { StatusChip } from '../ui/primitives';
+import { AiLogo, type AiBrand } from '../ui/AiLogo';
 import '../../i18n/settings';
 import '../../i18n/campaigns';
 
@@ -19,6 +20,8 @@ export interface SavedImageKeys {
   fal: boolean;
   cloudflare: boolean;
 }
+
+const BRAND: Record<ImageProvider, AiBrand> = { gemini: 'gemini', openai: 'openai', fal: 'flux', cloudflare: 'cloudflare' };
 
 const KEY_LINKS: Record<Exclude<ImageProvider, 'gemini'>, string> = {
   openai: 'https://platform.openai.com/api-keys',
@@ -47,7 +50,7 @@ function KeyField({ id, label, value, onChange, saved, placeholder }: { id: stri
 
 /**
  * Which AI service makes the images (Gemini by default) and the keys of the others. The keys are sent once, stored
- * encrypted and never shown again; text and video always use Gemini.
+ * encrypted and never shown again; the texts follow the engine chosen above, AI video always uses Gemini.
  */
 export default function ImageServiceSettings({ draft, onChange, saved, loaded }: { draft: ImageServiceDraft; onChange: (next: ImageServiceDraft) => void; saved: SavedImageKeys; loaded: boolean }) {
   const { t } = useLanguage();
@@ -66,7 +69,7 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
         <span className="grid size-10 place-items-center rounded-[var(--radius-sm)] bg-primary/10 text-primary-ink"><ImageIcon size={18} /></span>
         <div>
           <h2 id="stg-images" className="text-[15px] font-semibold text-fg">{t('stgImgTitle', 'Service d’images')}</h2>
-          <p className="text-xs text-fg-muted">{t('stgImgSubtitle', 'L’IA qui crée tes photos, tes images et tes affiches. Les textes et les vidéos utilisent toujours Gemini.')}</p>
+          <p className="text-xs text-fg-muted">{t('stgImgSubtitleEngines', 'L’IA qui crée tes photos, tes images et tes affiches. Les vidéos IA utilisent toujours Gemini.')}</p>
         </div>
       </div>
 
@@ -79,19 +82,22 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
               <label
                 key={id}
                 className={cn(
-                  'flex cursor-pointer flex-col gap-1 rounded-[var(--radius-md)] border p-3 transition-[border-color,background-color] duration-200 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/50',
+                  'flex cursor-pointer gap-3 rounded-[var(--radius-md)] border p-3 transition-[border-color,background-color] duration-200 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/50',
                   selected ? 'border-primary bg-primary/[0.05]' : 'border-line hover:border-fg/30',
                 )}
               >
-                <span className="flex items-center gap-2">
-                  {/* until the saved choice is known, a click here would be overwritten by it */}
-                  <input type="radio" name="image-provider" value={id} checked={selected} disabled={!loaded} onChange={() => set({ provider: id })} className="size-4 accent-[var(--color-primary)]" />
-                  <span className="text-sm font-semibold text-fg">{IMAGE_PROVIDER_NAMES[id]}</span>
-                  {id === 'gemini' && <span className="text-xs font-medium text-primary-ink">{t('stgImgDefault', 'par défaut')}</span>}
-                  {id === 'cloudflare' && <span className="text-xs font-medium text-success-ink">{t('stgImgFree', 'gratuit')}</span>}
-                  {loaded && id !== 'gemini' && hasKey[id] && <StatusChip state="ready" label={t('stgKeySaved', 'Clé enregistrée')} className="ms-auto" />}
+                {/* until the saved choice is known, a click here would be overwritten by it */}
+                <input type="radio" name="image-provider" value={id} checked={selected} disabled={!loaded} onChange={() => set({ provider: id })} className="sr-only" />
+                <AiLogo brand={BRAND[id]} size={40} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-sm font-semibold text-fg">{IMAGE_PROVIDER_NAMES[id]}</span>
+                    {id === 'gemini' && <span className="text-xs font-medium text-primary-ink">{t('stgImgDefault', 'par défaut')}</span>}
+                    {id === 'cloudflare' && <span className="text-xs font-medium text-success-ink">{t('stgImgFree', 'gratuit')}</span>}
+                    {loaded && id !== 'gemini' && hasKey[id] && <StatusChip state="ready" label={t('stgKeySaved', 'Clé enregistrée')} />}
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-fg-muted">{about[id]}</span>
                 </span>
-                <span className="text-xs leading-relaxed text-fg-muted">{about[id]}</span>
               </label>
             );
           })}

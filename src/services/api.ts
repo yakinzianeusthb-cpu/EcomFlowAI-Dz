@@ -70,6 +70,11 @@ export const settingsApi = {
     api("/api/settings", { method: "PUT", body: JSON.stringify(data) }),
 };
 
+/** A text engine's current models, read on the server with the seller's saved key (Paramètres). */
+export const aiModelsApi = {
+  list: async (provider: string): Promise<string[]> => (await api<{ models: string[] }>(`/api/ai/models?provider=${encodeURIComponent(provider)}`)).models,
+};
+
 // ---------------------------------------------------------------------------
 // User preferences (theme, language, tool order, widget config, last state)
 // ---------------------------------------------------------------------------
