@@ -87,9 +87,9 @@ export const settingsTranslations: TranslationDictionary = {
     en: "FLUX Kontext: keeps your product. Paid per image, on your fal.ai account.",
   },
   stgImgCloudflare: {
-    fr: "Gratuit chaque jour dans une limite, mais il dessine seulement d’après les mots : il ne garde pas ton produit (pas pour les images de ta page).",
-    ar: "مجاني يومياً ضمن حدّ معيّن، لكنه يرسم من الكلمات فقط: لا يحافظ على منتجك (ليس لصور صفحتك).",
-    en: "Free every day within a limit, but it only draws from words: it does not keep your product (not for your page's images).",
+    fr: "FLUX.2 : garde ton produit. Gratuit chaque jour dans une limite (environ 80 images), sur ton compte Cloudflare.",
+    ar: "FLUX.2: يحافظ على منتجك. مجاني يومياً ضمن حدّ معيّن (حوالي 80 صورة)، من حسابك في Cloudflare.",
+    en: "FLUX.2: keeps your product. Free every day within a limit (about 80 images), on your Cloudflare account.",
   },
   stgImgOpenaiKey: { fr: "Clé API OpenAI", ar: "مفتاح OpenAI API", en: "OpenAI API key" },
   stgImgFalKey: { fr: "Clé API fal.ai", ar: "مفتاح fal.ai API", en: "fal.ai API key" },

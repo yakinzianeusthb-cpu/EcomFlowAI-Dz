@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SERVER_MESSAGES } from '../../src/i18n/serverMessages';
 import {
-  ASPECT_RATIOS, DEFAULT_IMAGE_PROVIDER, FAL_RATIOS, IMAGE_ERRORS, IMAGE_PROVIDERS, KEEPS_PRODUCT, OPENAI_SIZES,
+  ASPECT_RATIOS, CLOUDFLARE_SIZES, DEFAULT_IMAGE_PROVIDER, FAL_RATIOS, IMAGE_ERRORS, IMAGE_PROVIDERS, KEEPS_PRODUCT, OPENAI_SIZES,
   cloudflareCall, falCall, isCloudflareAccountId, isModelUnavailable, openAiCall, providerError, readImage, readReference,
   type ImageRequest,
 } from '../../src/lib/imageProviders';
@@ -17,8 +17,8 @@ describe('the image services', () => {
     expect(IMAGE_PROVIDERS[0]).toBe('gemini');
   });
 
-  it('knows which services keep the product of a photo: never the one that only draws from words', () => {
-    expect(KEEPS_PRODUCT).toEqual({ gemini: true, openai: true, fal: true, cloudflare: false });
+  it('knows which services keep the product of a photo: all of them start from it', () => {
+    expect(KEEPS_PRODUCT).toEqual({ gemini: true, openai: true, fal: true, cloudflare: true });
   });
 });
 
@@ -87,12 +87,38 @@ describe('FLUX Kontext on fal.ai', () => {
 });
 
 describe('Cloudflare Workers AI', () => {
-  it('calls FLUX schnell on the seller\'s account, with a prompt cut to its limit', () => {
-    const account = '0123456789abcdef0123456789abcdef';
-    const call = cloudflareCall({ ...wordsOnly, prompt: 'x'.repeat(3000) }, account, 'cf-token');
-    expect(call.url).toBe(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/black-forest-labs/flux-1-schnell`);
-    expect(call.headers.Authorization).toBe('Bearer cf-token');
-    expect(JSON.parse(call.body as string).prompt).toHaveLength(2048);
+  const account = '0123456789abcdef0123456789abcdef';
+
+  it('sends the photo to FLUX.2 klein on the seller\'s account as a multipart form, at the shape asked', async () => {
+    const call = cloudflareCall(withPhoto, account, 'cf-token');
+    expect(call.url).toBe(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/black-forest-labs/flux-2-klein-4b`);
+    // no Content-Type: fetch writes the multipart one, with its boundary
+    expect(call.headers).toEqual({ Authorization: 'Bearer cf-token' });
+    const form = call.body as FormData;
+    expect(form.get('prompt')).toBe('Keep the product');
+    expect([form.get('width'), form.get('height')].join('x')).toBe(CLOUDFLARE_SIZES['4:5']);
+    const image = form.get('input_image_0') as File;
+    expect(image.type).toBe('image/png');
+    expect(new Uint8Array(await image.arrayBuffer()).slice(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]));
+  });
+
+  it('draws from words alone without a photo field, with a prompt cut to its limit', () => {
+    const form = cloudflareCall({ ...wordsOnly, prompt: 'x'.repeat(3000) }, account, 'cf-token').body as FormData;
+    expect(form.has('input_image_0')).toBe(false);
+    expect(form.get('prompt')).toHaveLength(2048);
+    expect([form.get('width'), form.get('height')].join('x')).toBe(CLOUDFLARE_SIZES['16:9']);
+  });
+
+  it('gives every shape a size FLUX.2 klein accepts: multiples of 16, 256 to 1920 a side, the right shape', () => {
+    for (const ratio of ASPECT_RATIOS) {
+      const [w, h] = CLOUDFLARE_SIZES[ratio].split('x').map(Number);
+      const [rw, rh] = ratio.split(':').map(Number);
+      expect(w % 16, ratio).toBe(0);
+      expect(h % 16, ratio).toBe(0);
+      expect(Math.min(w, h), ratio).toBeGreaterThanOrEqual(256);
+      expect(Math.max(w, h), ratio).toBeLessThanOrEqual(1920);
+      expect(Math.abs(w / h - rw / rh), ratio).toBeLessThan(0.02);
+    }
   });
 
   it('only accepts an account id of 32 hexadecimal characters (it goes into the address)', () => {
@@ -106,6 +132,8 @@ describe('readImage', () => {
     expect(readImage('openai', { data: [{ b64_json: 'QUJD' }] })).toBe('data:image/jpeg;base64,QUJD');
     expect(readImage('fal', { images: [{ url: 'data:image/jpeg;base64,QUJD' }] })).toBe('data:image/jpeg;base64,QUJD');
     expect(readImage('cloudflare', { result: { image: 'QUJD' }, success: true })).toBe('data:image/jpeg;base64,QUJD');
+    // the type follows the picture's own first bytes
+    expect(readImage('cloudflare', { result: { image: PHOTO_B64 } })).toBe(PHOTO);
   });
 
   it('refuses an answer without a usable picture', () => {

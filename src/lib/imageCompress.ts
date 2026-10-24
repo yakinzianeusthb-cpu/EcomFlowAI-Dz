@@ -38,12 +38,13 @@ const readAsDataUrl = (blob: Blob): Promise<string> =>
 /**
  * Returns the file as a data URL, re-encoded as a smaller JPEG when it is a large photo.
  * If the browser cannot decode the image, the original file is returned unchanged.
+ * `fit` re-encodes any photo to `maxDimension`, however light, for a service with a strict size limit.
  */
 export async function fileToUploadDataUrl(
   file: File,
-  { maxDimension = DEFAULT_MAX_DIMENSION, quality = DEFAULT_QUALITY }: { maxDimension?: number; quality?: number } = {},
+  { maxDimension = DEFAULT_MAX_DIMENSION, quality = DEFAULT_QUALITY, fit = false }: { maxDimension?: number; quality?: number; fit?: boolean } = {},
 ): Promise<string> {
-  if (!shouldCompress(file)) return readAsDataUrl(file);
+  if (fit ? !/^image\/(jpeg|png|webp)$/i.test(file.type) : !shouldCompress(file)) return readAsDataUrl(file);
   try {
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     const { width, height } = fitWithin(bitmap.width, bitmap.height, maxDimension);
@@ -58,8 +59,8 @@ export async function fileToUploadDataUrl(
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close?.();
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-    // Keep whichever is smaller, so compression can never make a file bigger.
-    return readAsDataUrl(blob && blob.size < file.size ? blob : file);
+    // Keep whichever is smaller, so compression can never make a file bigger (unless the size had to fit).
+    return readAsDataUrl(blob && (fit || blob.size < file.size) ? blob : file);
   } catch {
     return readAsDataUrl(file);
   }

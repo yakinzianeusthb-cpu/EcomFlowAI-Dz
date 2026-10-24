@@ -1,7 +1,7 @@
 /**
  * The AI services that can make the images. Gemini is the main one and the default; the seller can pick another in
- * Paramètres: OpenAI's GPT Image, FLUX Kontext on fal.ai, or Cloudflare Workers AI (a free daily allowance, but it
- * only draws from words). Text and video stay on Gemini.
+ * Paramètres: OpenAI's GPT Image, FLUX Kontext on fal.ai, or FLUX.2 klein on Cloudflare Workers AI (free within a
+ * daily allowance). Text and video stay on Gemini.
  *
  * This file builds each service's request and reads its answer, without any network call (the server route makes
  * them, with the seller's key, which never leaves the server).
@@ -20,7 +20,7 @@ export const IMAGE_PROVIDER_NAMES: Record<ImageProvider, string> = { gemini: 'Go
  * Whether a service can start from the seller's photo and keep the product as it is. One that cannot only draws
  * from words, so it is never used where the page promises the real product (landing-page images, posters).
  */
-export const KEEPS_PRODUCT: Record<ImageProvider, boolean> = { gemini: true, openai: true, fal: true, cloudflare: false };
+export const KEEPS_PRODUCT: Record<ImageProvider, boolean> = { gemini: true, openai: true, fal: true, cloudflare: true };
 
 export const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'] as const;
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
@@ -40,9 +40,20 @@ export const FAL_RATIOS: Record<AspectRatio, string> = {
   '1:1': '1:1', '2:3': '2:3', '3:2': '3:2', '3:4': '3:4', '4:3': '4:3',
   '4:5': '3:4', '5:4': '4:3', '9:16': '9:16', '16:9': '16:9', '21:9': '21:9',
 };
-export const CLOUDFLARE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
-/** the longest prompt Cloudflare's FLUX schnell accepts */
+/**
+ * FLUX.2 klein 4B: it edits from the seller's photo, and an image costs about 125 of the 10,000 free daily Neurons
+ * (about 80 images a day free). It takes multipart forms, even for a prompt alone.
+ */
+export const CLOUDFLARE_MODEL = '@cf/black-forest-labs/flux-2-klein-4b';
+/** the longest prompt sent to Cloudflare */
 export const CLOUDFLARE_PROMPT_MAX = 2048;
+/** Its reference photos must be under 512 px a side; the browser shrinks them before sending (src/services/sectionImage.ts). */
+export const CLOUDFLARE_REFERENCE_MAX = 511;
+/** About one megapixel per shape, in multiples of 16 between 256 and 1920 a side. */
+export const CLOUDFLARE_SIZES: Record<AspectRatio, string> = {
+  '1:1': '1024x1024', '2:3': '832x1248', '3:2': '1248x832', '3:4': '896x1184', '4:3': '1184x896',
+  '4:5': '912x1136', '5:4': '1136x912', '9:16': '768x1360', '16:9': '1360x768', '21:9': '1568x672',
+};
 
 export const PROVIDER_HOSTS = {
   openai: 'https://api.openai.com',
@@ -128,12 +139,16 @@ export function falCall(request: ImageRequest, key: string, host: string = PROVI
 export const isCloudflareAccountId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value);
 
 export function cloudflareCall(request: ImageRequest, accountId: string, token: string, host: string = PROVIDER_HOSTS.cloudflare): ProviderCall {
-  return {
-    url: `${host}/client/v4/accounts/${accountId}/ai/run/${CLOUDFLARE_MODEL}`,
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: request.prompt.slice(0, CLOUDFLARE_PROMPT_MAX), steps: 4 }),
-  };
+  const [width, height] = CLOUDFLARE_SIZES[request.aspectRatio].split('x');
+  const form = new FormData();
+  form.set('prompt', request.prompt.slice(0, CLOUDFLARE_PROMPT_MAX));
+  form.set('width', width);
+  form.set('height', height);
+  if (request.reference) {
+    const bytes = Uint8Array.from(atob(request.reference.data), (c) => c.charCodeAt(0));
+    form.set('input_image_0', new Blob([bytes], { type: request.reference.mimeType }), `product.${request.reference.mimeType.split('/')[1]}`);
+  }
+  return { url: `${host}/client/v4/accounts/${accountId}/ai/run/${CLOUDFLARE_MODEL}`, method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form };
 }
 
 const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
@@ -151,8 +166,11 @@ export function readImage(provider: Exclude<ImageProvider, 'gemini'>, answer: un
     return typeof url === 'string' && IMAGE_DATA_URL.test(url) ? url : null;
   }
   const b64 = body.result?.image;
-  return typeof b64 === 'string' && BASE64.test(b64) ? `data:image/jpeg;base64,${b64}` : null;
+  return typeof b64 === 'string' && BASE64.test(b64) ? `data:${pictureType(b64)};base64,${b64}` : null;
 }
+
+/** A base64 picture's type from its first bytes (PNG and WebP have their own); JPEG otherwise. */
+const pictureType = (b64: string) => (b64.startsWith('iVBOR') ? 'image/png' : b64.startsWith('UklGR') ? 'image/webp' : 'image/jpeg');
 
 /** The messages a seller can get (French, translated on the way out: src/i18n/serverMessages.ts). */
 export const IMAGE_ERRORS = {
@@ -165,6 +183,7 @@ export const IMAGE_ERRORS = {
   noReference: "Ce service ne peut pas partir de ta photo : il ne garderait pas ton produit. Choisis Gemini, OpenAI ou FLUX dans Paramètres.",
   badRequest: "Demande d'image invalide.",
   badImage: "Image invalide : utilise une photo PNG, JPG ou WebP de moins de 6 Mo.",
+  photoTooLarge: "Cloudflare demande une photo de moins de 512 px de côté. Recharge la page et réessaie : elle sera réduite toute seule.",
   geminiChosen: "Gemini est le service d'images choisi : cette demande passe par Gemini.",
 } as const;
 

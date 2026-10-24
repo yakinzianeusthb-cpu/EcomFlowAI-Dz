@@ -59,7 +59,7 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
     gemini: t('stgImgGemini', 'Recommandé. Garde ton produit tel qu’il est, avec la clé Gemini ci-dessus (facturation activée).'),
     openai: t('stgImgOpenai', 'Garde ton produit. Payant : il faut du crédit sur ton compte OpenAI, et OpenAI peut demander de vérifier ton organisation.'),
     fal: t('stgImgFal', 'FLUX Kontext : garde ton produit. Payant à l’image, sur ton compte fal.ai.'),
-    cloudflare: t('stgImgCloudflare', 'Gratuit chaque jour dans une limite, mais il dessine seulement d’après les mots : il ne garde pas ton produit (pas pour les images de ta page).'),
+    cloudflare: t('stgImgCloudflare', 'FLUX.2 : garde ton produit. Gratuit chaque jour dans une limite (environ 80 images), sur ton compte Cloudflare.'),
   };
   const hasKey: Record<ImageProvider, boolean> = { gemini: true, openai: saved.openai, fal: saved.fal, cloudflare: saved.cloudflare };
 

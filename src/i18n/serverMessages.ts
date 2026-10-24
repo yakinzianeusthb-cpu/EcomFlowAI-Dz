@@ -37,6 +37,7 @@ const FRENCH_SOURCED: Array<[string, string, string]> = [
   ["Le service d'images n'a pas pu créer l'image. Réessaie.", "The image service could not create the image. Try again.", "لم تتمكن خدمة الصور من إنشاء الصورة. أعد المحاولة."],
   ["Ce service ne peut pas partir de ta photo : il ne garderait pas ton produit. Choisis Gemini, OpenAI ou FLUX dans Paramètres.", "This service cannot start from your photo: it would not keep your product. Choose Gemini, OpenAI or FLUX in Settings.", "لا تستطيع هذه الخدمة الانطلاق من صورتك: لن تحافظ على منتجك. اختر Gemini أو OpenAI أو FLUX في الإعدادات."],
   ["Demande d'image invalide.", "Invalid image request.", "طلب صورة غير صالح."],
+  ["Cloudflare demande une photo de moins de 512 px de côté. Recharge la page et réessaie : elle sera réduite toute seule.", "Cloudflare needs a photo under 512 px a side. Reload the page and try again: it will be shrunk on its own.", "يطلب Cloudflare صورة أقل من 512 بكسل لكل ضلع. أعد تحميل الصفحة وحاول مجدداً: سيتم تصغيرها تلقائياً."],
   ["Gemini est le service d'images choisi : cette demande passe par Gemini.", "Gemini is the chosen image service: this request goes through Gemini.", "Gemini هي خدمة الصور المختارة: يمرّ هذا الطلب عبر Gemini."],
   ["Identifiant de compte Cloudflare invalide (32 caractères 0-9 et a-f).", "Invalid Cloudflare account ID (32 characters, 0-9 and a-f).", "معرّف حساب Cloudflare غير صالح (32 حرفاً من 0-9 و a-f)."],
   ["Service d'images inconnu.", "Unknown image service.", "خدمة صور غير معروفة."],

@@ -26,10 +26,11 @@ import { languageFromCookies, localizeBody } from "./src/i18n/serverMessages";
 import { SAVED_WORK_ERRORS } from "./src/lib/savedWork";
 import { IMAGE_MODEL_FALLBACKS, TEXT_MODEL_FALLBACKS, aiErrorResponse, generateWithFallback, isQuotaError } from "./src/lib/aiFallback";
 import {
-  DEFAULT_IMAGE_PROVIDER, IMAGE_ERRORS, KEEPS_PRODUCT, OPENAI_DRAW_MODELS, OPENAI_EDIT_MODELS, PROMPT_MAX, PROVIDER_HOSTS,
+  CLOUDFLARE_REFERENCE_MAX, DEFAULT_IMAGE_PROVIDER, IMAGE_ERRORS, KEEPS_PRODUCT, OPENAI_DRAW_MODELS, OPENAI_EDIT_MODELS, PROMPT_MAX, PROVIDER_HOSTS,
   cloudflareCall, falCall, isAspectRatio, isCloudflareAccountId, isImageProvider, isModelUnavailable, openAiCall,
   providerError, readImage, readReference, type AspectRatio, type ImageRequest, type ProviderCall,
 } from "./src/lib/imageProviders";
+import { imageDimensions } from "./src/lib/imageDimensions";
 import {
   GOOGLE_API_BASE, VIDEO_ERRORS, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJobDetails, signJob,
 } from "./src/lib/videoJobs";
@@ -459,6 +460,11 @@ async function drawWithService(service: ImageService, request: { prompt: string;
   if (service.provider === "gemini") throw new TextEngineError(409, IMAGE_ERRORS.geminiChosen);
   // a service that only draws from words would not keep the seller's product
   if (request.reference && !KEEPS_PRODUCT[service.provider]) throw new TextEngineError(400, IMAGE_ERRORS.noReference);
+  if (service.provider === "cloudflare" && request.reference) {
+    // FLUX.2 klein refuses larger photos; the browser shrinks them first, this catches any that were not
+    const size = imageDimensions(request.reference.data);
+    if (!size || Math.max(size.width, size.height) > CLOUDFLARE_REFERENCE_MAX) throw new TextEngineError(400, IMAGE_ERRORS.photoTooLarge);
+  }
   try {
     let answer: unknown;
     if (service.provider === "openai") {
