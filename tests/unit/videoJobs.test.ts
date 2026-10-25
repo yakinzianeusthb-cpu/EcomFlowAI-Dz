@@ -48,6 +48,16 @@ describe('video job tokens', () => {
     expect(readJobDetails(signJob(ID, 'user-1', sign, { ref: 'bad ref', points: 5 }), 'user-1', sign)).toBeNull();
     expect(readJobDetails(signJob(ID, 'user-1', sign, { ref: paid.ref, points: -1 }), 'user-1', sign)).toBeNull();
   });
+
+  it('carries the service and model that film the clip when it is not Gemini, and refuses one it does not know', () => {
+    const service = { provider: 'fal' as const, model: 'fal-ai/kling-video/v3/standard/image-to-video' };
+    const falId = '764cabcf-b745-4b3e-ae38-1200304cf45b';
+    expect(readJobDetails(signJob(falId, 'user-1', sign, undefined, service), 'user-1', sign)).toEqual({ id: falId, paid: null, service });
+    expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, { provider: 'pollinations', model: 'alibaba/wan-2.2-fast' }), 'user-1', sign)?.service)
+      .toEqual({ provider: 'pollinations', model: 'alibaba/wan-2.2-fast' });
+    expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, { provider: 'fal', model: 'alibaba/wan-2.2-fast' }), 'user-1', sign)).toBeNull();
+    expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, { provider: 'sora' as any, model: 'x' }), 'user-1', sign)).toBeNull();
+  });
 });
 
 describe('parseVideoRequest', () => {

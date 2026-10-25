@@ -31,6 +31,10 @@ model ApiSettings {
   voiceProvider           String   @default("elevenlabs") @map("voice_provider")
   voiceId                 String?  @map("voice_id")
   elevenlabsApiKey        String?  @map("elevenlabs_api_key")
+  /// the service that films the AI video scenes: gemini (default), pollinations or fal (src/lib/videoProviders.ts),
+  /// and the model chosen there (null = the service's default)
+  videoProvider           String   @default("gemini") @map("video_provider")
+  videoModel              String?  @map("video_model")
   /// the AI that writes the texts: gemini (default), openai, anthropic, mistral, deepseek, xai or openrouter
   /// (src/lib/textEngines.ts), and the model chosen there (null = the engine's default)
   textProvider            String   @default("gemini") @map("text_provider")

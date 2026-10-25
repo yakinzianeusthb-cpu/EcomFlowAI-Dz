@@ -37,6 +37,16 @@ const FRENCH_SOURCED: Array<[string, string, string]> = [
   ["Le service d'images n'a pas pu créer l'image. Réessaie.", "The image service could not create the image. Try again.", "لم تتمكن خدمة الصور من إنشاء الصورة. أعد المحاولة."],
   ["Ce service ne peut pas partir de ta photo : il ne garderait pas ton produit. Choisis Gemini, OpenAI ou FLUX dans Paramètres.", "This service cannot start from your photo: it would not keep your product. Choose Gemini, OpenAI or FLUX in Settings.", "لا تستطيع هذه الخدمة الانطلاق من صورتك: لن تحافظ على منتجك. اختر Gemini أو OpenAI أو FLUX في الإعدادات."],
   ["Demande d'image invalide.", "Invalid image request.", "طلب صورة غير صالح."],
+  // the AI video services other than Gemini (src/lib/videoProviders.ts VIDEO_SERVICE_ERRORS)
+  ["Ajoute la clé du service vidéo choisi dans Paramètres (Vidéo IA).", "Add the key of the chosen video service in Settings (AI video).", "أضف مفتاح خدمة الفيديو المختارة في الإعدادات (فيديو الذكاء الاصطناعي)."],
+  ["Le service vidéo refuse ta clé (mal copiée, expirée ou sans accès). Vérifie-la dans Paramètres.", "The video service refuses your key (copied wrong, expired or without access). Check it in Settings.", "ترفض خدمة الفيديو مفتاحك (منسوخ بشكل خاطئ أو منتهي الصلاحية أو بدون صلاحية). تحقّق منه في الإعدادات."],
+  ["Ton compte du service vidéo n'a plus de crédit, ou ce modèle demande un compte payant.", "Your video service account has no credit left, or this model needs a paid account.", "لم يعد لحسابك في خدمة الفيديو رصيد، أو أن هذا النموذج يتطلب حساباً مدفوعاً."],
+  ["Le service vidéo est occupé ou ta limite est atteinte. Réessaie dans un instant.", "The video service is busy or your limit is reached. Try again in a moment.", "خدمة الفيديو مشغولة أو أنك بلغت حدّك. أعد المحاولة بعد قليل."],
+  ["Le service vidéo a refusé cette scène (règles de contenu). Modifie la description et réessaie.", "The video service refused this scene (content rules). Change the description and try again.", "رفضت خدمة الفيديو هذا المشهد (قواعد المحتوى). عدّل الوصف وأعد المحاولة."],
+  ["Le service vidéo n'a pas pu filmer cette scène. Réessaie.", "The video service could not film this scene. Try again.", "لم تتمكن خدمة الفيديو من تصوير هذا المشهد. أعد المحاولة."],
+  ["Ce modèle filme à partir de la photo du produit : ajoute une photo dans la vidéo.", "This model films from the product photo: add a photo to the video.", "هذا النموذج يصوّر انطلاقاً من صورة المنتج: أضف صورة إلى الفيديو."],
+  ["Service vidéo inconnu.", "Unknown video service.", "خدمة فيديو غير معروفة."],
+  ["Modèle vidéo inconnu pour ce service.", "Unknown video model for this service.", "نموذج فيديو غير معروف لهذه الخدمة."],
   // the voice-over of the videos (src/lib/voiceProviders.ts VOICE_ERRORS)
   ["Écris le texte de la voix off (2 500 caractères au plus).", "Write the voice-over text (2,500 characters at most).", "اكتب نص التعليق الصوتي (2500 حرف كحد أقصى)."],
   ["Ajoute la clé du service de voix choisi dans Paramètres (Voix off).", "Add the key of the chosen voice service in Settings (Voice-over).", "أضف مفتاح خدمة الصوت المختارة في الإعدادات (التعليق الصوتي)."],

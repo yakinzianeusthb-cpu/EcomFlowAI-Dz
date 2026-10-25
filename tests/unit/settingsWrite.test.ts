@@ -88,6 +88,13 @@ describe('buildSettingsWrite', () => {
     expect(() => build({ voiceId: '../voices' })).toThrow(/voix/);
   });
 
+  it('stores the video service and its model, and refuses a model from another service', () => {
+    expect(build({ videoProvider: 'fal', videoModel: 'wan/v2.6/image-to-video/flash' }).updateData).toMatchObject({ videoProvider: 'fal', videoModel: 'wan/v2.6/image-to-video/flash' });
+    expect(build({ videoProvider: 'pollinations', videoModel: '' }).updateData.videoModel).toBeNull();
+    expect(() => build({ videoProvider: 'sora' })).toThrow(/vidéo/);
+    expect(() => build({ videoProvider: 'pollinations', videoModel: 'wan/v2.6/image-to-video/flash' })).toThrow(/vidéo/);
+  });
+
   it('ignores fields it does not know', () => {
     const { createData, updateData } = build({ isAdmin: true, userId: 'other', plan: 'lifetime' });
     expect(createData).not.toHaveProperty('isAdmin');

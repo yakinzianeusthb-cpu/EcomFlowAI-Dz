@@ -1033,6 +1033,31 @@ export const videoTranslations: TranslationDictionary = {
     ar: "التعليق الصوتي موجود في الفيديو: كل مشهد يدوم مدة جملته.",
     en: "The AI voice-over is in the video: each scene lasts as long as its line.",
   },
+  vmAiTitleService: {
+    fr: "Vidéo filmée par l’IA ({model})",
+    ar: "فيديو يصوّره الذكاء الاصطناعي ({model})",
+    en: "Video filmed by AI ({model})",
+  },
+  vmAiIntroGemini: {
+    fr: "L’IA filme une vraie vidéo avec son pour chaque scène (environ {seconds} s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Avec ta clé Gemini (facturation activée) : environ {cost} pour les scènes restantes.",
+    ar: "يصوّر الذكاء الاصطناعي فيديو حقيقياً بالصوت لكل مشهد (حوالي {seconds} ث) انطلاقاً من صورتك؛ وتُضاف نصوصك فوقه. بمفتاح Gemini (مع تفعيل الفوترة): حوالي {cost} للمشاهد المتبقية.",
+    en: "The AI films a real video with sound for each scene (about {seconds} s) from your photo; your texts are added on top. With your Gemini key (billing enabled): about {cost} for the remaining scenes.",
+  },
+  vmAiIntroService: {
+    fr: "L’IA filme chaque scène (environ {seconds} s) à partir de ta photo avec {model}, sur ton compte {service} ; tes textes sont ajoutés par-dessus. Environ {cost} pour les scènes restantes.",
+    ar: "يصوّر الذكاء الاصطناعي كل مشهد (حوالي {seconds} ث) انطلاقاً من صورتك بـ {model}، من حسابك في {service}؛ وتُضاف نصوصك فوقه. حوالي {cost} للمشاهد المتبقية.",
+    en: "The AI films each scene (about {seconds} s) from your photo with {model}, on your {service} account; your texts are added on top. About {cost} for the remaining scenes.",
+  },
+  vmAiChange: {
+    fr: "Le service et le modèle se choisissent dans",
+    ar: "تُختار الخدمة والنموذج في",
+    en: "The service and model are chosen in",
+  },
+  vmAiNeedsPhoto: {
+    fr: "Ce modèle filme à partir de la photo du produit : ajoute une photo dans la vidéo ci-dessus.",
+    ar: "هذا النموذج يصوّر انطلاقاً من صورة المنتج: أضف صورة إلى الفيديو أعلاه.",
+    en: "This model films from the product photo: add a photo to the video above.",
+  },
 };
 
 registerTranslations('video', videoTranslations);

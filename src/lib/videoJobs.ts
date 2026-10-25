@@ -5,6 +5,7 @@
  * (It replaces Veo 3.1, which Google shuts down on 2026-10-22.)
  */
 import { timingSafeEqual } from 'crypto';
+import { isVideoModel, isVideoProvider, type VideoProvider } from './videoProviders';
 
 export const VIDEO_MODEL = 'gemini-omni-1.1-flash';
 /** 720p is the model's native size (1080p and 4K are upscaled) and the price quoted to the seller (~$0.10 a second). */
@@ -42,31 +43,45 @@ export interface PaidJob {
   points: number;
 }
 
+/** A clip filmed by another service than Gemini (src/lib/videoProviders.ts), polled and fetched there. */
+export interface JobService {
+  provider: Exclude<VideoProvider, 'gemini'>;
+  model: string;
+}
+
 /**
- * A token that binds an interaction to the user who started it, so nobody else can poll or download it. A clip made
- * on the platform's key carries `paid`, so it is polled with that key and refunded if Google cannot make it.
+ * A token that binds a clip's job to the user who started it, so nobody else can poll or download it. A clip made
+ * on the platform's key carries `paid`, so it is polled with that key and refunded if Google cannot make it; a clip
+ * filmed by another service carries `service`.
  */
-export function signJob(interactionId: string, userId: string, sign: Signer, paid?: PaidJob): string {
-  const body = Buffer.from(JSON.stringify({ i: interactionId, u: userId, ...(paid ? { p: { r: paid.ref, c: paid.points } } : {}) })).toString('base64url');
+export function signJob(interactionId: string, userId: string, sign: Signer, paid?: PaidJob, service?: JobService): string {
+  const body = Buffer.from(JSON.stringify({
+    i: interactionId,
+    u: userId,
+    ...(paid ? { p: { r: paid.ref, c: paid.points } } : {}),
+    ...(service ? { v: service.provider, m: service.model } : {}),
+  })).toString('base64url');
   return `${body}.${sign(body)}`;
 }
 
 const REF = /^[A-Za-z0-9_-]{8,64}$/;
 
-/** The interaction id and payment in a token, or null when the token is not valid for this user. */
-export function readJobDetails(token: string, userId: string, sign: Signer): { id: string; paid: PaidJob | null } | null {
+/** The job id, payment and service in a token, or null when the token is not valid for this user. */
+export function readJobDetails(token: string, userId: string, sign: Signer): { id: string; paid: PaidJob | null; service?: JobService } | null {
   const [body, signature, extra] = (token ?? '').split('.');
   if (!body || !signature || extra !== undefined) return null;
   const expected = Buffer.from(sign(body));
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
-    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as { i?: unknown; u?: unknown; p?: { r?: unknown; c?: unknown } };
+    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as { i?: unknown; u?: unknown; p?: { r?: unknown; c?: unknown }; v?: unknown; m?: unknown };
     if (data.u !== userId || typeof data.i !== 'string' || !INTERACTION_ID.test(data.i)) return null;
     const p = data.p;
     const paid = p && typeof p.r === 'string' && REF.test(p.r) && Number.isInteger(p.c) && (p.c as number) >= 0 ? { ref: p.r, points: p.c as number } : null;
     if (p && !paid) return null;
-    return { id: data.i, paid };
+    if (data.v === undefined) return { id: data.i, paid };
+    if (!isVideoProvider(data.v) || data.v === 'gemini' || !isVideoModel(data.v, data.m)) return null;
+    return { id: data.i, paid, service: { provider: data.v, model: data.m } };
   } catch {
     return null;
   }

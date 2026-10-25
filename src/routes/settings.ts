@@ -4,6 +4,7 @@ import { encryptSecret, maskSecret } from "../lib/crypto";
 import { DEFAULT_IMAGE_PROVIDER } from "../lib/imageProviders";
 import { DEFAULT_TEXT_PROVIDER } from "../lib/textEngines";
 import { DEFAULT_VOICE_PROVIDER } from "../lib/voiceProviders";
+import { DEFAULT_VIDEO_PROVIDER } from "../lib/videoProviders";
 import { SessionPayload } from "../lib/session";
 import { requireAuth } from "../lib/requireAuth";
 import {
@@ -34,6 +35,8 @@ const DEFAULT_SETTINGS = {
   voiceProvider: DEFAULT_VOICE_PROVIDER,
   voiceId: "",
   elevenlabsApiKey: "",
+  videoProvider: DEFAULT_VIDEO_PROVIDER,
+  videoModel: "",
   textProvider: DEFAULT_TEXT_PROVIDER,
   textModel: "",
   anthropicApiKey: "",

@@ -1,5 +1,6 @@
 /**
- * AI video clips with Google Veo, through the server (the user's Gemini key never reaches the browser).
+ * AI video clips filmed by the service chosen in Paramètres (Gemini, Pollinations or fal.ai), through the server
+ * (the seller's key never reaches the browser).
  * A clip is a long-running job: start it, poll until it is done, then play or download it from the server.
  */
 import { translate } from '../i18n/runtime';

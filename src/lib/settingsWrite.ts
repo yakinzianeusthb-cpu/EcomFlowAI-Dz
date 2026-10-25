@@ -12,6 +12,7 @@
 import { isCloudflareAccountId, isImageProvider } from "./imageProviders";
 import { TEXT_ENGINE_ERRORS, isModelId, isTextProvider } from "./textEngines";
 import { isVoiceId, isVoiceProvider } from "./voiceProviders";
+import { isVideoModel, isVideoProvider } from "./videoProviders";
 
 export const DEFAULT_WORKSPACE_NAME = "E-com DZ Workspace";
 
@@ -120,6 +121,21 @@ export function buildSettingsWrite({ userId, body, existing, encrypt }: BuildArg
     if (voice && !isVoiceId(voice)) throw new SettingsValidationError("Identifiant de voix invalide.");
     createData.voiceId = voice || null;
     updateData.voiceId = voice || null;
+  }
+
+  if (body.videoProvider !== undefined) {
+    if (!isVideoProvider(body.videoProvider)) throw new SettingsValidationError("Service vidéo inconnu.");
+    createData.videoProvider = body.videoProvider;
+    updateData.videoProvider = body.videoProvider;
+  }
+
+  // the model chosen for the video service (empty = its default); it must be one of that service's models
+  if (body.videoModel !== undefined) {
+    const model = body.videoModel == null ? "" : String(body.videoModel).trim();
+    const provider = body.videoProvider ?? existing?.videoProvider;
+    if (model && !(isVideoProvider(provider) && isVideoModel(provider, model))) throw new SettingsValidationError("Modèle vidéo inconnu pour ce service.");
+    createData.videoModel = model || null;
+    updateData.videoModel = model || null;
   }
 
   if (createData.workspaceName === undefined) createData.workspaceName = DEFAULT_WORKSPACE_NAME;

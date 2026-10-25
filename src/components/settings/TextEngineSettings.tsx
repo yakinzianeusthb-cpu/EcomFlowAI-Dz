@@ -142,7 +142,7 @@ export default function TextEngineSettings({ draft, onChange, saved, loaded }: {
             {modelsError && <p className="mt-1 text-xs text-warning-ink" role="alert">{modelsError}</p>}
           </div>
           {!TEXT_ENGINES[keyed].vision && <p className="text-xs text-warning-ink">{t('stgTxtNoVision', 'Ce moteur ne lit pas les photos : l’analyse de tes photos produit se fera sans elles.')}</p>}
-          <p className="text-xs leading-relaxed text-fg-muted">{t('stgTxtKeyNote', 'La clé est chiffrée et ne quitte jamais le serveur. Les vidéos IA utilisent toujours Gemini.')}</p>
+          <p className="text-xs leading-relaxed text-fg-muted">{t('stgTxtKeyNote', 'La clé est chiffrée et ne quitte jamais le serveur. Les images, la voix off et les vidéos se choisissent plus bas.')}</p>
           <a href={TEXT_ENGINES[keyed].keyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primary-ink hover:underline">
             {t('stgImgGetKey', 'Créer une clé chez {service}', { service: TEXT_ENGINES[keyed].name })} <ExternalLink size={12} />
           </a>

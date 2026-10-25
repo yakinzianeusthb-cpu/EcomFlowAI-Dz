@@ -74,7 +74,7 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
         <span className="grid size-10 place-items-center rounded-[var(--radius-sm)] bg-primary/10 text-primary-ink"><ImageIcon size={18} /></span>
         <div>
           <h2 id="stg-images" className="text-[15px] font-semibold text-fg">{t('stgImgTitle', 'Service d’images')}</h2>
-          <p className="text-xs text-fg-muted">{t('stgImgSubtitleEngines', 'L’IA qui crée tes photos, tes images et tes affiches. Les vidéos IA utilisent toujours Gemini.')}</p>
+          <p className="text-xs text-fg-muted">{t('stgImgSubtitleEngines', 'L’IA qui crée tes photos, tes images et tes affiches. Les vidéos IA se choisissent plus bas.')}</p>
         </div>
       </div>
 

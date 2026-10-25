@@ -32,6 +32,7 @@ import {
   type AspectRatio, type ImageRequest, type ProviderCall,
 } from "./src/lib/imageProviders";
 import { createVoiceRouter } from "./src/routes/voice";
+import { VideoServiceFailure, openServiceClip, pollServiceClip, startServiceClip, videoServiceOf } from "./src/routes/videoServices";
 import { imageDimensions } from "./src/lib/imageDimensions";
 import { refusalForLog } from "./src/lib/refusalLog";
 import {
@@ -587,12 +588,31 @@ async function geminiRest(apiKey: string, method: "GET" | "POST", path: string, 
   return text ? JSON.parse(text) : {};
 }
 
+/** A clip filmed by Pollinations or fal.ai (src/routes/videoServices.ts): its job, when the token is one. */
+function serviceJobOf(req: express.Request) {
+  const job = readJobDetails(String(req.params.job ?? ""), (req.user as SessionPayload).sub, signVideoJob);
+  return job?.service ? { id: job.id, service: job.service } : null;
+}
+
+/** Sends a video service's refusal already worded for the seller; false for any other error. */
+function sendVideoServiceFailure(res: express.Response, error: unknown): boolean {
+  if (!(error instanceof VideoServiceFailure)) return false;
+  if (!res.headersSent) res.status(error.status).json({ error: error.message });
+  return true;
+}
+
 app.post("/api/ai/video", requireAuth, requirePaidAccess, aiRateLimiter, async (req, res) => {
   const parsed = parseVideoRequest(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
   let bill: Bill | null = null;
   try {
     const user = req.user as SessionPayload;
+    // another video service chosen in Paramètres: filmed there with the seller's key (no points)
+    const service = await videoServiceOf(user.sub);
+    if (service.provider !== "gemini") {
+      const started = await startServiceClip(service, parsed);
+      return res.json({ job: signJob(started.id, user.sub, signVideoJob, undefined, started.service) });
+    }
     const access = await resolveAiAccess(user.sub);
     if (access.mode === "none") return res.status(400).json({ error: NO_KEY_MSG });
     let points = 0;
@@ -609,6 +629,7 @@ app.post("/api/ai/video", requireAuth, requirePaidAccess, aiRateLimiter, async (
     res.json({ job: signJob(interaction.id, user.sub, signVideoJob, paid) });
   } catch (error) {
     await refundQuietly(bill);
+    if (sendVideoServiceFailure(res, error)) return;
     console.error("AI Video Error:", error);
     if (isQuotaError(error)) return res.status(402).json({ error: VIDEO_ERRORS.quota });
     const { status, error: message } = aiErrorResponse(error);
@@ -646,11 +667,18 @@ async function loadVideoJob(req: express.Request, res: express.Response) {
 
 app.get("/api/ai/video/:job", requireAuth, async (req, res) => {
   try {
+    const serviceJob = serviceJobOf(req);
+    if (serviceJob) {
+      const state = await pollServiceClip(await videoServiceOf((req.user as SessionPayload).sub), serviceJob);
+      if (state === "failed") return res.status(502).json({ done: true, error: VIDEO_ERRORS.failed });
+      return res.json({ done: state === "done" });
+    }
     const loaded = await loadVideoJob(req, res);
     if (!loaded) return;
     if (loaded.state.state === "failed") return res.status(502).json({ done: true, error: VIDEO_ERRORS.failed });
     res.json({ done: loaded.state.state === "done" && loaded.fileReady });
   } catch (error) {
+    if (sendVideoServiceFailure(res, error)) return;
     console.error("AI Video Poll Error:", error);
     const { status, error: message } = aiErrorResponse(error);
     res.status(status).json({ error: message });
@@ -659,6 +687,14 @@ app.get("/api/ai/video/:job", requireAuth, async (req, res) => {
 
 app.get("/api/ai/video/:job/file", requireAuth, async (req, res) => {
   try {
+    const serviceJob = serviceJobOf(req);
+    if (serviceJob) {
+      const upstream = await openServiceClip(await videoServiceOf((req.user as SessionPayload).sub), serviceJob);
+      if (!upstream.body) return res.status(502).json({ error: VIDEO_ERRORS.failed });
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.setHeader("Content-Type", upstream.headers.get("content-type")?.startsWith("video/") ? upstream.headers.get("content-type")! : "video/mp4");
+      return Readable.fromWeb(upstream.body as any).pipe(res);
+    }
     const loaded = await loadVideoJob(req, res);
     if (!loaded) return;
     const { state, apiKey, fileReady } = loaded;
@@ -674,6 +710,7 @@ app.get("/api/ai/video/:job/file", requireAuth, async (req, res) => {
     res.setHeader("Content-Type", upstream.headers.get("content-type") || state.video.mimeType);
     Readable.fromWeb(upstream.body as any).pipe(res);
   } catch (error) {
+    if (sendVideoServiceFailure(res, error)) return;
     console.error("AI Video File Error:", error);
     if (!res.headersSent) {
       const { status, error: message } = aiErrorResponse(error);

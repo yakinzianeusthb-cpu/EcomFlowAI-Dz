@@ -7,6 +7,8 @@ import PageHeader from './PageHeader';
 import ImageServiceSettings, { type ImageServiceDraft, type SavedImageKeys } from './settings/ImageServiceSettings';
 import TextEngineSettings, { EMPTY_ENGINE_KEYS, type SavedEngineKeys, type TextEngineDraft } from './settings/TextEngineSettings';
 import VoiceServiceSettings, { type SavedVoiceKeys, type VoiceServiceDraft } from './settings/VoiceServiceSettings';
+import VideoServiceSettings, { type SavedVideoKeys, type VideoServiceDraft } from './settings/VideoServiceSettings';
+import { DEFAULT_VIDEO_PROVIDER, isVideoProvider } from '../lib/videoProviders';
 import { DEFAULT_VOICE_PROVIDER, isVoiceProvider, type VoiceProvider } from '../lib/voiceProviders';
 import { DEFAULT_TEXT_PROVIDER, isTextProvider } from '../lib/textEngines';
 import { DEFAULT_IMAGE_PROVIDER, isImageProvider } from '../lib/imageProviders';
@@ -31,6 +33,8 @@ export default function Settings() {
   const [voice, setVoice] = useState<VoiceServiceDraft>({ provider: DEFAULT_VOICE_PROVIDER, voiceId: '', elevenlabsApiKey: '', pollinationsApiKey: '' });
   const [savedVoiceKeys, setSavedVoiceKeys] = useState<SavedVoiceKeys>({ elevenlabs: false, pollinations: false });
   const [savedVoiceProvider, setSavedVoiceProvider] = useState<VoiceProvider>(DEFAULT_VOICE_PROVIDER);
+  const [video, setVideo] = useState<VideoServiceDraft>({ provider: DEFAULT_VIDEO_PROVIDER, model: '', pollinationsApiKey: '', falApiKey: '' });
+  const [savedVideoKeys, setSavedVideoKeys] = useState<SavedVideoKeys>({ pollinations: false, fal: false });
   const [engine, setEngine] = useState<TextEngineDraft>({ provider: DEFAULT_TEXT_PROVIDER, model: '', keys: EMPTY_ENGINE_KEYS });
   const [savedEngineKeys, setSavedEngineKeys] = useState<SavedEngineKeys>({ openai: false, anthropic: false, mistral: false, deepseek: false, xai: false, openrouter: false });
 
@@ -48,6 +52,8 @@ export default function Settings() {
         setVoice((d) => ({ ...d, provider: voiceProvider, voiceId: saved.voiceId ?? '' }));
         setSavedVoiceProvider(voiceProvider);
         setSavedVoiceKeys({ elevenlabs: Boolean(saved.elevenlabsApiKey), pollinations: Boolean(saved.pollinationsApiKey) });
+        setVideo((d) => ({ ...d, provider: isVideoProvider(saved.videoProvider) ? saved.videoProvider : DEFAULT_VIDEO_PROVIDER, model: saved.videoModel ?? '' }));
+        setSavedVideoKeys({ pollinations: Boolean(saved.pollinationsApiKey), fal: Boolean(saved.falApiKey) });
         setEngine((d) => ({ ...d, provider: isTextProvider(saved.textProvider) ? saved.textProvider : DEFAULT_TEXT_PROVIDER, model: saved.textModel ?? '' }));
         setSavedEngineKeys({
           openai: Boolean(saved.openaiApiKey), anthropic: Boolean(saved.anthropicApiKey), mistral: Boolean(saved.mistralApiKey),
@@ -63,14 +69,15 @@ export default function Settings() {
     setSaving('saving');
     try {
       // one OpenAI key serves both the texts and the images: whichever field was typed in
-      const typed = { openaiApiKey: images.openaiApiKey.trim() || engine.keys.openai.trim(), falApiKey: images.falApiKey.trim(), cloudflareApiToken: images.cloudflareApiToken.trim() };
+      const typed = { openaiApiKey: images.openaiApiKey.trim() || engine.keys.openai.trim(), falApiKey: images.falApiKey.trim() || video.falApiKey.trim(), cloudflareApiToken: images.cloudflareApiToken.trim() };
       // one Pollinations key serves both the images and the voice: whichever field was typed in
-      const voiceKeys = { pollinationsApiKey: images.pollinationsApiKey.trim() || voice.pollinationsApiKey.trim(), elevenlabsApiKey: voice.elevenlabsApiKey.trim() };
+      const voiceKeys = { pollinationsApiKey: images.pollinationsApiKey.trim() || voice.pollinationsApiKey.trim() || video.pollinationsApiKey.trim(), elevenlabsApiKey: voice.elevenlabsApiKey.trim() };
       const engineKeys = { anthropicApiKey: engine.keys.anthropic.trim(), mistralApiKey: engine.keys.mistral.trim(), deepseekApiKey: engine.keys.deepseek.trim(), xaiApiKey: engine.keys.xai.trim(), openrouterApiKey: engine.keys.openrouter.trim() };
       await settingsApi.update({
         workspaceName, geminiApiKey: geminiKey.trim(), imageProvider: images.provider, cloudflareAccountId: images.cloudflareAccountId.trim(), ...typed,
         textProvider: engine.provider, textModel: engine.provider === 'gemini' ? '' : engine.model.trim(), ...engineKeys,
         voiceProvider: voice.provider, voiceId: voice.voiceId, ...voiceKeys,
+        videoProvider: video.provider, videoModel: video.provider === 'gemini' ? '' : video.model,
       });
       if (geminiKey.trim()) setHasGeminiKey(true);
       setGeminiKey('');
@@ -84,6 +91,8 @@ export default function Settings() {
       setSavedVoiceKeys((k) => ({ elevenlabs: k.elevenlabs || Boolean(voiceKeys.elevenlabsApiKey), pollinations: k.pollinations || Boolean(voiceKeys.pollinationsApiKey) }));
       setSavedVoiceProvider(voice.provider);
       setVoice((d) => ({ ...d, elevenlabsApiKey: '', pollinationsApiKey: '' }));
+      setSavedVideoKeys((k) => ({ pollinations: k.pollinations || Boolean(voiceKeys.pollinationsApiKey), fal: k.fal || Boolean(typed.falApiKey) }));
+      setVideo((d) => ({ ...d, pollinationsApiKey: '', falApiKey: '' }));
       setSavedEngineKeys((k) => ({
         openai: k.openai || Boolean(typed.openaiApiKey), anthropic: k.anthropic || Boolean(engineKeys.anthropicApiKey), mistral: k.mistral || Boolean(engineKeys.mistralApiKey),
         deepseek: k.deepseek || Boolean(engineKeys.deepseekApiKey), xai: k.xai || Boolean(engineKeys.xaiApiKey), openrouter: k.openrouter || Boolean(engineKeys.openrouterApiKey),
@@ -148,6 +157,8 @@ export default function Settings() {
       <ImageServiceSettings draft={images} onChange={setImages} saved={savedImageKeys} loaded={loaded} />
 
       <VoiceServiceSettings draft={voice} onChange={setVoice} saved={savedVoiceKeys} savedProvider={savedVoiceProvider} loaded={loaded} />
+
+      <VideoServiceSettings draft={video} onChange={setVideo} saved={savedVideoKeys} loaded={loaded} />
 
       <div className="flex justify-end">
         <button type="button" onClick={save} disabled={saving === 'saving' || !loaded} className="btn-dz-primary disabled:opacity-60">

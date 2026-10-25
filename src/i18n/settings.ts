@@ -192,9 +192,9 @@ export const settingsTranslations: TranslationDictionary = {
     en: "This engine does not read photos: your product analysis will be done without them.",
   },
   stgTxtKeyNote: {
-    fr: "La clé est chiffrée et ne quitte jamais le serveur. Les vidéos IA utilisent toujours Gemini.",
-    ar: "المفتاح مشفّر ولا يغادر الخادم أبداً. تستعمل فيديوهات الذكاء الاصطناعي دائماً Gemini.",
-    en: "The key is encrypted and never leaves the server. AI videos always use Gemini.",
+    fr: "La clé est chiffrée et ne quitte jamais le serveur. Les images, la voix off et les vidéos se choisissent plus bas.",
+    ar: "المفتاح مشفّر ولا يغادر الخادم أبداً. الصور والتعليق الصوتي والفيديوهات تُختار في الأسفل.",
+    en: "The key is encrypted and never leaves the server. Images, voice-over and videos are chosen below.",
   },
   stgTxtGeminiNote: {
     fr: "Les textes utilisent ta clé Gemini ci-dessous, ou tes points si tu n’as pas de clé.",
@@ -202,9 +202,9 @@ export const settingsTranslations: TranslationDictionary = {
     en: "Texts use your Gemini key below, or your points if you have no key.",
   },
   stgImgSubtitleEngines: {
-    fr: "L’IA qui crée tes photos, tes images et tes affiches. Les vidéos IA utilisent toujours Gemini.",
-    ar: "الذكاء الاصطناعي الذي يصنع صورك وملصقاتك. تستعمل فيديوهات الذكاء الاصطناعي دائماً Gemini.",
-    en: "The AI that makes your photos, images and posters. AI videos always use Gemini.",
+    fr: "L’IA qui crée tes photos, tes images et tes affiches. Les vidéos IA se choisissent plus bas.",
+    ar: "الذكاء الاصطناعي الذي يصنع صورك وملصقاتك. خدمة فيديو الذكاء الاصطناعي تُختار في الأسفل.",
+    en: "The AI that makes your photos, images and posters. The AI video service is chosen below.",
   },
   stgSubtitleAi: {
     fr: "Ton espace, tes clés d’IA, tes services d’images et ta voix off.",
@@ -280,6 +280,51 @@ export const settingsTranslations: TranslationDictionary = {
     fr: "Enregistre la clé de ce service pour charger ses voix.",
     ar: "احفظ مفتاح هذه الخدمة لتحميل أصواتها.",
     en: "Save this service’s key to load its voices.",
+  },
+  stgVideoTitle: {
+    fr: "Vidéo IA",
+    ar: "فيديو الذكاء الاصطناعي",
+    en: "AI video",
+  },
+  stgVideoSubtitle: {
+    fr: "L’IA qui filme les scènes de tes vidéos à partir de la photo du produit.",
+    ar: "الذكاء الاصطناعي الذي يصوّر مشاهد فيديوهاتك انطلاقاً من صورة المنتج.",
+    en: "The AI that films your videos’ scenes from the product photo.",
+  },
+  stgVideoGemini: {
+    fr: "Avec la clé Gemini ci-dessus (facturation activée) ou tes points. Environ 0,10 $ la seconde filmée.",
+    ar: "بمفتاح Gemini أعلاه (مع تفعيل الفوترة) أو بنقاطك. حوالي 0.10 دولار للثانية المصوّرة.",
+    en: "With the Gemini key above (billing enabled) or your points. About $0.10 per filmed second.",
+  },
+  stgVideoPollinations: {
+    fr: "Seedance, Veo ou Wan avec la clé Pollinations : de 0,01 à 0,10 Pollen la seconde. La photo du produit est envoyée sur le stockage de Pollinations pour être filmée.",
+    ar: "Seedance أو Veo أو Wan بمفتاح Pollinations: من 0.01 إلى 0.10 Pollen للثانية. تُرسل صورة المنتج إلى تخزين Pollinations لتصويرها.",
+    en: "Seedance, Veo or Wan with the Pollinations key: 0.01 to 0.10 Pollen a second. The product photo is sent to Pollinations’ storage to be filmed.",
+  },
+  stgVideoFal: {
+    fr: "Kling, Seedance ou Wan avec ta clé fal.ai : de 0,05 à 0,16 $ la seconde. Filme à partir de la photo du produit.",
+    ar: "Kling أو Seedance أو Wan بمفتاح fal.ai: من 0.05 إلى 0.16 دولار للثانية. يصوّر انطلاقاً من صورة المنتج.",
+    en: "Kling, Seedance or Wan with your fal.ai key: $0.05 to $0.16 a second. Films from the product photo.",
+  },
+  stgVideoModel: {
+    fr: "Modèle",
+    ar: "النموذج",
+    en: "Model",
+  },
+  stgVideoPerSecond: {
+    fr: "{price} / seconde",
+    ar: "{price} / ثانية",
+    en: "{price} / second",
+  },
+  stgVideoSilent: {
+    fr: "sans son",
+    ar: "بدون صوت",
+    en: "no sound",
+  },
+  stgVideoGeminiNote: {
+    fr: "Les clips sont filmés avec la clé Gemini enregistrée plus haut, ou avec tes points si tu n’as pas de clé.",
+    ar: "تُصوَّر المقاطع بمفتاح Gemini المحفوظ أعلاه، أو بنقاطك إن لم يكن لديك مفتاح.",
+    en: "The clips are filmed with the Gemini key saved above, or with your points if you have no key.",
   },
 };
 
