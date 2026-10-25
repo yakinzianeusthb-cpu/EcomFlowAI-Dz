@@ -245,7 +245,9 @@ export default function AppShell() {
   const needsPlan = !canUsePaidTools(user) || (!user?.isAdmin && !user?.plan);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-bg text-fg">
+    // pinned to the screen, not in the page flow: when a phone scrolls the page itself (iOS does, to show a field above
+    // the keyboard or when its toolbar resizes), the app no longer slides up and leaves a blank band at the bottom
+    <div className="fixed inset-0 flex overflow-hidden bg-bg text-fg">
       <a
         href="#app-main"
         className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-white"
