@@ -16,16 +16,24 @@ export interface VideoServiceDraft {
   pollinationsApiKey: string;
   /** shared with the images */
   falApiKey: string;
+  /** "key id:secret" from the Higgsfield console */
+  higgsfieldApiKey: string;
+  /** a Hugging Face access token (read), for the free Spaces */
+  huggingfaceApiKey: string;
 }
 export interface SavedVideoKeys {
   pollinations: boolean;
   fal: boolean;
+  higgsfield: boolean;
+  huggingface: boolean;
 }
 
-const BRAND: Record<VideoProvider, AiBrand> = { gemini: 'gemini', pollinations: 'pollinations', fal: 'fal' };
+const BRAND: Record<VideoProvider, AiBrand> = { gemini: 'gemini', huggingface: 'huggingface', pollinations: 'pollinations', fal: 'fal', higgsfield: 'higgsfield' };
 const KEY_LINKS: Record<Exclude<VideoProvider, 'gemini'>, string> = {
+  huggingface: 'https://huggingface.co/settings/tokens',
   pollinations: 'https://enter.pollinations.ai/keys',
   fal: 'https://fal.ai/dashboard/keys',
+  higgsfield: 'https://console.higgsfield.ai',
 };
 
 /** "1,25 Pollen" / "2,02 $": an amount in a model's currency (`decimals` 3 for a per-second price like 0,126 $). */
@@ -34,8 +42,9 @@ export function formatVideoPrice(amount: number, currency: VideoModel['currency'
   return currency === 'usd' ? `${text} $` : `${text} Pollen`;
 }
 
-/** "0,07 Pollen" / "0,126 $": a model's price for one filmed second. */
-export const formatSecondPrice = (model: VideoModel, locale: string) => formatVideoPrice(model.perSecond, model.currency, locale, 3);
+/** "0,07 Pollen" / "0,126 $": a model's price for one filmed second; null for a free model or an unpublished price. */
+export const formatSecondPrice = (model: VideoModel, locale: string) =>
+  model.perSecond ? formatVideoPrice(model.perSecond, model.currency, locale, 3) : null;
 
 /**
  * Which AI service films the scenes of the videos (Google Gemini by default), its model and its key. Pollinations
@@ -49,10 +58,18 @@ export default function VideoServiceSettings({ draft, onChange, saved, loaded }:
     gemini: t('stgVideoGemini', 'Avec la clé Gemini ci-dessus (facturation activée) ou tes points. Environ 0,10 $ la seconde filmée.'),
     pollinations: t('stgVideoPollinations', 'Seedance, Veo ou Wan avec la clé Pollinations : de 0,01 à 0,10 Pollen la seconde. La photo du produit est envoyée sur le stockage de Pollinations pour être filmée.'),
     fal: t('stgVideoFal', 'Kling, Seedance ou Wan avec ta clé fal.ai : de 0,05 à 0,16 $ la seconde. Filme à partir de la photo du produit.'),
+    huggingface: t('stgVideoHf', 'Wan 2.2 sur les GPU gratuits de Hugging Face, avec ton compte gratuit : quelques clips par jour (le temps de GPU revient chaque jour). Plus lent, sans son.'),
+    higgsfield: t('stgVideoHiggsfield', 'Kling, Seedance ou Wan avec ta clé Higgsfield, payé avec tes crédits Higgsfield. Filme à partir de la photo du produit.'),
   };
-  const hasKey: Record<VideoProvider, boolean> = { gemini: true, pollinations: saved.pollinations, fal: saved.fal };
+  const hasKey: Record<VideoProvider, boolean> = { gemini: true, huggingface: saved.huggingface, pollinations: saved.pollinations, fal: saved.fal, higgsfield: saved.higgsfield };
   const models = VIDEO_MODELS[draft.provider];
   const chosen = videoModelFor(draft.provider, draft.model);
+  /** a model's price as shown in the list: per second, free, or on the seller's account */
+  const priceOf = (m: VideoModel) => {
+    const price = formatSecondPrice(m, locale);
+    if (price) return t('stgVideoPerSecond', '{price} / seconde', { price });
+    return m.perSecond === 0 ? t('stgVideoFree', 'gratuit') : t('stgVideoOwnPrice', 'prix sur ton compte {service}', { service: VIDEO_PROVIDER_NAMES[draft.provider] });
+  };
 
   return (
     <section aria-labelledby="stg-video" className="ui-card p-5">
@@ -83,6 +100,7 @@ export default function VideoServiceSettings({ draft, onChange, saved, loaded }:
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="text-sm font-semibold text-fg">{VIDEO_PROVIDER_NAMES[id]}</span>
                     {id === 'gemini' && <span className="text-xs font-medium text-primary-ink">{t('stgImgDefault', 'par défaut')}</span>}
+                    {id === 'huggingface' && <span className="text-xs font-medium text-success-ink">{t('stgImgFree', 'gratuit')}</span>}
                     {loaded && id !== 'gemini' && hasKey[id] && <StatusChip state="ready" label={t('stgKeySaved', 'Clé enregistrée')} />}
                   </span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-fg-muted">{about[id]}</span>
@@ -100,7 +118,7 @@ export default function VideoServiceSettings({ draft, onChange, saved, loaded }:
             <select id="setting-videoModel" className="input-dz mt-1.5" value={chosen.id} onChange={(e) => set({ model: e.target.value })}>
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {`${m.name} — ${t('stgVideoPerSecond', '{price} / seconde', { price: formatSecondPrice(m, locale) })}${m.audio ? '' : ` · ${t('stgVideoSilent', 'sans son')}`}`}
+                  {`${m.name} — ${priceOf(m)}${m.audio ? '' : ` · ${t('stgVideoSilent', 'sans son')}`}`}
                 </option>
               ))}
             </select>
@@ -111,6 +129,18 @@ export default function VideoServiceSettings({ draft, onChange, saved, loaded }:
         )}
         {draft.provider === 'fal' && (
           <KeyField id="setting-falApiKey-video" label={t('stgImgFalKey', 'Clé API fal.ai')} value={draft.falApiKey} onChange={(v) => set({ falApiKey: v })} saved={saved.fal} placeholder="xxxxxxxx-xxxx-…:…" />
+        )}
+        {draft.provider === 'huggingface' && (
+          <>
+            <KeyField id="setting-huggingfaceApiKey" label={t('stgVideoHfKey', 'Jeton d’accès Hugging Face (hf_…)')} value={draft.huggingfaceApiKey} onChange={(v) => set({ huggingfaceApiKey: v })} saved={saved.huggingface} placeholder="hf_…" />
+            <p className="text-xs leading-relaxed text-fg-muted">{t('stgVideoHfHelp', 'Crée un compte gratuit sur Hugging Face, puis un jeton de type « Read ». Chaque clip prend environ 1 à 3 minutes ; si ton temps de GPU gratuit du jour est épuisé, réessaie le lendemain.')}</p>
+          </>
+        )}
+        {draft.provider === 'higgsfield' && (
+          <>
+            <KeyField id="setting-higgsfieldApiKey" label={t('stgVideoHiggsfieldKey', 'Clé API Higgsfield (identifiant:secret)')} value={draft.higgsfieldApiKey} onChange={(v) => set({ higgsfieldApiKey: v })} saved={saved.higgsfield} placeholder="KEY_ID:KEY_SECRET" />
+            <p className="text-xs leading-relaxed text-fg-muted">{t('stgVideoHiggsfieldHelp', 'Dans la console Higgsfield, crée une clé API : colle l’identifiant et le secret séparés par « : ». Les prix de chaque modèle sont affichés dans ta console.')}</p>
+          </>
         )}
         <p className="text-xs leading-relaxed text-fg-muted">
           {draft.provider === 'gemini'

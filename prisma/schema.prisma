@@ -31,10 +31,13 @@ model ApiSettings {
   voiceProvider           String   @default("elevenlabs") @map("voice_provider")
   voiceId                 String?  @map("voice_id")
   elevenlabsApiKey        String?  @map("elevenlabs_api_key")
-  /// the service that films the AI video scenes: gemini (default), pollinations or fal (src/lib/videoProviders.ts),
+  /// the service that films the AI video scenes: gemini (default), huggingface, pollinations, fal or higgsfield (src/lib/videoProviders.ts),
   /// and the model chosen there (null = the service's default)
   videoProvider           String   @default("gemini") @map("video_provider")
   videoModel              String?  @map("video_model")
+  /// Higgsfield ("key id:secret") and Hugging Face (free Spaces) credentials for the video services (encrypted)
+  higgsfieldApiKey        String?  @map("higgsfield_api_key")
+  huggingfaceApiKey       String?  @map("huggingface_api_key")
   /// the AI that writes the texts: gemini (default), openai, anthropic, mistral, deepseek, xai or openrouter
   /// (src/lib/textEngines.ts), and the model chosen there (null = the engine's default)
   textProvider            String   @default("gemini") @map("text_provider")

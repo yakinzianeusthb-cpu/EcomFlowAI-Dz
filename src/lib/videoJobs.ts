@@ -47,6 +47,8 @@ export interface PaidJob {
 export interface JobService {
   provider: Exclude<VideoProvider, 'gemini'>;
   model: string;
+  /** the finished clip's address, when the service can tell it only once (a Hugging Face Space) */
+  file?: string;
 }
 
 /**
@@ -59,7 +61,7 @@ export function signJob(interactionId: string, userId: string, sign: Signer, pai
     i: interactionId,
     u: userId,
     ...(paid ? { p: { r: paid.ref, c: paid.points } } : {}),
-    ...(service ? { v: service.provider, m: service.model } : {}),
+    ...(service ? { v: service.provider, m: service.model, ...(service.file ? { f: service.file } : {}) } : {}),
   })).toString('base64url');
   return `${body}.${sign(body)}`;
 }
@@ -74,14 +76,15 @@ export function readJobDetails(token: string, userId: string, sign: Signer): { i
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
-    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as { i?: unknown; u?: unknown; p?: { r?: unknown; c?: unknown }; v?: unknown; m?: unknown };
+    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as { i?: unknown; u?: unknown; p?: { r?: unknown; c?: unknown }; v?: unknown; m?: unknown; f?: unknown };
     if (data.u !== userId || typeof data.i !== 'string' || !INTERACTION_ID.test(data.i)) return null;
     const p = data.p;
     const paid = p && typeof p.r === 'string' && REF.test(p.r) && Number.isInteger(p.c) && (p.c as number) >= 0 ? { ref: p.r, points: p.c as number } : null;
     if (p && !paid) return null;
     if (data.v === undefined) return { id: data.i, paid };
     if (!isVideoProvider(data.v) || data.v === 'gemini' || !isVideoModel(data.v, data.m)) return null;
-    return { id: data.i, paid, service: { provider: data.v, model: data.m } };
+    if (data.f !== undefined && (typeof data.f !== 'string' || data.f.length > 2000)) return null;
+    return { id: data.i, paid, service: { provider: data.v, model: data.m, ...(typeof data.f === 'string' ? { file: data.f } : {}) } };
   } catch {
     return null;
   }

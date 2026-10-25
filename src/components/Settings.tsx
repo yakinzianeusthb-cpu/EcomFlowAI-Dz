@@ -33,8 +33,8 @@ export default function Settings() {
   const [voice, setVoice] = useState<VoiceServiceDraft>({ provider: DEFAULT_VOICE_PROVIDER, voiceId: '', elevenlabsApiKey: '', pollinationsApiKey: '' });
   const [savedVoiceKeys, setSavedVoiceKeys] = useState<SavedVoiceKeys>({ elevenlabs: false, pollinations: false });
   const [savedVoiceProvider, setSavedVoiceProvider] = useState<VoiceProvider>(DEFAULT_VOICE_PROVIDER);
-  const [video, setVideo] = useState<VideoServiceDraft>({ provider: DEFAULT_VIDEO_PROVIDER, model: '', pollinationsApiKey: '', falApiKey: '' });
-  const [savedVideoKeys, setSavedVideoKeys] = useState<SavedVideoKeys>({ pollinations: false, fal: false });
+  const [video, setVideo] = useState<VideoServiceDraft>({ provider: DEFAULT_VIDEO_PROVIDER, model: '', pollinationsApiKey: '', falApiKey: '', higgsfieldApiKey: '', huggingfaceApiKey: '' });
+  const [savedVideoKeys, setSavedVideoKeys] = useState<SavedVideoKeys>({ pollinations: false, fal: false, higgsfield: false, huggingface: false });
   const [engine, setEngine] = useState<TextEngineDraft>({ provider: DEFAULT_TEXT_PROVIDER, model: '', keys: EMPTY_ENGINE_KEYS });
   const [savedEngineKeys, setSavedEngineKeys] = useState<SavedEngineKeys>({ openai: false, anthropic: false, mistral: false, deepseek: false, xai: false, openrouter: false });
 
@@ -53,7 +53,7 @@ export default function Settings() {
         setSavedVoiceProvider(voiceProvider);
         setSavedVoiceKeys({ elevenlabs: Boolean(saved.elevenlabsApiKey), pollinations: Boolean(saved.pollinationsApiKey) });
         setVideo((d) => ({ ...d, provider: isVideoProvider(saved.videoProvider) ? saved.videoProvider : DEFAULT_VIDEO_PROVIDER, model: saved.videoModel ?? '' }));
-        setSavedVideoKeys({ pollinations: Boolean(saved.pollinationsApiKey), fal: Boolean(saved.falApiKey) });
+        setSavedVideoKeys({ pollinations: Boolean(saved.pollinationsApiKey), fal: Boolean(saved.falApiKey), higgsfield: Boolean(saved.higgsfieldApiKey), huggingface: Boolean(saved.huggingfaceApiKey) });
         setEngine((d) => ({ ...d, provider: isTextProvider(saved.textProvider) ? saved.textProvider : DEFAULT_TEXT_PROVIDER, model: saved.textModel ?? '' }));
         setSavedEngineKeys({
           openai: Boolean(saved.openaiApiKey), anthropic: Boolean(saved.anthropicApiKey), mistral: Boolean(saved.mistralApiKey),
@@ -78,6 +78,7 @@ export default function Settings() {
         textProvider: engine.provider, textModel: engine.provider === 'gemini' ? '' : engine.model.trim(), ...engineKeys,
         voiceProvider: voice.provider, voiceId: voice.voiceId, ...voiceKeys,
         videoProvider: video.provider, videoModel: video.provider === 'gemini' ? '' : video.model,
+        higgsfieldApiKey: video.higgsfieldApiKey.trim(), huggingfaceApiKey: video.huggingfaceApiKey.trim(),
       });
       if (geminiKey.trim()) setHasGeminiKey(true);
       setGeminiKey('');
@@ -91,8 +92,11 @@ export default function Settings() {
       setSavedVoiceKeys((k) => ({ elevenlabs: k.elevenlabs || Boolean(voiceKeys.elevenlabsApiKey), pollinations: k.pollinations || Boolean(voiceKeys.pollinationsApiKey) }));
       setSavedVoiceProvider(voice.provider);
       setVoice((d) => ({ ...d, elevenlabsApiKey: '', pollinationsApiKey: '' }));
-      setSavedVideoKeys((k) => ({ pollinations: k.pollinations || Boolean(voiceKeys.pollinationsApiKey), fal: k.fal || Boolean(typed.falApiKey) }));
-      setVideo((d) => ({ ...d, pollinationsApiKey: '', falApiKey: '' }));
+      setSavedVideoKeys((k) => ({
+        pollinations: k.pollinations || Boolean(voiceKeys.pollinationsApiKey), fal: k.fal || Boolean(typed.falApiKey),
+        higgsfield: k.higgsfield || Boolean(video.higgsfieldApiKey.trim()), huggingface: k.huggingface || Boolean(video.huggingfaceApiKey.trim()),
+      }));
+      setVideo((d) => ({ ...d, pollinationsApiKey: '', falApiKey: '', higgsfieldApiKey: '', huggingfaceApiKey: '' }));
       setSavedEngineKeys((k) => ({
         openai: k.openai || Boolean(typed.openaiApiKey), anthropic: k.anthropic || Boolean(engineKeys.anthropicApiKey), mistral: k.mistral || Boolean(engineKeys.mistralApiKey),
         deepseek: k.deepseek || Boolean(engineKeys.deepseekApiKey), xai: k.xai || Boolean(engineKeys.xaiApiKey), openrouter: k.openrouter || Boolean(engineKeys.openrouterApiKey),

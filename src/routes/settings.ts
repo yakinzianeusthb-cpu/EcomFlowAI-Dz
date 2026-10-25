@@ -37,6 +37,8 @@ const DEFAULT_SETTINGS = {
   elevenlabsApiKey: "",
   videoProvider: DEFAULT_VIDEO_PROVIDER,
   videoModel: "",
+  higgsfieldApiKey: "",
+  huggingfaceApiKey: "",
   textProvider: DEFAULT_TEXT_PROVIDER,
   textModel: "",
   anthropicApiKey: "",

@@ -669,9 +669,12 @@ app.get("/api/ai/video/:job", requireAuth, async (req, res) => {
   try {
     const serviceJob = serviceJobOf(req);
     if (serviceJob) {
-      const state = await pollServiceClip(await videoServiceOf((req.user as SessionPayload).sub), serviceJob);
-      if (state === "failed") return res.status(502).json({ done: true, error: VIDEO_ERRORS.failed });
-      return res.json({ done: state === "done" });
+      const user = req.user as SessionPayload;
+      const poll = await pollServiceClip(await videoServiceOf(user.sub), serviceJob);
+      if (poll.state === "failed") return res.status(poll.status).json({ done: true, error: poll.error });
+      // a Space tells the clip's file only once: it travels on in a new token, used to fetch the file
+      const job = poll.file ? signJob(serviceJob.id, user.sub, signVideoJob, undefined, { ...serviceJob.service, file: poll.file }) : undefined;
+      return res.json({ done: poll.state === "done", ...(job ? { job } : {}) });
     }
     const loaded = await loadVideoJob(req, res);
     if (!loaded) return;

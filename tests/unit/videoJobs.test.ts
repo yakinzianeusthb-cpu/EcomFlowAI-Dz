@@ -58,6 +58,12 @@ describe('video job tokens', () => {
     expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, { provider: 'fal', model: 'alibaba/wan-2.2-fast' }), 'user-1', sign)).toBeNull();
     expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, { provider: 'sora' as any, model: 'x' }), 'user-1', sign)).toBeNull();
   });
+
+  it('carries the finished file of a free Hugging Face clip, signed with the rest', () => {
+    const service = { provider: 'huggingface' as const, model: 'zerogpu-aoti/wan2-2-fp8da-aoti-faster', file: 'https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space/gradio_api/file=/tmp/a.mp4' };
+    expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, service), 'user-1', sign)?.service).toEqual(service);
+    expect(readJobDetails(signJob(ID, 'user-1', sign, undefined, { ...service, file: 'x'.repeat(3000) }), 'user-1', sign)).toBeNull();
+  });
 });
 
 describe('parseVideoRequest', () => {

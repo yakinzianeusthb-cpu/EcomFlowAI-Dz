@@ -50,7 +50,8 @@ export async function waitForAiClip(job: string, options: { signal?: AbortSignal
     const res = await fetch(path, { signal });
     if (!res.ok) throw await readError(res);
     const data = await res.json();
-    if (data.done) return `${path}/file`;
+    // a service that tells the clip's file once hands back a new token for it
+    if (data.done) return typeof data.job === 'string' ? `/api/ai/video/${encodeURIComponent(data.job)}/file` : `${path}/file`;
   }
   throw new AiVideoError(translate('vmAiTimeout', 'Google met trop de temps à créer ce clip. Réessaie plus tard.'), 504);
 }

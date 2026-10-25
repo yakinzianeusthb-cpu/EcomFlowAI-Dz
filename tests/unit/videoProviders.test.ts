@@ -2,16 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { SERVER_MESSAGES } from '../../src/i18n/serverMessages';
 import {
   DEFAULT_VIDEO_PROVIDER, VIDEO_MODELS, VIDEO_PROVIDERS, VIDEO_SERVICE_ERRORS,
-  falAppPath, falSubmitCall, isVideoModel, isVideoProvider, pickDuration, pollinationsUploadCall, pollinationsVideoCall,
-  readFalStatus, readFalVideoUrl, readPollinationsJob, readUploadUrl, videoModelFor, videoServiceError,
+  falAppPath, falSubmitCall, gradioSubmitCall, higgsfieldSubmitCall, higgsfieldUploadCall, isGradioFile, isVideoModel, isVideoProvider,
+  pickDuration, pollinationsUploadCall, pollinationsVideoCall, readFalStatus, readFalVideoUrl, readGradioEvents, readHiggsfieldStatus,
+  readGradioUpload, readHiggsfieldTicket, readPollinationsJob, readUploadUrl, spaceHost, videoModelFor, videoServiceError,
 } from '../../src/lib/videoProviders';
 
 const PHOTO = { data: 'iVBORw0KGgo=', mimeType: 'image/png' };
 const request = { prompt: 'The chopper on a kitchen counter', aspectRatio: '9:16' as const, durationSeconds: 8 as const, image: PHOTO };
 
 describe('the video services', () => {
-  it('keeps Gemini first and the default, then Pollinations and fal.ai', () => {
-    expect(VIDEO_PROVIDERS).toEqual(['gemini', 'pollinations', 'fal']);
+  it('keeps Gemini first and the default, then the free Hugging Face, Pollinations, fal.ai and Higgsfield', () => {
+    expect(VIDEO_PROVIDERS).toEqual(['gemini', 'huggingface', 'pollinations', 'fal', 'higgsfield']);
     expect(DEFAULT_VIDEO_PROVIDER).toBe('gemini');
     expect(isVideoProvider('fal')).toBe(true);
     expect(isVideoProvider('openai')).toBe(false);
@@ -27,14 +28,16 @@ describe('the video services', () => {
     expect(videoModelFor('fal', 'not-a-model').id).toBe(VIDEO_MODELS.fal[0].id);
   });
 
-  it('gives every model a price, a currency and the lengths it can film', () => {
+  it('gives every model a price (free, or unknown when the service does not publish it), a currency and the lengths it can film', () => {
     for (const provider of VIDEO_PROVIDERS) {
       for (const model of VIDEO_MODELS[provider]) {
-        expect(model.perSecond, model.id).toBeGreaterThan(0);
+        if (model.perSecond !== null) expect(model.perSecond, model.id).toBeGreaterThanOrEqual(0);
         expect(['usd', 'pollen']).toContain(model.currency);
         expect(model.durations.length, model.id).toBeGreaterThan(0);
       }
     }
+    expect(VIDEO_MODELS.huggingface.every((m) => m.perSecond === 0)).toBe(true);
+    expect(VIDEO_MODELS.higgsfield.every((m) => m.perSecond === null)).toBe(true);
   });
 });
 
@@ -111,6 +114,83 @@ describe('Pollinations', () => {
     expect(readPollinationsJob({ status: 'succeeded' })).toBe('done');
     expect(readPollinationsJob({ status: 'failed' })).toBe('failed');
     expect(readPollinationsJob(null)).toBe('failed');
+  });
+});
+
+describe('Higgsfield', () => {
+  it('asks for an upload address for the photo, and reads the answer (https only)', () => {
+    const call = higgsfieldUploadCall('image/png', 'kid:ksecret');
+    expect(call.url).toBe('https://api.higgsfield.ai/files/generate-upload-url');
+    expect(call.headers).toEqual({ Authorization: 'Key kid:ksecret', 'Content-Type': 'application/json' });
+    expect(JSON.parse(call.body)).toEqual({ content_type: 'image/png' });
+    const ticket = { public_url: 'https://cdn.higgsfield.ai/input/a.png', upload_url: 'https://s3.example.com/put?sig=1', upload_headers: { 'Content-Type': 'image/png', 'x-amz-tagging': 'retention=temporary' } };
+    expect(readHiggsfieldTicket(ticket)).toEqual({ publicUrl: ticket.public_url, uploadUrl: ticket.upload_url, headers: ticket.upload_headers });
+    expect(readHiggsfieldTicket({ ...ticket, upload_url: 'http://s3.example.com/put' })).toBeNull();
+    expect(readHiggsfieldTicket({ ...ticket, upload_headers: { Authorization: 'x' } })).toEqual({ publicUrl: ticket.public_url, uploadUrl: ticket.upload_url, headers: {} });
+  });
+
+  it('submits each model with its own fields, the photo as image_url, and a fresh idempotency key', () => {
+    const kling = higgsfieldSubmitCall(request, 'kid:ks', 'kling-video/v3.0/std/image-to-video', 'https://cdn.higgsfield.ai/input/a.png');
+    expect(kling.url).toBe('https://api.higgsfield.ai/kling-video/v3.0/std/image-to-video');
+    expect(kling.headers.Authorization).toBe('Key kid:ks');
+    expect(kling.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
+    expect(JSON.parse(kling.body)).toEqual({ prompt: request.prompt, image_url: 'https://cdn.higgsfield.ai/input/a.png', duration: 8, sound: 'on' });
+    expect(JSON.parse(higgsfieldSubmitCall(request, 'k', 'bytedance/seedance-2.0/image-to-video', 'https://x.example/a.png').body))
+      .toEqual({ prompt: request.prompt, image_url: 'https://x.example/a.png', duration: 8, resolution: '720p', generate_audio: true });
+    expect(JSON.parse(higgsfieldSubmitCall(request, 'k', 'wan/v2.7/image-to-video', 'https://x.example/a.png').body))
+      .toEqual({ prompt: request.prompt, image_url: 'https://x.example/a.png', duration: 8, resolution: '720p' });
+  });
+
+  it('reads the request status and the finished video (https only)', () => {
+    expect(readHiggsfieldStatus({ status: 'queued' })).toEqual({ state: 'running' });
+    expect(readHiggsfieldStatus({ status: 'in_progress' })).toEqual({ state: 'running' });
+    expect(readHiggsfieldStatus({ status: 'completed', video: { url: 'https://cdn.higgsfield.ai/out.mp4' } })).toEqual({ state: 'done', video: 'https://cdn.higgsfield.ai/out.mp4' });
+    expect(readHiggsfieldStatus({ status: 'completed', video: { url: 'http://cdn/out.mp4' } })).toEqual({ state: 'failed' });
+    expect(readHiggsfieldStatus({ status: 'nsfw' })).toEqual({ state: 'failed', refused: true });
+    expect(readHiggsfieldStatus({ status: 'failed' })).toEqual({ state: 'failed' });
+  });
+});
+
+describe('Hugging Face (free Space)', () => {
+  const space = 'zerogpu-aoti/wan2-2-fp8da-aoti-faster';
+  const host = 'https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space';
+
+  it('finds the Space\'s address from its name', () => {
+    expect(spaceHost(space)).toBe(host);
+  });
+
+  it('reads where the Space stored the uploaded photo, its own temporary folder only', () => {
+    expect(readGradioUpload(['/tmp/gradio/1da7f359/product.png'])).toBe('/tmp/gradio/1da7f359/product.png');
+    expect(readGradioUpload(['/etc/passwd'])).toBeNull();
+    expect(readGradioUpload(['/tmp/gradio/../x'])).toBeNull();
+    expect(readGradioUpload(null)).toBeNull();
+  });
+
+  it('starts the Space\'s job with the uploaded photo, the prompt, the free model\'s nearest length and the seller\'s token', () => {
+    const call = gradioSubmitCall(request, 'hf_token', space, '/tmp/gradio/1da7f359/product.png');
+    expect(call.url).toBe(`${host}/gradio_api/call/generate_video`);
+    expect(call.headers).toEqual({ Authorization: 'Bearer hf_token', 'Content-Type': 'application/json' });
+    const data = JSON.parse(call.body).data;
+    expect(data[0]).toEqual({ path: '/tmp/gradio/1da7f359/product.png', orig_name: 'product.png', mime_type: 'image/png', meta: { _type: 'gradio.FileData' } });
+    expect(data[1]).toBe(request.prompt);
+    expect(data[4]).toBe(5);
+    expect(data).toHaveLength(9);
+  });
+
+  it('reads the job\'s event stream: still running, done with its file, or refused (the free quota apart)', () => {
+    expect(readGradioEvents('event: heartbeat\ndata: null\n\n', host)).toEqual({ state: 'running' });
+    expect(readGradioEvents('', host)).toEqual({ state: 'running' });
+    const file = `${host}/gradio_api/file=/tmp/gradio/abc/out.mp4`;
+    expect(readGradioEvents(`event: generating\ndata: []\n\nevent: complete\ndata: [{"video": {"path": "/tmp/gradio/abc/out.mp4", "url": "${file}"}, "subtitles": null}, 42]\n\n`, host)).toEqual({ state: 'done', file });
+    expect(readGradioEvents(`event: complete\ndata: [{"path": "/tmp/x.mp4", "url": "${file}"}, 7]\n\n`, host)).toEqual({ state: 'done', file });
+    expect(readGradioEvents(`event: complete\ndata: [{"url": "https://evil.example/x.mp4"}, 7]\n\n`, host)).toEqual({ state: 'failed' });
+    expect(readGradioEvents('event: error\ndata: "You have exceeded your free GPU quota (75s requested vs. 40s left)."\n\n', host)).toEqual({ state: 'failed', quota: true });
+    expect(readGradioEvents('event: error\ndata: null\n\n', host)).toEqual({ state: 'failed' });
+  });
+
+  it('only accepts files from the Space itself', () => {
+    expect(isGradioFile(`${host}/gradio_api/file=/tmp/a.mp4`, host)).toBe(true);
+    expect(isGradioFile('https://other.hf.space/gradio_api/file=/tmp/a.mp4', host)).toBe(false);
   });
 });
 

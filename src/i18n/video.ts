@@ -1058,6 +1058,16 @@ export const videoTranslations: TranslationDictionary = {
     ar: "هذا النموذج يصوّر انطلاقاً من صورة المنتج: أضف صورة إلى الفيديو أعلاه.",
     en: "This model films from the product photo: add a photo to the video above.",
   },
+  vmAiIntroFree: {
+    fr: "L’IA filme chaque scène (environ {seconds} s, sans son) à partir de ta photo avec {model}, gratuitement sur les GPU de {service} ; tes textes sont ajoutés par-dessus. Compte 1 à 3 minutes par scène ; le temps de GPU gratuit revient chaque jour.",
+    ar: "يصوّر الذكاء الاصطناعي كل مشهد (حوالي {seconds} ث، بدون صوت) انطلاقاً من صورتك بـ {model}، مجاناً على وحدات GPU في {service}؛ وتُضاف نصوصك فوقه. احسب من 1 إلى 3 دقائق لكل مشهد؛ ويتجدد وقت GPU المجاني كل يوم.",
+    en: "The AI films each scene (about {seconds} s, no sound) from your photo with {model}, free on {service}’s GPUs; your texts are added on top. Allow 1 to 3 minutes per scene; the free GPU time comes back every day.",
+  },
+  vmAiIntroOwnPrice: {
+    fr: "L’IA filme chaque scène (environ {seconds} s) à partir de ta photo avec {model}, sur ton compte {service} ; tes textes sont ajoutés par-dessus. Le prix est celui affiché sur ton compte {service}.",
+    ar: "يصوّر الذكاء الاصطناعي كل مشهد (حوالي {seconds} ث) انطلاقاً من صورتك بـ {model}، من حسابك في {service}؛ وتُضاف نصوصك فوقه. السعر هو المعروض في حسابك على {service}.",
+    en: "The AI films each scene (about {seconds} s) from your photo with {model}, on your {service} account; your texts are added on top. The price is the one shown on your {service} account.",
+  },
 };
 
 registerTranslations('video', videoTranslations);

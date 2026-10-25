@@ -96,13 +96,18 @@ export default function AiClipsPanel({ scenes, format, photo, productName, clips
   const left = scenes.length - ready;
   const missingPhoto = Boolean(model.needsPhoto) && !photo;
   // the price of the scenes still to film, in the model's currency
-  const remainingCost = formatVideoPrice(left * sceneSeconds * model.perSecond, model.currency, locale);
+  const remainingCost = model.perSecond ? formatVideoPrice(left * sceneSeconds * model.perSecond, model.currency, locale) : '';
+  const service = VIDEO_PROVIDER_NAMES[provider];
 
   const intro = provider === 'gemini' && credits?.mode === 'points'
     ? t('crdVideoIntro', "L'IA filme une vraie vidéo avec musique pour chaque scène (environ 8 s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Avec tes points : {perScene} points par scène, soit {total} points pour les scènes restantes (solde : {balance}).", { perScene: SCENE_SECONDS * credits.settings.videoSecondCost, total: left * SCENE_SECONDS * credits.settings.videoSecondCost, balance: credits.balance })
     : provider === 'gemini'
       ? t('vmAiIntroGemini', "L'IA filme une vraie vidéo avec son pour chaque scène (environ {seconds} s), à partir de ta photo ; tes textes sont ajoutés par-dessus. Avec ta clé Gemini (facturation activée) : environ {cost} pour les scènes restantes.", { seconds: sceneSeconds, cost: remainingCost })
-      : t('vmAiIntroService', "L'IA filme chaque scène (environ {seconds} s) à partir de ta photo avec {model}, sur ton compte {service} ; tes textes sont ajoutés par-dessus. Environ {cost} pour les scènes restantes.", { seconds: sceneSeconds, model: model.name, service: VIDEO_PROVIDER_NAMES[provider], cost: remainingCost });
+      : model.perSecond === 0
+        ? t('vmAiIntroFree', "L'IA filme chaque scène (environ {seconds} s, sans son) à partir de ta photo avec {model}, gratuitement sur les GPU de {service} ; tes textes sont ajoutés par-dessus. Compte 1 à 3 minutes par scène ; le temps de GPU gratuit revient chaque jour.", { seconds: sceneSeconds, model: model.name, service })
+        : model.perSecond === null
+          ? t('vmAiIntroOwnPrice', "L'IA filme chaque scène (environ {seconds} s) à partir de ta photo avec {model}, sur ton compte {service} ; tes textes sont ajoutés par-dessus. Le prix est celui affiché sur ton compte {service}.", { seconds: sceneSeconds, model: model.name, service })
+          : t('vmAiIntroService', "L'IA filme chaque scène (environ {seconds} s) à partir de ta photo avec {model}, sur ton compte {service} ; tes textes sont ajoutés par-dessus. Environ {cost} pour les scènes restantes.", { seconds: sceneSeconds, model: model.name, service, cost: remainingCost });
 
   return (
     <section className="ui-card p-5 sm:p-6" aria-labelledby="ai-clips-title">

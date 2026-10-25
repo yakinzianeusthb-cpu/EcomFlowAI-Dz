@@ -12,8 +12,10 @@ import fluxLogo from '../../assets/ai-logos/flux.svg';
 import cloudflareLogo from '../../assets/ai-logos/cloudflare-color.svg';
 import pollinationsLogo from '../../assets/ai-logos/pollinations.svg';
 import elevenlabsLogo from '../../assets/ai-logos/elevenlabs.svg';
+import huggingfaceLogo from '../../assets/ai-logos/huggingface-color.svg';
+import higgsfieldLogo from '../../assets/ai-logos/higgsfield.png';
 
-export type AiBrand = 'gemini' | 'openai' | 'anthropic' | 'mistral' | 'deepseek' | 'xai' | 'openrouter' | 'fal' | 'flux' | 'cloudflare' | 'pollinations' | 'elevenlabs';
+export type AiBrand = 'gemini' | 'openai' | 'anthropic' | 'mistral' | 'deepseek' | 'xai' | 'openrouter' | 'fal' | 'flux' | 'cloudflare' | 'pollinations' | 'elevenlabs' | 'huggingface' | 'higgsfield';
 
 /** Colour logos are shown as they are; one-colour logos take the text colour, so they read in both themes. */
 const LOGOS: Record<AiBrand, { src: string; mono: boolean }> = {
@@ -29,6 +31,8 @@ const LOGOS: Record<AiBrand, { src: string; mono: boolean }> = {
   cloudflare: { src: cloudflareLogo, mono: false },
   pollinations: { src: pollinationsLogo, mono: true },
   elevenlabs: { src: elevenlabsLogo, mono: true },
+  huggingface: { src: huggingfaceLogo, mono: false },
+  higgsfield: { src: higgsfieldLogo, mono: false },
 };
 
 /** An AI service's logo on a small tile (the logo files and their licence: src/assets/ai-logos). */

@@ -34,6 +34,8 @@ export const SECRET_FIELDS = [
   "openrouterApiKey",
   "pollinationsApiKey",
   "elevenlabsApiKey",
+  "higgsfieldApiKey",
+  "huggingfaceApiKey",
 ] as const;
 
 /** Non-secret identifier fields. */

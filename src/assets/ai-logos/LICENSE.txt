@@ -20,3 +20,5 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 
 The names and logos themselves are trademarks of their owners (Google, OpenAI, Anthropic, Mistral AI, DeepSeek, xAI,
 OpenRouter, fal.ai, Black Forest Labs, Cloudflare). They are shown only to name the service a seller picks.
+
+higgsfield.png is the site icon of Higgsfield (https://higgsfield.ai/icon.png), a trademark of its owner, shown only to name the service.

@@ -326,6 +326,46 @@ export const settingsTranslations: TranslationDictionary = {
     ar: "تُصوَّر المقاطع بمفتاح Gemini المحفوظ أعلاه، أو بنقاطك إن لم يكن لديك مفتاح.",
     en: "The clips are filmed with the Gemini key saved above, or with your points if you have no key.",
   },
+  stgVideoHf: {
+    fr: "Wan 2.2 sur les GPU gratuits de Hugging Face, avec ton compte gratuit : quelques clips par jour (le temps de GPU revient chaque jour). Plus lent, sans son.",
+    ar: "Wan 2.2 على وحدات GPU المجانية في Hugging Face، بحسابك المجاني: بضعة مقاطع يومياً (يتجدد وقت GPU كل يوم). أبطأ، وبدون صوت.",
+    en: "Wan 2.2 on Hugging Face’s free GPUs, with your free account: a few clips a day (the GPU time comes back every day). Slower, no sound.",
+  },
+  stgVideoHiggsfield: {
+    fr: "Kling, Seedance ou Wan avec ta clé Higgsfield, payé avec tes crédits Higgsfield. Filme à partir de la photo du produit.",
+    ar: "Kling أو Seedance أو Wan بمفتاح Higgsfield، يُدفع برصيدك في Higgsfield. يصوّر انطلاقاً من صورة المنتج.",
+    en: "Kling, Seedance or Wan with your Higgsfield key, paid with your Higgsfield credits. Films from the product photo.",
+  },
+  stgVideoFree: {
+    fr: "gratuit",
+    ar: "مجاني",
+    en: "free",
+  },
+  stgVideoOwnPrice: {
+    fr: "prix sur ton compte {service}",
+    ar: "السعر في حسابك على {service}",
+    en: "price on your {service} account",
+  },
+  stgVideoHfKey: {
+    fr: "Jeton d’accès Hugging Face (hf_…)",
+    ar: "رمز الوصول لـ Hugging Face (hf_…)",
+    en: "Hugging Face access token (hf_…)",
+  },
+  stgVideoHfHelp: {
+    fr: "Crée un compte gratuit sur Hugging Face, puis un jeton de type « Read ». Chaque clip prend environ 1 à 3 minutes ; si ton temps de GPU gratuit du jour est épuisé, réessaie le lendemain.",
+    ar: "أنشئ حساباً مجانياً على Hugging Face، ثم رمزاً من نوع «Read». يستغرق كل مقطع من 1 إلى 3 دقائق تقريباً؛ وإذا نفد وقت GPU المجاني لليوم، أعد المحاولة في الغد.",
+    en: "Create a free Hugging Face account, then a “Read” token. Each clip takes about 1 to 3 minutes; if your free GPU time for the day is used up, try again the next day.",
+  },
+  stgVideoHiggsfieldKey: {
+    fr: "Clé API Higgsfield (identifiant:secret)",
+    ar: "مفتاح API لـ Higgsfield (المعرّف:السر)",
+    en: "Higgsfield API key (key id:secret)",
+  },
+  stgVideoHiggsfieldHelp: {
+    fr: "Dans la console Higgsfield, crée une clé API : colle l’identifiant et le secret séparés par « : ». Les prix de chaque modèle sont affichés dans ta console.",
+    ar: "في لوحة تحكم Higgsfield، أنشئ مفتاح API: الصق المعرّف والسر مفصولين بـ «:». أسعار كل نموذج معروضة في لوحة التحكم.",
+    en: "In the Higgsfield console, create an API key: paste the key id and the secret separated by “:”. Each model’s price is shown in your console.",
+  },
 };
 
 registerTranslations('settings', settingsTranslations);
