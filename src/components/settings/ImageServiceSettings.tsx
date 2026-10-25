@@ -14,22 +14,26 @@ export interface ImageServiceDraft {
   falApiKey: string;
   cloudflareAccountId: string;
   cloudflareApiToken: string;
+  /** shared with the voice-over (one Pollinations key for both) */
+  pollinationsApiKey: string;
 }
 export interface SavedImageKeys {
   openai: boolean;
   fal: boolean;
   cloudflare: boolean;
+  pollinations: boolean;
 }
 
-const BRAND: Record<ImageProvider, AiBrand> = { gemini: 'gemini', openai: 'openai', fal: 'flux', cloudflare: 'cloudflare' };
+const BRAND: Record<ImageProvider, AiBrand> = { gemini: 'gemini', openai: 'openai', fal: 'flux', cloudflare: 'cloudflare', pollinations: 'pollinations' };
 
 const KEY_LINKS: Record<Exclude<ImageProvider, 'gemini'>, string> = {
   openai: 'https://platform.openai.com/api-keys',
   fal: 'https://fal.ai/dashboard/keys',
   cloudflare: 'https://dash.cloudflare.com/profile/api-tokens',
+  pollinations: 'https://enter.pollinations.ai/keys',
 };
 
-function KeyField({ id, label, value, onChange, saved, placeholder }: { id: string; label: string; value: string; onChange: (v: string) => void; saved: boolean; placeholder: string }) {
+export function KeyField({ id, label, value, onChange, saved, placeholder }: { id: string; label: string; value: string; onChange: (v: string) => void; saved: boolean; placeholder: string }) {
   const { t } = useLanguage();
   return (
     <div>
@@ -60,8 +64,9 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
     openai: t('stgImgOpenai', 'Garde ton produit. Payant : il faut du crédit sur ton compte OpenAI, et OpenAI peut demander de vérifier ton organisation.'),
     fal: t('stgImgFal', 'FLUX Kontext : garde ton produit. Payant à l’image, sur ton compte fal.ai.'),
     cloudflare: t('stgImgCloudflare', 'FLUX.2 : garde ton produit. Gratuit chaque jour dans une limite (environ 80 images), sur ton compte Cloudflare.'),
+    pollinations: t('stgImgPollinations', 'FLUX.2 et d’autres modèles avec une seule clé : garde ton produit. Moins d’un centime l’image, sur ton compte Pollinations. La même clé sert à la voix off.'),
   };
-  const hasKey: Record<ImageProvider, boolean> = { gemini: true, openai: saved.openai, fal: saved.fal, cloudflare: saved.cloudflare };
+  const hasKey: Record<ImageProvider, boolean> = { gemini: true, openai: saved.openai, fal: saved.fal, cloudflare: saved.cloudflare, pollinations: saved.pollinations };
 
   return (
     <section aria-labelledby="stg-images" className="ui-card p-5">
@@ -94,6 +99,7 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
                     <span className="text-sm font-semibold text-fg">{IMAGE_PROVIDER_NAMES[id]}</span>
                     {id === 'gemini' && <span className="text-xs font-medium text-primary-ink">{t('stgImgDefault', 'par défaut')}</span>}
                     {id === 'cloudflare' && <span className="text-xs font-medium text-success-ink">{t('stgImgFree', 'gratuit')}</span>}
+                    {id === 'pollinations' && <span className="text-xs font-medium text-success-ink">{t('stgImgCheap', 'très peu cher')}</span>}
                     {loaded && id !== 'gemini' && hasKey[id] && <StatusChip state="ready" label={t('stgKeySaved', 'Clé enregistrée')} />}
                   </span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-fg-muted">{about[id]}</span>
@@ -127,7 +133,11 @@ export default function ImageServiceSettings({ draft, onChange, saved, loaded }:
                 />
               </div>
               <KeyField id="setting-cloudflareApiToken" label={t('stgImgCfToken', 'Jeton API Cloudflare (Workers AI)')} value={draft.cloudflareApiToken} onChange={(v) => set({ cloudflareApiToken: v })} saved={saved.cloudflare} placeholder="…" />
+              <p className="text-xs leading-relaxed text-fg-muted">{t('stgImgCfHelp', 'Crée le jeton avec le modèle « Workers AI » (permission Workers AI : Lire et Modifier). L’identifiant du compte est sur la page d’accueil de ton tableau de bord Cloudflare.')}</p>
             </>
+          )}
+          {draft.provider === 'pollinations' && (
+            <KeyField id="setting-pollinationsApiKey" label={t('stgImgPollinationsKey', 'Clé secrète Pollinations (sk_…)')} value={draft.pollinationsApiKey} onChange={(v) => set({ pollinationsApiKey: v })} saved={saved.pollinations} placeholder="sk_…" />
           )}
           <p className="text-xs leading-relaxed text-fg-muted">{t('stgImgKeyNote', 'La clé est chiffrée et ne quitte jamais le serveur. Laisse le champ vide pour garder celle déjà enregistrée.')}</p>
           <a href={KEY_LINKS[draft.provider]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primary-ink hover:underline">

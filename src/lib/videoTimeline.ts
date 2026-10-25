@@ -74,10 +74,15 @@ const clean = (text: string | undefined) => keepNumbersTogether((text ?? '').tri
 /** A scene filmed by AI lasts as long as its clip, between these bounds. */
 const MIN_CLIP_SCENE = 2;
 const MAX_CLIP_SCENE = 10;
+/** A scene with a voice-over lasts at least its voice and this pause, up to the cap. */
+const VOICE_PAUSE = 0.4;
+const MAX_VOICE_SCENE = 15;
+
+const finite = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isFinite(value);
 
 export function buildTimeline(
   script: VideoScript,
-  options: { imageCount: number; subtitles?: boolean; price?: string; sceneSeconds?: (number | null)[] },
+  options: { imageCount: number; subtitles?: boolean; price?: string; sceneSeconds?: (number | null)[]; voiceSeconds?: (number | null)[] },
 ): Timeline {
   const { imageCount, subtitles = true } = options;
   const segments: Segment[] = [];
@@ -85,9 +90,12 @@ export function buildTimeline(
 
   (script.scenes ?? []).forEach((scene, i) => {
     const clipSeconds = options.sceneSeconds?.[i];
-    const seconds = typeof clipSeconds === 'number' && Number.isFinite(clipSeconds)
+    const voiceSeconds = options.voiceSeconds?.[i];
+    const base = finite(clipSeconds)
       ? Math.min(MAX_CLIP_SCENE, Math.max(MIN_CLIP_SCENE, clipSeconds))
       : Math.min(MAX_SCENE, Math.max(MIN_SCENE, parseSceneSeconds(scene.time) ?? DEFAULT_SCENE));
+    // the voice is never cut: the scene waits for the end of its line
+    const seconds = finite(voiceSeconds) ? Math.max(base, Math.min(MAX_VOICE_SCENE, voiceSeconds + VOICE_PAUSE)) : base;
     segments.push({
       kind: 'scene',
       sceneIndex: i,

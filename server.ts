@@ -11,7 +11,7 @@ import { getTelegramPulse } from "./server-telegram";
 import { prisma } from "./src/lib/prisma";
 import { getCurrentUser, purposeSigner, SessionPayload } from "./src/lib/session";
 import { requireAuth } from "./src/lib/requireAuth";
-import { decryptSecret, isEncryptedSecret } from "./src/lib/crypto";
+import { revealSecret } from "./src/lib/crypto";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import { PLAN_REQUIRED_MESSAGE, createPaidAccessGuard } from "./src/lib/planGuard";
 import { canUsePaidTools } from "./src/lib/access";
@@ -26,11 +26,14 @@ import { languageFromCookies, localizeBody } from "./src/i18n/serverMessages";
 import { SAVED_WORK_ERRORS } from "./src/lib/savedWork";
 import { IMAGE_MODEL_FALLBACKS, TEXT_MODEL_FALLBACKS, aiErrorResponse, generateWithFallback, isQuotaError } from "./src/lib/aiFallback";
 import {
-  CLOUDFLARE_REFERENCE_MAX, DEFAULT_IMAGE_PROVIDER, IMAGE_ERRORS, KEEPS_PRODUCT, OPENAI_DRAW_MODELS, OPENAI_EDIT_MODELS, PROMPT_MAX, PROVIDER_HOSTS,
-  cloudflareCall, falCall, isAspectRatio, isCloudflareAccountId, isImageProvider, isModelUnavailable, openAiCall,
-  providerError, readImage, readReference, type AspectRatio, type ImageRequest, type ProviderCall,
+  CLOUDFLARE_REFERENCE_MAX, DEFAULT_IMAGE_PROVIDER, IMAGE_ERRORS, KEEPS_PRODUCT, OPENAI_DRAW_MODELS, OPENAI_EDIT_MODELS, POLLINATIONS_DRAW_MODELS,
+  POLLINATIONS_EDIT_MODELS, PROMPT_MAX, PROVIDER_HOSTS, cloudflareCall, cloudflareSchnellCall, falCall, isAspectRatio, isCloudflareAccountId,
+  isImageProvider, isModelUnavailable, openAiCall, pollinationsImageCall, providerError, readImage, readReference,
+  type AspectRatio, type ImageRequest, type ProviderCall,
 } from "./src/lib/imageProviders";
+import { createVoiceRouter } from "./src/routes/voice";
 import { imageDimensions } from "./src/lib/imageDimensions";
+import { refusalForLog } from "./src/lib/refusalLog";
 import {
   GOOGLE_API_BASE, VIDEO_ERRORS, buildInteractionBody, fileDownloadUrl, isGoogleFileUri, parseVideoRequest, readInteraction, readJobDetails, signJob,
 } from "./src/lib/videoJobs";
@@ -213,16 +216,6 @@ const refundQuietly = (bill: Bill | null) => bill?.refund().catch((err) => conso
 async function settleText(bill: Bill | null, access: AiAccess, usage: { totalTokenCount?: number } | null | undefined) {
   if (!bill || access.mode !== "points") return;
   await bill.topUp(textCharge(usage?.totalTokenCount, access.settings.textCost) - access.settings.textCost, "text");
-}
-
-/** A stored secret, decrypted (null when missing or unreadable). Used on the server only. */
-function revealSecret(blob: string | null | undefined): string | null {
-  if (!blob || !isEncryptedSecret(blob)) return null;
-  try {
-    return decryptSecret(blob);
-  } catch {
-    return null;
-  }
 }
 
 const ENGINE_KEY_SELECT = { textProvider: true, textModel: true, openaiApiKey: true, anthropicApiKey: true, mistralApiKey: true, deepseekApiKey: true, xaiApiKey: true, openrouterApiKey: true } as const;
@@ -416,7 +409,7 @@ const DOWNLOAD_MAX_BYTES = 15 * 1024 * 1024;
 async function imageServiceOf(session: SessionPayload) {
   const row = await prisma.apiSettings.findUnique({
     where: { userId: session.sub },
-    select: { imageProvider: true, openaiApiKey: true, falApiKey: true, cloudflareAccountId: true, cloudflareApiToken: true },
+    select: { imageProvider: true, openaiApiKey: true, falApiKey: true, cloudflareAccountId: true, cloudflareApiToken: true, pollinationsApiKey: true },
   });
   return {
     provider: isImageProvider(row?.imageProvider) ? row.imageProvider : DEFAULT_IMAGE_PROVIDER,
@@ -424,9 +417,34 @@ async function imageServiceOf(session: SessionPayload) {
     fal: revealSecret(row?.falApiKey),
     cloudflareAccount: row?.cloudflareAccountId ?? null,
     cloudflare: revealSecret(row?.cloudflareApiToken),
+    pollinations: revealSecret(row?.pollinationsApiKey),
   };
 }
 type ImageService = Awaited<ReturnType<typeof imageServiceOf>>;
+
+/** Each model in turn until one answers; `next` decides whether a refusal is worth trying the next model for. */
+async function firstAnswer(models: readonly string[], call: (model: string) => ProviderCall, next: (error: any) => boolean = (e) => isModelUnavailable(e?.status, e?.text ?? "")): Promise<unknown> {
+  for (const [i, model] of models.entries()) {
+    try {
+      return await sendImageCall(call(model));
+    } catch (error: any) {
+      if (i < models.length - 1 && next(error)) {
+        console.warn("AI Image model refused, trying the next one:", model, refusalForLog(error));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new TextEngineError(502, IMAGE_ERRORS.failed);
+}
+
+/** Cloudflare: FLUX.2 klein, then for an image from words alone FLUX.1 schnell, unless the token itself was refused. */
+function cloudflareAnswer(service: ImageService, request: ImageRequest): Promise<unknown> {
+  if (!service.cloudflare || !isCloudflareAccountId(service.cloudflareAccount)) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
+  const [account, token, host] = [service.cloudflareAccount, service.cloudflare, providerHost("cloudflare")];
+  const models = request.reference ? ["klein"] : ["klein", "schnell"];
+  return firstAnswer(models, (m) => (m === "klein" ? cloudflareCall(request, account, token, host) : cloudflareSchnellCall(request, account, token, host)), (e) => e?.status !== 401 && e?.status !== 429 && e?.name !== "TimeoutError");
+}
 
 /** One call to an image service; a refusal is thrown with the service's status and text (kept on the server). */
 async function sendImageCall(call: ProviderCall): Promise<unknown> {
@@ -468,31 +486,27 @@ async function drawWithService(service: ImageService, request: { prompt: string;
   try {
     let answer: unknown;
     if (service.provider === "openai") {
-      if (!service.openai) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
-      const models = request.reference ? OPENAI_EDIT_MODELS : OPENAI_DRAW_MODELS;
-      for (const [i, model] of models.entries()) {
-        try {
-          answer = await sendImageCall(openAiCall(request, service.openai, model, providerHost("openai")));
-          break;
-        } catch (error: any) {
-          // a model this account cannot use yet: the next one
-          if (i < models.length - 1 && isModelUnavailable(error?.status, error?.text ?? "")) continue;
-          throw error;
-        }
-      }
+      const key = service.openai;
+      if (!key) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
+      answer = await firstAnswer(request.reference ? OPENAI_EDIT_MODELS : OPENAI_DRAW_MODELS, (model) => openAiCall(request, key, model, providerHost("openai")));
+    } else if (service.provider === "pollinations") {
+      const key = service.pollinations;
+      if (!key) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
+      // a model this account's tier or balance cannot use: the next one (402 included, the next is cheaper or free)
+      answer = await firstAnswer(request.reference ? POLLINATIONS_EDIT_MODELS : POLLINATIONS_DRAW_MODELS, (model) => pollinationsImageCall(request, key, model, providerHost("pollinations")),
+        (e) => e?.status === 402 || isModelUnavailable(e?.status, e?.text ?? ""));
     } else if (service.provider === "fal") {
       if (!service.fal) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
       answer = await sendImageCall(falCall(request, service.fal, providerHost("fal")));
     } else {
-      if (!service.cloudflare || !isCloudflareAccountId(service.cloudflareAccount)) throw new TextEngineError(400, IMAGE_ERRORS.noKey);
-      answer = await sendImageCall(cloudflareCall(request, service.cloudflareAccount, service.cloudflare, providerHost("cloudflare")));
+      answer = await cloudflareAnswer(service, request);
     }
     const image = readImage(service.provider, answer) ?? (service.provider === "fal" ? await falPictureFromLink(answer) : null);
     if (!image) throw new TextEngineError(502, IMAGE_ERRORS.failed);
     return image;
   } catch (error: any) {
     if (error instanceof TextEngineError) throw error;
-    console.error("AI Image Error:", error?.status ?? error?.name ?? "unknown");
+    console.error("AI Image Error:", service.provider, refusalForLog(error));
     if (error?.name === "TimeoutError") throw new TextEngineError(504, IMAGE_ERRORS.busy);
     const { status, error: message } = typeof error?.status === "number" ? providerError(error.status, error.text ?? "") : { status: 502, error: IMAGE_ERRORS.failed };
     throw new TextEngineError(status, message);
@@ -517,6 +531,9 @@ async function imageFromGeminiRequest(session: SessionPayload, contents: unknown
   if (!match) throw new TextEngineError(502, IMAGE_ERRORS.failed);
   return { text: "", candidates: [{ content: { role: "model", parts: [{ inlineData: { mimeType: match[1], data: match[2] } }] } }], usageMetadata: null };
 }
+
+// the videos' voice-over, read by the seller's ElevenLabs or Pollinations account (src/routes/voice.ts)
+app.use(createVoiceRouter([requireAuth, requirePaidAccess, aiRateLimiter]));
 
 app.post("/api/ai/image", requireAuth, requirePaidAccess, aiRateLimiter, async (req, res) => {
   const { prompt, reference: photo, aspectRatio } = req.body || {};

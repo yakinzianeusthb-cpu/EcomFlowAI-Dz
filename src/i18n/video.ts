@@ -973,6 +973,66 @@ export const videoTranslations: TranslationDictionary = {
     ar: "نسخ الكل",
     en: "Copy all",
   },
+  voTitle: {
+    fr: "Voix off IA",
+    ar: "تعليق صوتي بالذكاء الاصطناعي",
+    en: "AI voice-over",
+  },
+  voCount: {
+    fr: "{made} / {total} scènes",
+    ar: "{made} / {total} مشاهد",
+    en: "{made} / {total} scenes",
+  },
+  voIntro: {
+    fr: "Le texte de chaque scène lu par une voix IA (ElevenLabs ou Pollinations, choisi dans",
+    ar: "نص كل مشهد يقرؤه صوت ذكاء اصطناعي (ElevenLabs أو Pollinations، يُختار في",
+    en: "Each scene’s text read by an AI voice (ElevenLabs or Pollinations, chosen in",
+  },
+  voIntroEnd: {
+    fr: "). Chaque scène dure le temps de sa phrase.",
+    ar: "). كل مشهد يدوم مدة جملته.",
+    en: "). Each scene lasts as long as its line.",
+  },
+  voRedo: {
+    fr: "Refaire cette voix",
+    ar: "أعد إنشاء هذا الصوت",
+    en: "Redo this voice",
+  },
+  voMaking: {
+    fr: "Création de la voix…",
+    ar: "جارٍ إنشاء الصوت…",
+    en: "Making the voice…",
+  },
+  voCreate: {
+    fr: "Créer la voix off",
+    ar: "إنشاء التعليق الصوتي",
+    en: "Create the voice-over",
+  },
+  voFinish: {
+    fr: "Finir la voix off",
+    ar: "إكمال التعليق الصوتي",
+    en: "Finish the voice-over",
+  },
+  voRedoAll: {
+    fr: "Refaire toute la voix off",
+    ar: "إعادة كل التعليق الصوتي",
+    en: "Redo the whole voice-over",
+  },
+  voDownload: {
+    fr: "Télécharger la voix off (WAV)",
+    ar: "تحميل التعليق الصوتي (WAV)",
+    en: "Download the voice-over (WAV)",
+  },
+  voInVideo: {
+    fr: "Mettre la voix off dans la vidéo (la musique passe en dessous)",
+    ar: "أضف التعليق الصوتي إلى الفيديو (تنخفض الموسيقى تحته)",
+    en: "Put the voice-over in the video (the music goes underneath)",
+  },
+  vmVoiceNote: {
+    fr: "La voix off IA est dans la vidéo : chaque scène dure le temps de sa phrase.",
+    ar: "التعليق الصوتي موجود في الفيديو: كل مشهد يدوم مدة جملته.",
+    en: "The AI voice-over is in the video: each scene lasts as long as its line.",
+  },
 };
 
 registerTranslations('video', videoTranslations);

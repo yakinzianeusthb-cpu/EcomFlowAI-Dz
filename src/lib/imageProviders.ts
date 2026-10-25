@@ -1,26 +1,27 @@
 /**
  * The AI services that can make the images. Gemini is the main one and the default; the seller can pick another in
- * Paramètres: OpenAI's GPT Image, FLUX Kontext on fal.ai, or FLUX.2 klein on Cloudflare Workers AI (free within a
- * daily allowance). Text and video stay on Gemini.
+ * Paramètres: OpenAI's GPT Image, FLUX Kontext on fal.ai, FLUX.2 klein on Cloudflare Workers AI (free within a
+ * daily allowance) or Pollinations (one key for many models, a fraction of a cent an image). Text and video stay
+ * on Gemini.
  *
  * This file builds each service's request and reads its answer, without any network call (the server route makes
  * them, with the seller's key, which never leaves the server).
  */
-export type ImageProvider = 'gemini' | 'openai' | 'fal' | 'cloudflare';
+export type ImageProvider = 'gemini' | 'openai' | 'fal' | 'cloudflare' | 'pollinations';
 /** In the order the settings list them; the first is the default. */
-export const IMAGE_PROVIDERS: readonly ImageProvider[] = ['gemini', 'openai', 'fal', 'cloudflare'];
+export const IMAGE_PROVIDERS: readonly ImageProvider[] = ['gemini', 'openai', 'fal', 'cloudflare', 'pollinations'];
 export const DEFAULT_IMAGE_PROVIDER: ImageProvider = 'gemini';
 
 export const isImageProvider = (value: unknown): value is ImageProvider => IMAGE_PROVIDERS.includes(value as ImageProvider);
 
 /** Brand names, the same in every language. */
-export const IMAGE_PROVIDER_NAMES: Record<ImageProvider, string> = { gemini: 'Google Gemini', openai: 'OpenAI', fal: 'FLUX (fal.ai)', cloudflare: 'Cloudflare' };
+export const IMAGE_PROVIDER_NAMES: Record<ImageProvider, string> = { gemini: 'Google Gemini', openai: 'OpenAI', fal: 'FLUX (fal.ai)', cloudflare: 'Cloudflare', pollinations: 'Pollinations' };
 
 /**
  * Whether a service can start from the seller's photo and keep the product as it is. One that cannot only draws
  * from words, so it is never used where the page promises the real product (landing-page images, posters).
  */
-export const KEEPS_PRODUCT: Record<ImageProvider, boolean> = { gemini: true, openai: true, fal: true, cloudflare: true };
+export const KEEPS_PRODUCT: Record<ImageProvider, boolean> = { gemini: true, openai: true, fal: true, cloudflare: true, pollinations: true };
 
 export const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'] as const;
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
@@ -55,10 +56,21 @@ export const CLOUDFLARE_SIZES: Record<AspectRatio, string> = {
   '4:5': '912x1136', '5:4': '1136x912', '9:16': '768x1360', '16:9': '1360x768', '21:9': '1568x672',
 };
 
+/** When FLUX.2 klein is refused, an image from words alone is drawn by FLUX.1 schnell (JSON, words only). */
+export const CLOUDFLARE_FALLBACK_MODEL = '@cf/black-forest-labs/flux-1-schnell';
+
+/**
+ * Pollinations' models, cheapest first: FLUX.2 klein (0.005 Pollen an image), then models open to free accounts.
+ * With the seller's photo, only models that edit from it.
+ */
+export const POLLINATIONS_EDIT_MODELS = ['black-forest-labs/flux.2-klein-4b', 'black-forest-labs/flux.1-kontext-pro', 'openai/gpt-image-1-mini'] as const;
+export const POLLINATIONS_DRAW_MODELS = ['black-forest-labs/flux.2-klein-4b', 'black-forest-labs/flux.1-schnell'] as const;
+
 export const PROVIDER_HOSTS = {
   openai: 'https://api.openai.com',
   fal: 'https://fal.run',
   cloudflare: 'https://api.cloudflare.com',
+  pollinations: 'https://gen.pollinations.ai',
 } as const;
 
 /** What a seller sends to make one image. */
@@ -151,6 +163,36 @@ export function cloudflareCall(request: ImageRequest, accountId: string, token: 
   return { url: `${host}/client/v4/accounts/${accountId}/ai/run/${CLOUDFLARE_MODEL}`, method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form };
 }
 
+export function cloudflareSchnellCall(request: ImageRequest, accountId: string, token: string, host: string = PROVIDER_HOSTS.cloudflare): ProviderCall {
+  return {
+    url: `${host}/client/v4/accounts/${accountId}/ai/run/${CLOUDFLARE_FALLBACK_MODEL}`,
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: request.prompt.slice(0, CLOUDFLARE_PROMPT_MAX), steps: 4 }),
+  };
+}
+
+/** Pollinations speaks OpenAI's image API: edits (multipart, with the photo) or generations (JSON). */
+export function pollinationsImageCall(request: ImageRequest, key: string, model: string, host: string = PROVIDER_HOSTS.pollinations): ProviderCall {
+  const size = CLOUDFLARE_SIZES[request.aspectRatio];
+  if (request.reference) {
+    const form = new FormData();
+    form.set('model', model);
+    form.set('prompt', request.prompt);
+    form.set('size', size);
+    form.set('response_format', 'b64_json');
+    const bytes = Uint8Array.from(atob(request.reference.data), (c) => c.charCodeAt(0));
+    form.set('image', new Blob([bytes], { type: request.reference.mimeType }), `product.${request.reference.mimeType.split('/')[1]}`);
+    return { url: `${host}/v1/images/edits`, method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form };
+  }
+  return {
+    url: `${host}/v1/images/generations`,
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, prompt: request.prompt, size, n: 1, response_format: 'b64_json' }),
+  };
+}
+
 const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
@@ -164,6 +206,10 @@ export function readImage(provider: Exclude<ImageProvider, 'gemini'>, answer: un
   if (provider === 'fal') {
     const url = body.images?.[0]?.url;
     return typeof url === 'string' && IMAGE_DATA_URL.test(url) ? url : null;
+  }
+  if (provider === 'pollinations') {
+    const b64 = body.data?.[0]?.b64_json;
+    return typeof b64 === 'string' && BASE64.test(b64) ? `data:${pictureType(b64)};base64,${b64}` : null;
   }
   const b64 = body.result?.image;
   return typeof b64 === 'string' && BASE64.test(b64) ? `data:${pictureType(b64)};base64,${b64}` : null;

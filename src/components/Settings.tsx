@@ -6,6 +6,8 @@ import { useLanguage } from '../context/LanguageContext';
 import PageHeader from './PageHeader';
 import ImageServiceSettings, { type ImageServiceDraft, type SavedImageKeys } from './settings/ImageServiceSettings';
 import TextEngineSettings, { EMPTY_ENGINE_KEYS, type SavedEngineKeys, type TextEngineDraft } from './settings/TextEngineSettings';
+import VoiceServiceSettings, { type SavedVoiceKeys, type VoiceServiceDraft } from './settings/VoiceServiceSettings';
+import { DEFAULT_VOICE_PROVIDER, isVoiceProvider, type VoiceProvider } from '../lib/voiceProviders';
 import { DEFAULT_TEXT_PROVIDER, isTextProvider } from '../lib/textEngines';
 import { DEFAULT_IMAGE_PROVIDER, isImageProvider } from '../lib/imageProviders';
 import { StatusChip } from './ui/primitives';
@@ -24,8 +26,11 @@ export default function Settings() {
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [images, setImages] = useState<ImageServiceDraft>({ provider: DEFAULT_IMAGE_PROVIDER, openaiApiKey: '', falApiKey: '', cloudflareAccountId: '', cloudflareApiToken: '' });
-  const [savedImageKeys, setSavedImageKeys] = useState<SavedImageKeys>({ openai: false, fal: false, cloudflare: false });
+  const [images, setImages] = useState<ImageServiceDraft>({ provider: DEFAULT_IMAGE_PROVIDER, openaiApiKey: '', falApiKey: '', cloudflareAccountId: '', cloudflareApiToken: '', pollinationsApiKey: '' });
+  const [savedImageKeys, setSavedImageKeys] = useState<SavedImageKeys>({ openai: false, fal: false, cloudflare: false, pollinations: false });
+  const [voice, setVoice] = useState<VoiceServiceDraft>({ provider: DEFAULT_VOICE_PROVIDER, voiceId: '', elevenlabsApiKey: '', pollinationsApiKey: '' });
+  const [savedVoiceKeys, setSavedVoiceKeys] = useState<SavedVoiceKeys>({ elevenlabs: false, pollinations: false });
+  const [savedVoiceProvider, setSavedVoiceProvider] = useState<VoiceProvider>(DEFAULT_VOICE_PROVIDER);
   const [engine, setEngine] = useState<TextEngineDraft>({ provider: DEFAULT_TEXT_PROVIDER, model: '', keys: EMPTY_ENGINE_KEYS });
   const [savedEngineKeys, setSavedEngineKeys] = useState<SavedEngineKeys>({ openai: false, anthropic: false, mistral: false, deepseek: false, xai: false, openrouter: false });
 
@@ -38,7 +43,11 @@ export default function Settings() {
         setWorkspaceName(saved.workspaceName ?? '');
         setHasGeminiKey(Boolean(saved.geminiApiKey));
         setImages((d) => ({ ...d, provider: isImageProvider(saved.imageProvider) ? saved.imageProvider : DEFAULT_IMAGE_PROVIDER, cloudflareAccountId: saved.cloudflareAccountId ?? '' }));
-        setSavedImageKeys({ openai: Boolean(saved.openaiApiKey), fal: Boolean(saved.falApiKey), cloudflare: Boolean(saved.cloudflareApiToken) && Boolean(saved.cloudflareAccountId) });
+        setSavedImageKeys({ openai: Boolean(saved.openaiApiKey), fal: Boolean(saved.falApiKey), cloudflare: Boolean(saved.cloudflareApiToken) && Boolean(saved.cloudflareAccountId), pollinations: Boolean(saved.pollinationsApiKey) });
+        const voiceProvider = isVoiceProvider(saved.voiceProvider) ? saved.voiceProvider : DEFAULT_VOICE_PROVIDER;
+        setVoice((d) => ({ ...d, provider: voiceProvider, voiceId: saved.voiceId ?? '' }));
+        setSavedVoiceProvider(voiceProvider);
+        setSavedVoiceKeys({ elevenlabs: Boolean(saved.elevenlabsApiKey), pollinations: Boolean(saved.pollinationsApiKey) });
         setEngine((d) => ({ ...d, provider: isTextProvider(saved.textProvider) ? saved.textProvider : DEFAULT_TEXT_PROVIDER, model: saved.textModel ?? '' }));
         setSavedEngineKeys({
           openai: Boolean(saved.openaiApiKey), anthropic: Boolean(saved.anthropicApiKey), mistral: Boolean(saved.mistralApiKey),
@@ -55,10 +64,13 @@ export default function Settings() {
     try {
       // one OpenAI key serves both the texts and the images: whichever field was typed in
       const typed = { openaiApiKey: images.openaiApiKey.trim() || engine.keys.openai.trim(), falApiKey: images.falApiKey.trim(), cloudflareApiToken: images.cloudflareApiToken.trim() };
+      // one Pollinations key serves both the images and the voice: whichever field was typed in
+      const voiceKeys = { pollinationsApiKey: images.pollinationsApiKey.trim() || voice.pollinationsApiKey.trim(), elevenlabsApiKey: voice.elevenlabsApiKey.trim() };
       const engineKeys = { anthropicApiKey: engine.keys.anthropic.trim(), mistralApiKey: engine.keys.mistral.trim(), deepseekApiKey: engine.keys.deepseek.trim(), xaiApiKey: engine.keys.xai.trim(), openrouterApiKey: engine.keys.openrouter.trim() };
       await settingsApi.update({
         workspaceName, geminiApiKey: geminiKey.trim(), imageProvider: images.provider, cloudflareAccountId: images.cloudflareAccountId.trim(), ...typed,
         textProvider: engine.provider, textModel: engine.provider === 'gemini' ? '' : engine.model.trim(), ...engineKeys,
+        voiceProvider: voice.provider, voiceId: voice.voiceId, ...voiceKeys,
       });
       if (geminiKey.trim()) setHasGeminiKey(true);
       setGeminiKey('');
@@ -66,8 +78,12 @@ export default function Settings() {
         openai: s.openai || Boolean(typed.openaiApiKey),
         fal: s.fal || Boolean(typed.falApiKey),
         cloudflare: Boolean(images.cloudflareAccountId.trim()) && (s.cloudflare || Boolean(typed.cloudflareApiToken)),
+        pollinations: s.pollinations || Boolean(voiceKeys.pollinationsApiKey),
       }));
-      setImages((d) => ({ ...d, openaiApiKey: '', falApiKey: '', cloudflareApiToken: '' }));
+      setImages((d) => ({ ...d, openaiApiKey: '', falApiKey: '', cloudflareApiToken: '', pollinationsApiKey: '' }));
+      setSavedVoiceKeys((k) => ({ elevenlabs: k.elevenlabs || Boolean(voiceKeys.elevenlabsApiKey), pollinations: k.pollinations || Boolean(voiceKeys.pollinationsApiKey) }));
+      setSavedVoiceProvider(voice.provider);
+      setVoice((d) => ({ ...d, elevenlabsApiKey: '', pollinationsApiKey: '' }));
       setSavedEngineKeys((k) => ({
         openai: k.openai || Boolean(typed.openaiApiKey), anthropic: k.anthropic || Boolean(engineKeys.anthropicApiKey), mistral: k.mistral || Boolean(engineKeys.mistralApiKey),
         deepseek: k.deepseek || Boolean(engineKeys.deepseekApiKey), xai: k.xai || Boolean(engineKeys.xaiApiKey), openrouter: k.openrouter || Boolean(engineKeys.openrouterApiKey),
@@ -84,7 +100,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl space-y-8">
-      <PageHeader section="settings" title={t('menuSettings', 'Paramètres')} subtitle={t('stgSubtitleNew', 'Ton espace, ta clé d’IA et tes connexions publicitaires.')} />
+      <PageHeader section="settings" title={t('menuSettings', 'Paramètres')} subtitle={t('stgSubtitleAi', 'Ton espace, tes clés d’IA, tes services d’images et ta voix off.')} />
 
       <section aria-labelledby="stg-workspace" className="ui-card p-5">
         <div className="mb-4 flex items-center gap-3">
@@ -130,6 +146,8 @@ export default function Settings() {
       </section>
 
       <ImageServiceSettings draft={images} onChange={setImages} saved={savedImageKeys} loaded={loaded} />
+
+      <VoiceServiceSettings draft={voice} onChange={setVoice} saved={savedVoiceKeys} savedProvider={savedVoiceProvider} loaded={loaded} />
 
       <div className="flex justify-end">
         <button type="button" onClick={save} disabled={saving === 'saving' || !loaded} className="btn-dz-primary disabled:opacity-60">

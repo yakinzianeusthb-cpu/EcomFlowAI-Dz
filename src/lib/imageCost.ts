@@ -6,7 +6,7 @@
 import type { ImageProvider } from './imageProviders';
 
 /** US dollars per image, or null when the service sets its own price. */
-export const IMAGE_COST_USD: Record<ImageProvider, number | null> = { gemini: 0.04, openai: null, fal: null, cloudflare: null };
+export const IMAGE_COST_USD: Record<ImageProvider, number | null> = { gemini: 0.04, openai: null, fal: null, cloudflare: null, pollinations: null };
 
 /** "0,04 $" / "$0.04", in the reader's locale; `count` images at once. */
 export function formatImageCost(provider: ImageProvider, locale: string, count = 1): string | null {

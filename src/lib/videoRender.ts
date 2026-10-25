@@ -1,6 +1,7 @@
 /**
  * Draws the frames of a script video on a canvas and records them, with sound, into a video file, in the browser.
- * The timing comes from videoTimeline.ts and the music from videoMusic.ts; this file paints, mixes and records.
+ * The timing comes from videoTimeline.ts, the music from videoMusic.ts and the voice-over from voiceTrack.ts; this file
+ * paints, mixes and records.
  *
  * The look is the one of today's short ads: the footage full frame (an AI clip, or the product photo with a slow
  * camera move), bold captions that pop in word by word with one word highlighted, a swipe up between scenes, and
@@ -8,6 +9,7 @@
  */
 import { inkOn } from './color';
 import { musicPlan, renderMusic } from './videoMusic';
+import { voiceCues } from './voiceTrack';
 import { frameAt, isRtlText, pickRecorderMime, subtitlePages, wrapText, type Segment, type Timeline } from './videoTimeline';
 
 const FONT = '"Noto Sans Arabic Variable", "Geist Variable", system-ui, sans-serif';
@@ -478,13 +480,80 @@ interface Soundtrack {
   end(): void;
 }
 
+/** A part of the soundtrack: started with the recording, stopped at its end. */
+interface SoundPart {
+  begin(): void;
+  end(): void;
+}
+
+/** The AI clips' own sound, routed into the recording (not to the speakers). */
+function clipSound(ctx: AudioContext, destination: AudioNode, clips: HTMLVideoElement[]): SoundPart {
+  for (const clip of clips) {
+    let source = elementSources.get(clip);
+    if (!source) {
+      source = ctx.createMediaElementSource(clip);
+      elementSources.set(clip, source);
+    }
+    source.connect(destination);
+    clip.muted = false;
+  }
+  return {
+    begin() {},
+    end() {
+      for (const clip of clips) {
+        clip.muted = true;
+        elementSources.get(clip)?.disconnect();
+      }
+    },
+  };
+}
+
+/** Buffers played from the start of the recording, each at its time (the music at 0, each voice at its scene). */
+function bufferSound(ctx: AudioContext, destination: AudioNode, cues: { buffer: AudioBuffer; at: number }[], volume = 1): SoundPart {
+  const gain = ctx.createGain();
+  gain.gain.value = volume;
+  gain.connect(destination);
+  let nodes: AudioBufferSourceNode[] = [];
+  return {
+    begin() {
+      const t0 = ctx.currentTime;
+      nodes = cues.map(({ buffer, at }) => {
+        const node = ctx.createBufferSource();
+        node.buffer = buffer;
+        node.connect(gain);
+        node.start(t0 + at);
+        return node;
+      });
+    },
+    end() {
+      for (const node of nodes) {
+        try { node.stop(); } catch { /* already stopped */ }
+        node.disconnect();
+      }
+      gain.disconnect();
+    },
+  };
+}
+
+async function musicBuffer(timeline: Timeline): Promise<AudioBuffer> {
+  const cta = timeline.segments.find((s) => s.kind === 'cta');
+  return renderMusic(musicPlan(timeline.duration, {
+    transitions: timeline.segments.slice(1).map((s) => s.start),
+    impact: cta?.price ? cta.start + 0.45 : null,
+  }));
+}
+
+/** the music stays under the voice-over */
+const MUSIC_UNDER_VOICE = 0.3;
+
 /**
- * The sound of the video: the AI clips' own soundtrack when the video has clips (each clip's sound is routed into
- * the recording, not to the speakers), otherwise the generated music. Null for a silent video.
+ * The sound of the video: the AI clips' own soundtrack when the video has clips, otherwise the generated music (if
+ * wanted), with each scene's voice-over on top. Null for a silent video.
  */
-async function prepareSoundtrack(timeline: Timeline, assets: RenderAssets, music: boolean): Promise<Soundtrack | null> {
+async function prepareSoundtrack(timeline: Timeline, assets: RenderAssets, music: boolean, voices: (AudioBuffer | null)[]): Promise<Soundtrack | null> {
   const clips = (assets.clips ?? []).filter((c): c is HTMLVideoElement => c !== null);
-  if (!clips.length && !music) return null;
+  const cues = voiceCues(timeline, voices).map(({ voice, at }) => ({ buffer: voice, at }));
+  if (!clips.length && !music && !cues.length) return null;
   if (typeof AudioContext === 'undefined') return null;
   audioContext ??= new AudioContext();
   // created and resumed while the "create the video" click is still recent, as browsers require
@@ -492,47 +561,14 @@ async function prepareSoundtrack(timeline: Timeline, assets: RenderAssets, music
   const ctx = audioContext;
   const destination = ctx.createMediaStreamDestination();
 
-  if (clips.length) {
-    for (const clip of clips) {
-      let source = elementSources.get(clip);
-      if (!source) {
-        source = ctx.createMediaElementSource(clip);
-        elementSources.set(clip, source);
-      }
-      source.connect(destination);
-      clip.muted = false;
-    }
-    return {
-      stream: destination.stream,
-      begin() {},
-      end() {
-        for (const clip of clips) {
-          clip.muted = true;
-          elementSources.get(clip)?.disconnect();
-        }
-      },
-    };
-  }
-
-  const cta = timeline.segments.find((s) => s.kind === 'cta');
-  const plan = musicPlan(timeline.duration, {
-    transitions: timeline.segments.slice(1).map((s) => s.start),
-    impact: cta?.price ? cta.start + 0.45 : null,
-  });
-  const buffer = await renderMusic(plan);
-  let node: AudioBufferSourceNode | null = null;
+  const parts: SoundPart[] = [];
+  if (clips.length) parts.push(clipSound(ctx, destination, clips));
+  else if (music) parts.push(bufferSound(ctx, destination, [{ buffer: await musicBuffer(timeline), at: 0 }], cues.length ? MUSIC_UNDER_VOICE : 1));
+  if (cues.length) parts.push(bufferSound(ctx, destination, cues));
   return {
     stream: destination.stream,
-    begin() {
-      node = ctx.createBufferSource();
-      node.buffer = buffer;
-      node.connect(destination);
-      node.start();
-    },
-    end() {
-      try { node?.stop(); } catch { /* already stopped */ }
-      node?.disconnect();
-    },
+    begin: () => parts.forEach((p) => p.begin()),
+    end: () => parts.forEach((p) => p.end()),
   };
 }
 
@@ -545,11 +581,11 @@ export async function recordVideo(
   timeline: Timeline,
   assets: RenderAssets,
   onProgress?: (fraction: number) => void,
-  options: { music?: boolean } = {},
+  options: { music?: boolean; voices?: (AudioBuffer | null)[] } = {},
 ): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2D context unavailable');
-  const soundtrack = await prepareSoundtrack(timeline, assets, options.music ?? true);
+  const soundtrack = await prepareSoundtrack(timeline, assets, options.music ?? true, options.voices ?? []);
   const mimeType = pickRecorderMime((t) => MediaRecorder.isTypeSupported(t), Boolean(soundtrack));
   if (!mimeType) throw new Error('video recording is not supported in this browser');
 

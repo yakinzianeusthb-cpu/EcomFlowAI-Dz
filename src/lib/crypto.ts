@@ -64,3 +64,13 @@ export function maskSecret(value: string | null | undefined): string | null {
   if (value.length <= 8) return "••••••••";
   return `${value.slice(0, 3)}••••••••${value.slice(-3)}`;
 }
+
+/** A stored secret, decrypted (null when missing or unreadable). Used on the server only. */
+export function revealSecret(blob: string | null | undefined): string | null {
+  if (!blob || !isEncryptedSecret(blob)) return null;
+  try {
+    return decryptSecret(blob);
+  } catch {
+    return null;
+  }
+}

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { SERVER_MESSAGES } from '../../src/i18n/serverMessages';
 import {
   ASPECT_RATIOS, CLOUDFLARE_SIZES, DEFAULT_IMAGE_PROVIDER, FAL_RATIOS, IMAGE_ERRORS, IMAGE_PROVIDERS, KEEPS_PRODUCT, OPENAI_SIZES,
-  cloudflareCall, falCall, isCloudflareAccountId, isModelUnavailable, openAiCall, providerError, readImage, readReference,
+  POLLINATIONS_DRAW_MODELS, POLLINATIONS_EDIT_MODELS,
+  cloudflareCall, cloudflareSchnellCall, falCall, isCloudflareAccountId, isModelUnavailable, openAiCall, pollinationsImageCall, providerError, readImage, readReference,
   type ImageRequest,
 } from '../../src/lib/imageProviders';
 
@@ -18,7 +19,11 @@ describe('the image services', () => {
   });
 
   it('knows which services keep the product of a photo: all of them start from it', () => {
-    expect(KEEPS_PRODUCT).toEqual({ gemini: true, openai: true, fal: true, cloudflare: true });
+    expect(KEEPS_PRODUCT).toEqual({ gemini: true, openai: true, fal: true, cloudflare: true, pollinations: true });
+  });
+
+  it('lists Pollinations last', () => {
+    expect(IMAGE_PROVIDERS.at(-1)).toBe('pollinations');
   });
 });
 
@@ -121,9 +126,43 @@ describe('Cloudflare Workers AI', () => {
     }
   });
 
+  it('falls back to FLUX.1 schnell in JSON for an image from words alone', () => {
+    const call = cloudflareSchnellCall({ ...wordsOnly, prompt: 'x'.repeat(3000) }, account, 'cf-token');
+    expect(call.url).toBe(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/black-forest-labs/flux-1-schnell`);
+    expect(call.headers).toEqual({ Authorization: 'Bearer cf-token', 'Content-Type': 'application/json' });
+    expect(JSON.parse(call.body as string)).toEqual({ prompt: 'x'.repeat(2048), steps: 4 });
+  });
+
   it('only accepts an account id of 32 hexadecimal characters (it goes into the address)', () => {
     expect(isCloudflareAccountId('0123456789abcdef0123456789ABCDEF')).toBe(true);
     for (const bad of ['', '0123', '../../../user/tokens/verify', '0123456789abcdef0123456789abcdeg', null]) expect(isCloudflareAccountId(bad)).toBe(false);
+  });
+});
+
+describe('Pollinations', () => {
+  it('edits the photo through its OpenAI-style edits endpoint, as a multipart form', async () => {
+    const call = pollinationsImageCall(withPhoto, 'sk_test', POLLINATIONS_EDIT_MODELS[0]);
+    expect(call.url).toBe('https://gen.pollinations.ai/v1/images/edits');
+    expect(call.headers).toEqual({ Authorization: 'Bearer sk_test' });
+    const form = call.body as FormData;
+    expect(form.get('model')).toBe('black-forest-labs/flux.2-klein-4b');
+    expect(form.get('prompt')).toBe('Keep the product');
+    expect(form.get('size')).toBe(CLOUDFLARE_SIZES['4:5']);
+    expect(form.get('response_format')).toBe('b64_json');
+    const image = form.get('image') as File;
+    expect(image.type).toBe('image/png');
+    expect(new Uint8Array(await image.arrayBuffer()).slice(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]));
+  });
+
+  it('draws from words alone through the generations endpoint, in JSON', () => {
+    const call = pollinationsImageCall(wordsOnly, 'sk_test', POLLINATIONS_DRAW_MODELS[0]);
+    expect(call.url).toBe('https://gen.pollinations.ai/v1/images/generations');
+    expect(JSON.parse(call.body as string)).toEqual({ model: 'black-forest-labs/flux.2-klein-4b', prompt: 'Keep the product', size: CLOUDFLARE_SIZES['16:9'], n: 1, response_format: 'b64_json' });
+  });
+
+  it('tries the cheap FLUX.2 klein first, then models that are open to free accounts', () => {
+    expect(POLLINATIONS_EDIT_MODELS).toEqual(['black-forest-labs/flux.2-klein-4b', 'black-forest-labs/flux.1-kontext-pro', 'openai/gpt-image-1-mini']);
+    expect(POLLINATIONS_DRAW_MODELS).toEqual(['black-forest-labs/flux.2-klein-4b', 'black-forest-labs/flux.1-schnell']);
   });
 });
 
@@ -134,6 +173,7 @@ describe('readImage', () => {
     expect(readImage('cloudflare', { result: { image: 'QUJD' }, success: true })).toBe('data:image/jpeg;base64,QUJD');
     // the type follows the picture's own first bytes
     expect(readImage('cloudflare', { result: { image: PHOTO_B64 } })).toBe(PHOTO);
+    expect(readImage('pollinations', { data: [{ b64_json: PHOTO_B64 }] })).toBe(PHOTO);
   });
 
   it('refuses an answer without a usable picture', () => {
@@ -142,6 +182,7 @@ describe('readImage', () => {
     expect(readImage('fal', { images: [{ url: 'javascript:alert(1)' }] })).toBeNull();
     expect(readImage('fal', { images: [{ url: 'https://v3.fal.media/files/a.jpg' }] })).toBeNull();
     expect(readImage('cloudflare', null)).toBeNull();
+    expect(readImage('pollinations', { data: [{ url: 'https://media.pollinations.ai/x' }] })).toBeNull();
   });
 });
 

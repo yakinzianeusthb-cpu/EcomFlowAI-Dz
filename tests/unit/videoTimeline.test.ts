@@ -185,6 +185,20 @@ describe('scene lengths from AI clips', () => {
   });
 });
 
+describe('scene lengths from the voice-over', () => {
+  it('stretches a scene to its voice plus a short pause, never shortens one, and caps very long lines', () => {
+    // scene 1 is 3 s in the script, scene 2 is 5 s, scene 3 is 6 s (12 s capped)
+    const timeline = buildTimeline(script, { imageCount: 1, voiceSeconds: [4.1, 2, 40] });
+    const scenes = timeline.segments.filter((s) => s.kind === 'scene');
+    expect(scenes.map((s) => +(s.end - s.start).toFixed(2))).toEqual([4.5, 5, 15]);
+  });
+
+  it('lets a filmed clip and a voice share a scene: the longer of the two', () => {
+    const timeline = buildTimeline(script, { imageCount: 1, sceneSeconds: [6, null, null], voiceSeconds: [7.6, null, null] });
+    expect(+(timeline.segments[0].end - timeline.segments[0].start).toFixed(2)).toBe(8);
+  });
+});
+
 describe('pickRecorderMime', () => {
   it('prefers MP4 when the browser can record it', () => {
     expect(pickRecorderMime((t) => t.startsWith('video/mp4'))).toMatch(/^video\/mp4/);

@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { encryptSecret, maskSecret } from "../lib/crypto";
 import { DEFAULT_IMAGE_PROVIDER } from "../lib/imageProviders";
 import { DEFAULT_TEXT_PROVIDER } from "../lib/textEngines";
+import { DEFAULT_VOICE_PROVIDER } from "../lib/voiceProviders";
 import { SessionPayload } from "../lib/session";
 import { requireAuth } from "../lib/requireAuth";
 import {
@@ -29,6 +30,10 @@ const DEFAULT_SETTINGS = {
   falApiKey: "",
   cloudflareAccountId: "",
   cloudflareApiToken: "",
+  pollinationsApiKey: "",
+  voiceProvider: DEFAULT_VOICE_PROVIDER,
+  voiceId: "",
+  elevenlabsApiKey: "",
   textProvider: DEFAULT_TEXT_PROVIDER,
   textModel: "",
   anthropicApiKey: "",

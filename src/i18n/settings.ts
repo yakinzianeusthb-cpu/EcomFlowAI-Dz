@@ -206,6 +206,81 @@ export const settingsTranslations: TranslationDictionary = {
     ar: "الذكاء الاصطناعي الذي يصنع صورك وملصقاتك. تستعمل فيديوهات الذكاء الاصطناعي دائماً Gemini.",
     en: "The AI that makes your photos, images and posters. AI videos always use Gemini.",
   },
+  stgSubtitleAi: {
+    fr: "Ton espace, tes clés d’IA, tes services d’images et ta voix off.",
+    ar: "مساحتك، مفاتيح الذكاء الاصطناعي، خدمات الصور والتعليق الصوتي.",
+    en: "Your workspace, your AI keys, your image services and your voice-over.",
+  },
+  stgImgPollinations: {
+    fr: "FLUX.2 et d’autres modèles avec une seule clé : garde ton produit. Moins d’un centime l’image, sur ton compte Pollinations. La même clé sert à la voix off.",
+    ar: "FLUX.2 ونماذج أخرى بمفتاح واحد: يحافظ على منتجك. أقل من سنت للصورة، من حسابك في Pollinations. نفس المفتاح يصلح للتعليق الصوتي.",
+    en: "FLUX.2 and other models with one key: keeps your product. Less than a cent an image, on your Pollinations account. The same key works for the voice-over.",
+  },
+  stgImgCheap: {
+    fr: "très peu cher",
+    ar: "رخيص جداً",
+    en: "very cheap",
+  },
+  stgImgCfHelp: {
+    fr: "Crée le jeton avec le modèle « Workers AI » (permission Workers AI : Lire et Modifier). L’identifiant du compte est sur la page d’accueil de ton tableau de bord Cloudflare.",
+    ar: "أنشئ الرمز بقالب «Workers AI» (صلاحية Workers AI: قراءة وتعديل). معرّف الحساب موجود في الصفحة الرئيسية للوحة تحكم Cloudflare.",
+    en: "Create the token with the “Workers AI” template (Workers AI permission: Read and Edit). The account ID is on the home page of your Cloudflare dashboard.",
+  },
+  stgImgPollinationsKey: {
+    fr: "Clé secrète Pollinations (sk_…)",
+    ar: "المفتاح السري لـ Pollinations (sk_…)",
+    en: "Pollinations secret key (sk_…)",
+  },
+  stgVoiceTitle: {
+    fr: "Voix off",
+    ar: "التعليق الصوتي",
+    en: "Voice-over",
+  },
+  stgVoiceSubtitle: {
+    fr: "La voix IA qui lit le texte de tes vidéos, ajoutée dans la vidéo créée.",
+    ar: "الصوت الاصطناعي الذي يقرأ نص فيديوهاتك، ويُضاف إلى الفيديو المُنشأ.",
+    en: "The AI voice that reads your videos’ text, added to the video you create.",
+  },
+  stgVoiceEleven: {
+    fr: "Les voix les plus naturelles, en arabe aussi. 10 000 caractères gratuits par mois (environ 10 minutes) pour essayer ; un abonnement pour publier.",
+    ar: "أكثر الأصوات طبيعية، بالعربية أيضاً. 10,000 حرف مجاناً كل شهر (حوالي 10 دقائق) للتجربة؛ واشتراك للنشر.",
+    en: "The most natural voices, in Arabic too. 10,000 free characters a month (about 10 minutes) to try; a subscription to publish.",
+  },
+  stgVoicePollinations: {
+    fr: "La même clé que les images Pollinations. Voix ElevenLabs avec du crédit Pollen, sinon une voix OpenAI ouverte aux comptes gratuits.",
+    ar: "نفس مفتاح صور Pollinations. أصوات ElevenLabs برصيد Pollen، وإلا صوت OpenAI المتاح للحسابات المجانية.",
+    en: "The same key as the Pollinations images. ElevenLabs voices with Pollen credit, otherwise an OpenAI voice open to free accounts.",
+  },
+  stgVoiceElevenKey: {
+    fr: "Clé API ElevenLabs",
+    ar: "مفتاح API لـ ElevenLabs",
+    en: "ElevenLabs API key",
+  },
+  stgVoiceVoice: {
+    fr: "Voix",
+    ar: "الصوت",
+    en: "Voice",
+  },
+  stgVoiceFirst: {
+    fr: "La première voix du service",
+    ar: "أول صوت في الخدمة",
+    en: "The service’s first voice",
+  },
+  stgVoiceLoad: {
+    fr: "Charger les voix",
+    ar: "تحميل الأصوات",
+    en: "Load the voices",
+  },
+  stgVoicePreview: {
+    fr: "Écouter un extrait",
+    ar: "استمع إلى مقطع",
+    en: "Listen to a sample",
+  },
+  stgVoiceSaveFirst: {
+    fr: "Enregistre la clé de ce service pour charger ses voix.",
+    ar: "احفظ مفتاح هذه الخدمة لتحميل أصواتها.",
+    en: "Save this service’s key to load its voices.",
+  },
 };
 
 registerTranslations('settings', settingsTranslations);

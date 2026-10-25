@@ -7,6 +7,7 @@ import { fileToUploadDataUrl } from '../lib/imageCompress';
 import { CANVAS_SIZE, buildTimeline, type VideoFormat, type VideoScript } from '../lib/videoTimeline';
 import { canRecordVideo, drawFrame, loadClip, loadImage, loadVideoFonts, prepareAssets, recordVideo, type RenderAssets } from '../lib/videoRender';
 import AiClipsPanel from './AiClipsPanel';
+import VoiceOverPanel, { type VoiceClip } from './VoiceOverPanel';
 
 const FORMATS: VideoFormat[] = ['9:16', '1:1', '4:5', '16:9'];
 const MAX_PHOTOS = 6;
@@ -43,14 +44,19 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
   // AI clip address per scene (from the AI video panel) and the loaded video elements drawn in their place
   const [clips, setClips] = useState<(string | null)[]>(() => (script.scenes ?? []).map(() => null));
   const [clipEls, setClipEls] = useState<(HTMLVideoElement | null)[]>([]);
+  // the AI voice-over, one per scene, and whether it goes into the video
+  const [voices, setVoices] = useState<(VoiceClip | null)[]>(() => (script.scenes ?? []).map(() => null));
+  const [voiceOn, setVoiceOn] = useState(true);
   const supported = useMemo(() => canRecordVideo(), []);
   const videoFormat = toFormat(format);
   const size = CANVAS_SIZE[videoFormat];
-  // a scene filmed by the AI lasts as long as its clip
+  // a scene filmed by the AI lasts as long as its clip, and a scene with a voice as long as its line
   const sceneSeconds = useMemo(() => clipEls.map((el) => (el && Number.isFinite(el.duration) ? el.duration : null)), [clipEls]);
+  const hasVoice = voiceOn && voices.some(Boolean);
+  const voiceSeconds = useMemo(() => (hasVoice ? voices.map((v) => v?.buffer.duration ?? null) : undefined), [hasVoice, voices]);
   const timeline = useMemo(
-    () => buildTimeline(script, { imageCount: assets?.images.length ?? 0, subtitles, price, sceneSeconds }),
-    [script, assets, subtitles, price, sceneSeconds],
+    () => buildTimeline(script, { imageCount: assets?.images.length ?? 0, subtitles, price, sceneSeconds, voiceSeconds }),
+    [script, assets, subtitles, price, sceneSeconds, voiceSeconds],
   );
   const hasClips = clipEls.some(Boolean);
 
@@ -101,7 +107,7 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
       const blob = await recordVideo(canvas, timeline, renderAssets, (fraction) => {
         const next = Math.round(fraction * 100);
         setPercent((prev) => (prev === next ? prev : next));
-      }, { music });
+      }, { music, voices: hasVoice ? voices.map((v) => v?.buffer ?? null) : [] });
       setVideo({ url: URL.createObjectURL(blob), ext: blob.type.includes('mp4') ? 'mp4' : 'webm' });
     } catch (err) {
       console.error('Video creation failed:', err);
@@ -202,13 +208,25 @@ export default function VideoMaker({ script, format, photos: initialPhotos, pric
           )}
 
           <p className="text-xs text-fg-faint">
-            {hasClips || music
-              ? t('vmMusicNote', "La musique est créée pour ta vidéo, sans droits à payer. Les scènes filmées par l'IA gardent leur propre son.")
-              : t('vmSilentNote', 'La vidéo est muette : ajoute ta musique ou ta voix off dans TikTok, CapCut ou Instagram avant de publier.')}
+            {hasVoice
+              ? t('vmVoiceNote', 'La voix off IA est dans la vidéo : chaque scène dure le temps de sa phrase.')
+              : hasClips || music
+                ? t('vmMusicNote', "La musique est créée pour ta vidéo, sans droits à payer. Les scènes filmées par l'IA gardent leur propre son.")
+                : t('vmSilentNote', 'La vidéo est muette : ajoute ta musique ou ta voix off dans TikTok, CapCut ou Instagram avant de publier.')}
           </p>
         </div>
       </div>
     </section>
+    <VoiceOverPanel
+      scenes={script.scenes ?? []}
+      voices={voices}
+      onVoice={(index, clip) => { setVoices((prev) => prev.map((v, i) => (i === index ? clip : v))); setVideo(null); }}
+      enabled={voiceOn}
+      onEnabled={(on) => { setVoiceOn(on); setVideo(null); }}
+      timeline={timeline}
+      disabled={recording}
+      fileName={fileSlug(productName)}
+    />
     {(script.scenes?.length ?? 0) > 0 && (
       <AiClipsPanel
         scenes={script.scenes ?? []}

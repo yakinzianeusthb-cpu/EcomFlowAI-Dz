@@ -80,6 +80,14 @@ describe('buildSettingsWrite', () => {
     expect(() => build({ cloudflareAccountId: '../accounts/x' })).toThrow(/Cloudflare/);
   });
 
+  it('stores the voice service and its voice, encrypts the Pollinations and ElevenLabs keys, and refuses unknown values', () => {
+    const { updateData } = build({ voiceProvider: 'pollinations', voiceId: 'sarah', pollinationsApiKey: 'sk_1', elevenlabsApiKey: 'xi-1' });
+    expect(updateData).toMatchObject({ voiceProvider: 'pollinations', voiceId: 'sarah', pollinationsApiKey: 'enc(sk_1)', elevenlabsApiKey: 'enc(xi-1)' });
+    expect(build({ voiceId: '' }).updateData.voiceId).toBeNull();
+    expect(() => build({ voiceProvider: 'siri' })).toThrow(/voix/);
+    expect(() => build({ voiceId: '../voices' })).toThrow(/voix/);
+  });
+
   it('ignores fields it does not know', () => {
     const { createData, updateData } = build({ isAdmin: true, userId: 'other', plan: 'lifetime' });
     expect(createData).not.toHaveProperty('isAdmin');

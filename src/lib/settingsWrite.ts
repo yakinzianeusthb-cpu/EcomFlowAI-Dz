@@ -11,6 +11,7 @@
 
 import { isCloudflareAccountId, isImageProvider } from "./imageProviders";
 import { TEXT_ENGINE_ERRORS, isModelId, isTextProvider } from "./textEngines";
+import { isVoiceId, isVoiceProvider } from "./voiceProviders";
 
 export const DEFAULT_WORKSPACE_NAME = "E-com DZ Workspace";
 
@@ -30,6 +31,8 @@ export const SECRET_FIELDS = [
   "deepseekApiKey",
   "xaiApiKey",
   "openrouterApiKey",
+  "pollinationsApiKey",
+  "elevenlabsApiKey",
 ] as const;
 
 /** Non-secret identifier fields. */
@@ -103,6 +106,20 @@ export function buildSettingsWrite({ userId, body, existing, encrypt }: BuildArg
     if (model && !isModelId(model)) throw new SettingsValidationError(TEXT_ENGINE_ERRORS.modelId);
     createData.textModel = model || null;
     updateData.textModel = model || null;
+  }
+
+  if (body.voiceProvider !== undefined) {
+    if (!isVoiceProvider(body.voiceProvider)) throw new SettingsValidationError("Service de voix inconnu.");
+    createData.voiceProvider = body.voiceProvider;
+    updateData.voiceProvider = body.voiceProvider;
+  }
+
+  // the voice chosen for the voice-over; empty means the service's first voice
+  if (body.voiceId !== undefined) {
+    const voice = body.voiceId == null ? "" : String(body.voiceId).trim();
+    if (voice && !isVoiceId(voice)) throw new SettingsValidationError("Identifiant de voix invalide.");
+    createData.voiceId = voice || null;
+    updateData.voiceId = voice || null;
   }
 
   if (createData.workspaceName === undefined) createData.workspaceName = DEFAULT_WORKSPACE_NAME;

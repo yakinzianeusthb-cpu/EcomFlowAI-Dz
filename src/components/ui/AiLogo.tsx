@@ -10,8 +10,10 @@ import openrouterLogo from '../../assets/ai-logos/openrouter.svg';
 import falLogo from '../../assets/ai-logos/fal-color.svg';
 import fluxLogo from '../../assets/ai-logos/flux.svg';
 import cloudflareLogo from '../../assets/ai-logos/cloudflare-color.svg';
+import pollinationsLogo from '../../assets/ai-logos/pollinations.svg';
+import elevenlabsLogo from '../../assets/ai-logos/elevenlabs.svg';
 
-export type AiBrand = 'gemini' | 'openai' | 'anthropic' | 'mistral' | 'deepseek' | 'xai' | 'openrouter' | 'fal' | 'flux' | 'cloudflare';
+export type AiBrand = 'gemini' | 'openai' | 'anthropic' | 'mistral' | 'deepseek' | 'xai' | 'openrouter' | 'fal' | 'flux' | 'cloudflare' | 'pollinations' | 'elevenlabs';
 
 /** Colour logos are shown as they are; one-colour logos take the text colour, so they read in both themes. */
 const LOGOS: Record<AiBrand, { src: string; mono: boolean }> = {
@@ -25,6 +27,8 @@ const LOGOS: Record<AiBrand, { src: string; mono: boolean }> = {
   fal: { src: falLogo, mono: false },
   flux: { src: fluxLogo, mono: true },
   cloudflare: { src: cloudflareLogo, mono: false },
+  pollinations: { src: pollinationsLogo, mono: true },
+  elevenlabs: { src: elevenlabsLogo, mono: true },
 };
 
 /** An AI service's logo on a small tile (the logo files and their licence: src/assets/ai-logos). */
