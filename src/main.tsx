@@ -12,6 +12,10 @@ import './index.css';
 import { ToastProvider } from './context/ToastContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
+import { installTranslateGuard } from './lib/translateGuard';
+
+// a page translated by the browser must not crash the app (src/lib/translateGuard.ts)
+installTranslateGuard();
 
 // Start downloading the chunk the first screen needs now, in parallel with the session check,
 // instead of waiting for /api/auth/me to answer before the right code is requested.
