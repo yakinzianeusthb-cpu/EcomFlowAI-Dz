@@ -1068,6 +1068,76 @@ export const videoTranslations: TranslationDictionary = {
     ar: "يصوّر الذكاء الاصطناعي كل مشهد (حوالي {seconds} ث) انطلاقاً من صورتك بـ {model}، من حسابك في {service}؛ وتُضاف نصوصك فوقه. السعر هو المعروض في حسابك على {service}.",
     en: "The AI films each scene (about {seconds} s) from your photo with {model}, on your {service} account; your texts are added on top. The price is the one shown on your {service} account.",
   },
+  vsSubtitle: {
+    fr: "Ton texte lu par une voix IA, en darija, en arabe ou en français. Écoute-le, puis télécharge-le en MP3.",
+    ar: "نصك يقرؤه صوت ذكاء اصطناعي، بالدارجة أو العربية أو الفرنسية. استمع إليه ثم حمّله بصيغة MP3.",
+    en: "Your text read by an AI voice, in Darija, Arabic or French. Listen to it, then download it as MP3.",
+  },
+  vsTextTitle: {
+    fr: "Le texte à lire",
+    ar: "النص المراد قراءته",
+    en: "The text to read",
+  },
+  vsImport: {
+    fr: "Reprendre ma dernière pub vidéo",
+    ar: "استعمال آخر إعلان فيديو",
+    en: "Use my last video ad",
+  },
+  vsNoScript: {
+    fr: "Aucun script vidéo trouvé : crée d’abord une pub dans Pubs vidéo, ou écris ton texte ici.",
+    ar: "لم يتم العثور على أي سكريبت فيديو: أنشئ إعلاناً أولاً في إعلانات الفيديو، أو اكتب نصك هنا.",
+    en: "No video script found: make an ad in Video ads first, or write your text here.",
+  },
+  vsPlaceholder: {
+    fr: "Ex : شعرك ديما منفوخ؟ جربي الفرشاة لي تمشط و تملس في 10 دقايق…",
+    ar: "مثال: شعرك ديما منفوخ؟ جربي الفرشاة لي تمشط و تملس في 10 دقايق…",
+    en: "e.g. شعرك ديما منفوخ؟ جربي الفرشاة لي تمشط و تملس في 10 دقايق…",
+  },
+  vsTip: {
+    fr: "Écris la darija en lettres arabes ; une virgule ou un point fait une petite pause.",
+    ar: "اكتب الدارجة بالحروف العربية؛ الفاصلة أو النقطة تُحدث وقفة قصيرة.",
+    en: "Write Darija in Arabic letters; a comma or a full stop makes a short pause.",
+  },
+  vsOpenSettings: {
+    fr: "Choisir le service de voix dans Paramètres",
+    ar: "اختيار خدمة الصوت في الإعدادات",
+    en: "Choose the voice service in Settings",
+  },
+  vsLoadingVoices: {
+    fr: "Chargement des voix…",
+    ar: "جارٍ تحميل الأصوات…",
+    en: "Loading the voices…",
+  },
+  vsVoice: {
+    fr: "Voix ({service})",
+    ar: "الصوت ({service})",
+    en: "Voice ({service})",
+  },
+  vsChangeService: {
+    fr: "Changer de service",
+    ar: "تغيير الخدمة",
+    en: "Change service",
+  },
+  vsGenerate: {
+    fr: "Créer la voix",
+    ar: "إنشاء الصوت",
+    en: "Create the voice",
+  },
+  vsTakesTitle: {
+    fr: "Tes voix",
+    ar: "أصواتك",
+    en: "Your voices",
+  },
+  vsEmpty: {
+    fr: "Les voix que tu crées apparaissent ici. Elles restent jusqu’à ce que tu quittes la page : télécharge celles que tu gardes.",
+    ar: "تظهر هنا الأصوات التي تنشئها. تبقى حتى تغادر الصفحة: حمّل التي تريد الاحتفاظ بها.",
+    en: "The voices you make appear here. They stay until you leave the page: download the ones you keep.",
+  },
+  vsDownload: {
+    fr: "Télécharger le MP3",
+    ar: "تحميل ملف MP3",
+    en: "Download the MP3",
+  },
 };
 
 registerTranslations('video', videoTranslations);

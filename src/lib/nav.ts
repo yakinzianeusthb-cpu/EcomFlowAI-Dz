@@ -1,5 +1,5 @@
 export type NavItem =
-  | 'dashboard' | 'video' | 'landing' | 'assets' | 'assembler' | 'calculator'
+  | 'dashboard' | 'video' | 'voice' | 'landing' | 'assets' | 'assembler' | 'calculator'
   | 'settings' | 'contact'
   // built tools that are not linked from the sidebar
   | 'trends' | 'darja' | 'analyzer' | 'catalog' | 'scout' | 'calendar';
@@ -36,6 +36,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'landing', labelKey: 'menuLanding', fallback: 'Landing pages' },
       { id: 'video', labelKey: 'menuVideo', fallback: 'Pubs vidéo' },
+      { id: 'voice', labelKey: 'menuVoice', fallback: 'Voix off' },
     ],
   },
   {
@@ -64,6 +65,7 @@ export const PRIMARY_NAV: NavEntry[] = NAV_GROUPS.flatMap((group) => group.items
 export const TAB_TITLES: Record<NavItem, { key: string; fallback: string }> = {
   dashboard: { key: 'menuDashboard', fallback: 'Tableau de bord' },
   video: { key: 'menuVideo', fallback: 'Pubs vidéo' },
+  voice: { key: 'menuVoice', fallback: 'Voix off' },
   landing: { key: 'menuLanding', fallback: 'Landing pages' },
   assets: { key: 'menuAssets', fallback: 'Fichiers' },
   assembler: { key: 'menuAssembler', fallback: 'Constructeur de page' },
@@ -83,6 +85,7 @@ export const TAB_PATHS: Record<NavItem, string> = {
   dashboard: '/',
   landing: '/studio/landing',
   video: '/studio/video',
+  voice: '/studio/voice',
   assets: '/assets',
   assembler: '/tools/page-builder',
   calculator: '/tools/calculator',

@@ -75,6 +75,7 @@ export default function DashboardHome() {
   const sections: { tab: NavItem; label: string; text: string }[] = [
     { tab: 'landing', label: t('menuLanding', 'Landing pages'), text: t('toolLandingBlurb', 'Crée des tunnels de vente et la copie de ta landing page.') },
     { tab: 'video', label: t('menuVideo', 'Pubs vidéo'), text: t('toolVideoBlurb', 'Génère des scripts de pubs vidéo TikTok et Facebook à fort potentiel.') },
+    { tab: 'voice', label: t('menuVoice', 'Voix off'), text: t('toolVoiceBlurb', 'Ton texte lu par une voix IA en darija, arabe ou français, à télécharger en MP3.') },
     { tab: 'assets', label: t('menuAssets', 'Fichiers'), text: t('dashAssetsBlurb', 'Tes photos produit et les images créées par l’IA, au même endroit.') },
     { tab: 'assembler', label: t('menuAssembler', 'Constructeur de page'), text: t('toolAssemblerBlurb', 'Assemble visuellement ta landing page, section par section.') },
     { tab: 'calculator', label: t('menuCalculator', 'Calcul de marge COD'), text: t('toolCalculatorBlurb', 'Calcule tes marges et ton profit net en paiement à la livraison.') },

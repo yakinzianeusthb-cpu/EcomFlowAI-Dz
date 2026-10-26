@@ -946,6 +946,16 @@ export const coreTranslations: TranslationDictionary = {
     ar: "صور منتجاتك والصور التي أنشأها الذكاء الاصطناعي، في مكان واحد.",
     en: "Your product photos and the images the AI made, in one place.",
   },
+  menuVoice: {
+    fr: "Voix off",
+    ar: "التعليق الصوتي",
+    en: "Voice-over",
+  },
+  toolVoiceBlurb: {
+    fr: "Ton texte lu par une voix IA en darija, arabe ou français, à télécharger en MP3.",
+    ar: "نصك يقرؤه صوت ذكاء اصطناعي بالدارجة أو العربية أو الفرنسية، للتحميل بصيغة MP3.",
+    en: "Your text read by an AI voice in Darija, Arabic or French, to download as MP3.",
+  },
 };
 
 registerTranslations('core', coreTranslations);

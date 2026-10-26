@@ -24,6 +24,7 @@ import { useDocumentMeta } from './lib/useDocumentMeta';
 const DashboardHome = lazy(() => import('./components/DashboardHome'));
 const AssetLibrary = lazy(() => import('./components/assets/AssetLibrary'));
 const VideoAdGenerator = lazy(() => import('./components/VideoAdGenerator'));
+const VoiceStudio = lazy(() => import('./components/VoiceStudio'));
 const LandingPageGenerator = lazy(() => import('./components/LandingPageGenerator'));
 const LandingAssembler = lazy(() => import('./components/LandingAssembler'));
 const MarketTrends = lazy(() => import('./components/MarketTrends'));
@@ -218,6 +219,7 @@ export default function AppShell() {
     () => ({
       dashboard: <DashboardHome />,
       video: <VideoAdGenerator />,
+      voice: <VoiceStudio />,
       landing: <LandingPageGenerator />,
       assets: <AssetLibrary />,
       assembler: <LandingAssembler />,

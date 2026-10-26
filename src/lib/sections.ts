@@ -22,6 +22,7 @@ export const SECTION_ART: Record<SectionId, SectionArt> = {
   dashboard: { file: 'house', glow: '#f43f5e' },
   landing: { file: 'shopping-bags', glow: '#38bdf8' },
   video: { file: 'clapper-board', glow: '#a78bfa' },
+  voice: { file: 'studio-microphone', glow: '#f472b6' },
   assets: { file: 'framed-picture', glow: '#22c55e' },
   assembler: { file: 'puzzle-piece', glow: '#10b981' },
   calculator: { file: 'money-bag', glow: '#eab308' },
