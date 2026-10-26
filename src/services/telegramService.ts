@@ -1,4 +1,5 @@
 import { callGeminiWithRetry, MODEL_NAME } from "./gemini";
+import { buildScoutContext, type TelegramTrendPayload } from "../lib/telegramContext";
 
 export interface ScoutedProduct {
   name: string;
@@ -13,18 +14,14 @@ export interface ScoutedProduct {
 }
 
 export async function scoutTelegramProducts(query: string = "") {
-  let trendContext = "";
-  let trendMode: "live" | "simulation" = "simulation";
+  let trendData: TelegramTrendPayload | null = null;
   try {
     const trendRes = await fetch('/api/telegram-trends');
-    if (trendRes.ok) {
-      const trendData = await trendRes.json();
-      trendMode = trendData.mode === "live" ? "live" : "simulation";
-      trendContext = `CONGRÈS (${trendData.mode === "live" ? "RÉEL TELEGRAM DZ" : "SIMULATION"}) : Canaux surveillés: ${(trendData.channels || []).join(', ')}. Pulse: ${trendData.lastPulse}.${trendData.error ? ` Note: ${trendData.error}` : ''}`;
-    }
+    if (trendRes.ok) trendData = await trendRes.json();
   } catch (e) {
     console.warn("Could not fetch real trend context, falling back to pure simulation.");
   }
+  const scout = buildScoutContext(trendData);
 
   const systemInstruction = `
     # ROLE
@@ -32,11 +29,13 @@ export async function scoutTelegramProducts(query: string = "") {
     TU ANALYSES LES TENDANCES SUR LES CANAUX TELEGRAM ALGERIA.
 
     # CONTEXTE
-    ${trendContext || "Analyse basée sur les historiques de tendances (Simulation)."}
-    ${trendMode === "live" ? "ACCÈS MTPROTO RÉEL : Actif sur les canaux DZ identifiés." : "MODE SIMULATION : Analyse des flux publics et saisonnalité."}
+    ${scout.context}
+
+    # RÈGLES
+    ${scout.rules}
 
     # MISSION
-    Retourne les 6 meilleurs produits détectés dans les messages récents pour la niche : "${query || 'Toutes niches'}".
+    Retourne les 6 meilleurs produits pour la niche : "${query || 'Toutes niches'}".
     Sois très précis sur les prix en DZD et les accroches en Darija.
   `;
 

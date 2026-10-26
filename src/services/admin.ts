@@ -1,4 +1,6 @@
 /** Typed client for the admin API + public content endpoints. */
+import type { CreditSettings } from '../lib/credits';
+import type { CreditPurchase } from './credits';
 import type { PricingConfig } from '../lib/pricing';
 
 export interface AdminStats {
@@ -174,6 +176,14 @@ async function http<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+/** Points (see src/lib/credits.ts and src/routes/credits.ts). */
+export interface AdminCredits {
+  settings: CreditSettings;
+  key: { set: boolean; mask: string | null };
+  pending: (CreditPurchase & { user: { email: string; name: string; credits: number } })[];
+  stats: { days: number; purchases: number; pointsSold: number; revenue: number; pointsUsed: number };
+}
+
 export const adminApi = {
   stats: () => http<AdminStats>('/api/admin/stats'),
   pendingPayments: () => http<PendingPayment[]>('/api/admin/pending-payments'),
@@ -211,6 +221,13 @@ export const adminApi = {
   createHotDeal: (body: Partial<HotDeal>) => http<HotDeal>('/api/admin/hot-deals', { method: 'POST', body: JSON.stringify(body) }),
   updateHotDeal: (id: string, body: Partial<HotDeal>) => http<HotDeal>(`/api/admin/hot-deals/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteHotDeal: (id: string) => http<{ ok: boolean }>(`/api/admin/hot-deals/${id}`, { method: 'DELETE' }),
+
+  credits: () => http<AdminCredits>('/api/admin/credits'),
+  /** `platformKey`: a new key, null to remove it, or left out to keep it */
+  updateCredits: (body: CreditSettings & { platformKey?: string | null }) => http<{ ok: boolean }>('/api/admin/credits/settings', { method: 'PUT', body: JSON.stringify(body) }),
+  creditProof: (id: string) => http<{ proof: string }>(`/api/admin/credits/purchases/${id}/proof`),
+  decideCredits: (id: string, decision: 'approve' | 'reject') => http<{ ok: boolean; balance?: number }>(`/api/admin/credits/purchases/${id}/${decision}`, { method: 'POST' }),
+  grantCredits: (email: string, points: number) => http<{ ok: boolean; balance: number }>('/api/admin/credits/grant', { method: 'POST', body: JSON.stringify({ email, points }) }),
 
   guides: () => http<Guide[]>('/api/admin/guides'),
   createGuide: (body: Partial<Guide>) => http<Guide>('/api/admin/guides', { method: 'POST', body: JSON.stringify(body) }),

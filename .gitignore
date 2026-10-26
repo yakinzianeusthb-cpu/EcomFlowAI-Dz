@@ -9,3 +9,9 @@ coverage/
 data/
 client_secret*.json
 .vercel
+
+# git worktrees created by coding tools
+.claude/worktrees/
+
+# design inspector output (screenshots, reports)
+.taste-skill/

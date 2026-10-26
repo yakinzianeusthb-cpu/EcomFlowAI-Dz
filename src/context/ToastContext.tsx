@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export type ToastType = 'success' | 'info' | 'error';
@@ -10,148 +9,82 @@ export interface Toast {
   message: string;
   type: ToastType;
   duration: number;
-  createdAt: number;
 }
 
-interface ToastContextType {
-  toast: {
-    success: (message: string, duration?: number) => void;
-    info: (message: string, duration?: number) => void;
-    error: (message: string, duration?: number) => void;
-  };
-  toasts: Toast[];
-  removeToast: (id: string) => void;
+interface ToastApi {
+  success: (message: string, duration?: number) => void;
+  info: (message: string, duration?: number) => void;
+  error: (message: string, duration?: number) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+// The context only exposes the (stable) helpers, so components that call useToast()
+// never re-render when a toast appears or disappears.
+const ToastContext = createContext<ToastApi | undefined>(undefined);
 
-const TOAST_CONFIG = {
-  success: {
-    icon: CheckCircle2,
-    accent: 'bg-dz-emerald',
-    iconBg: 'bg-dz-emerald/10',
-    iconColor: 'text-dz-emerald',
-    progressColor: 'bg-dz-emerald',
-  },
-  info: {
-    icon: Info,
-    accent: 'bg-sky-500',
-    iconBg: 'bg-sky-500/10',
-    iconColor: 'text-sky-500',
-    progressColor: 'bg-sky-500',
-  },
-  error: {
-    icon: AlertCircle,
-    accent: 'bg-rose-500',
-    iconBg: 'bg-rose-500/10',
-    iconColor: 'text-rose-400',
-    progressColor: 'bg-rose-500',
-  },
+const DEFAULT_DURATION_MS = 3500;
+const EXIT_ANIMATION_MS = 150;
+const MAX_VISIBLE = 3;
+
+const TOAST_STYLES: Record<ToastType, { icon: typeof Info; iconWrap: string; bar: string }> = {
+  success: { icon: CheckCircle2, iconWrap: 'bg-success/15 text-success-ink', bar: 'bg-success' },
+  info: { icon: Info, iconWrap: 'bg-primary/15 text-primary-ink', bar: 'bg-primary' },
+  error: { icon: AlertCircle, iconWrap: 'bg-danger/15 text-danger-ink', bar: 'bg-danger' },
 };
 
+// Pure CSS animation (see index.css): keeps the animation library out of the first-load bundle.
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
-  const config = TOAST_CONFIG[toast.type];
-  const Icon = config.icon;
-  const [isHovered, setIsHovered] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const x = useMotionValue(0);
-  const opacity = useTransform(x, [0, 100], [1, 0]);
-  const startTime = useRef(Date.now());
+  const style = TOAST_STYLES[toast.type];
+  const Icon = style.icon;
+  const [paused, setPaused] = useState(false);
+  const [closing, setClosing] = useState(false);
   const remainingRef = useRef(toast.duration);
+  const startedAtRef = useRef(Date.now());
 
-  // Pause on hover, resume on leave
+  const dismiss = useCallback(() => {
+    setClosing(true);
+    window.setTimeout(() => onRemove(toast.id), EXIT_ANIMATION_MS);
+  }, [onRemove, toast.id]);
+
+  // Auto-dismiss; pausing on hover keeps the time that is left.
   useEffect(() => {
-    if (isHovered) {
-      remainingRef.current -= Date.now() - startTime.current;
+    if (paused || closing) {
+      remainingRef.current -= Date.now() - startedAtRef.current;
       return;
     }
-    startTime.current = Date.now();
-    const remaining = remainingRef.current;
-    if (remaining <= 0) return;
-
-    const timer = setTimeout(() => onRemove(toast.id), remaining);
-    return () => clearTimeout(timer);
-  }, [isHovered, toast.id, onRemove]);
-
-  // Progress bar animation
-  useEffect(() => {
-    if (isHovered || toast.duration <= 0) return;
-    const interval = setInterval(() => {
-      setElapsed(Date.now() - startTime.current);
-    }, 50);
-    return () => clearInterval(interval);
-  }, [isHovered, toast.duration]);
-
-  const progress = toast.duration > 0
-    ? Math.max(0, 1 - elapsed / remainingRef.current)
-    : 1;
-
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    if (info.offset.x > 80 || info.velocity.x > 500) {
-      onRemove(toast.id);
-    }
-  };
+    startedAtRef.current = Date.now();
+    const timer = window.setTimeout(dismiss, Math.max(remainingRef.current, 0));
+    return () => window.clearTimeout(timer);
+  }, [paused, closing, dismiss]);
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: 80, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 80, scale: 0.95, transition: { duration: 0.2, ease: 'easeIn' } }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      style={{ x, opacity }}
-      drag="x"
-      dragConstraints={{ left: 0, right: 120 }}
-      dragElastic={0.3}
-      onDragEnd={handleDragEnd}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      className="pointer-events-auto w-full cursor-grab active:cursor-grabbing"
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      className={cn(
+        'pointer-events-auto relative overflow-hidden rounded-xl border border-line bg-surface shadow-[var(--shadow-lg)] transition-[opacity,transform] duration-150',
+        closing ? '-translate-y-1 opacity-0' : 'animate-[toast-in_200ms_ease-out]',
+      )}
     >
-      <div className={cn(
-        'relative flex items-start gap-3 p-4 pr-3 rounded-2xl border overflow-hidden',
-        'bg-white dark:bg-[#141418] dark:border-white/[0.08]',
-        'shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)]',
-        'backdrop-blur-xl'
-      )}>
-        {/* Left accent bar */}
-        <div className={cn('absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl', config.accent)} />
-
-        {/* Icon */}
-        <div className={cn('shrink-0 w-8 h-8 rounded-xl flex items-center justify-center', config.iconBg)}>
-          <Icon size={16} className={config.iconColor} />
-        </div>
-
-        {/* Message */}
-        <div className="flex-1 min-w-0 pt-0.5">
-          <p className="text-[13px] font-medium text-white/90 dark:text-white/90 leading-snug">
-            {toast.message}
-          </p>
-        </div>
-
-        {/* Dismiss button */}
+      <div className="flex items-start gap-3 p-3.5 pe-2.5">
+        <span className={cn('mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg', style.iconWrap)}>
+          <Icon size={15} />
+        </span>
+        <p className="min-w-0 flex-1 pt-1 text-[13px] font-medium leading-snug text-fg">{toast.message}</p>
         <button
           type="button"
-          onClick={() => onRemove(toast.id)}
-          className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/[0.06] transition-all"
+          onClick={dismiss}
+          aria-label="Fermer"
+          className="grid size-7 shrink-0 place-items-center rounded-lg text-fg-faint transition-colors hover:bg-surface-2 hover:text-fg"
         >
-          <X size={12} />
+          <X size={14} />
         </button>
-
-        {/* Progress bar */}
-        {toast.duration > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/[0.04]">
-            <motion.div
-              className={cn('h-full rounded-full', config.progressColor)}
-              initial={{ width: '100%' }}
-              animate={{ width: `${progress * 100}%` }}
-              transition={{ duration: 0.05, ease: 'linear' }}
-              style={{ opacity: 0.6 }}
-            />
-          </div>
-        )}
       </div>
-    </motion.div>
+      <div
+        className={cn('absolute inset-x-0 bottom-0 h-0.5 origin-left opacity-70', style.bar)}
+        style={{ animation: `toast-progress ${toast.duration}ms linear forwards`, animationPlayState: paused ? 'paused' : 'running' }}
+      />
+    </div>
   );
 }
 
@@ -162,38 +95,39 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const addToast = useCallback((message: string, type: ToastType, duration = 3500) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const newToast: Toast = { id, message, type, duration, createdAt: Date.now() };
-    setToasts((prev) => [...prev, newToast]);
+  const addToast = useCallback((message: string, type: ToastType, duration = DEFAULT_DURATION_MS) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    setToasts((prev) => [...prev.slice(-(MAX_VISIBLE - 1)), { id, message, type, duration }]);
   }, []);
 
-  const toastHelpers = {
-    success: (message: string, duration?: number) => addToast(message, 'success', duration),
-    info: (message: string, duration?: number) => addToast(message, 'info', duration),
-    error: (message: string, duration?: number) => addToast(message, 'error', duration),
-  };
+  const api = useMemo<ToastApi>(
+    () => ({
+      success: (message, duration) => addToast(message, 'success', duration),
+      info: (message, duration) => addToast(message, 'info', duration),
+      error: (message, duration) => addToast(message, 'error', duration),
+    }),
+    [addToast],
+  );
 
   return (
-    <ToastContext.Provider value={{ toast: toastHelpers, toasts, removeToast }}>
+    <ToastContext.Provider value={api}>
       {children}
-
-      {/* Toast container — top right, max 3 visible */}
-      <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 w-full max-w-[380px] pointer-events-none">
-        <AnimatePresence mode="popLayout">
-          {toasts.slice(-3).map((t) => (
-            <ToastItem key={t.id} toast={t} onRemove={removeToast} />
-          ))}
-        </AnimatePresence>
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-4 top-4 z-[9999] flex flex-col gap-2 sm:inset-x-auto sm:end-4 sm:w-[380px]"
+      >
+        {toasts.map((t) => (
+          <ToastItem key={t.id} toast={t} onRemove={removeToast} />
+        ))}
       </div>
     </ToastContext.Provider>
   );
 }
 
-export function useToast() {
+export function useToast(): ToastApi {
   const context = useContext(ToastContext);
   if (context === undefined) {
     throw new Error('useToast must be used within a ToastProvider');
   }
-  return context.toast;
+  return context;
 }

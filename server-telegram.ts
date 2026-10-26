@@ -1,5 +1,6 @@
-import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions/index.js";
+// The MTProto client ("telegram") is heavy, so it is imported inside getTelegramPulse(), and only once
+// credentials exist: every other request and every serverless cold start skips it.
+import type { TelegramClient as TelegramClientType } from "telegram";
 
 export interface TelegramPulse {
   mode: "live" | "simulation";
@@ -48,14 +49,18 @@ export async function getTelegramPulse(): Promise<TelegramPulse> {
     return simulationPulse("TELEGRAM_API_ID / TELEGRAM_API_HASH / TELEGRAM_SESSION manquants.");
   }
 
-  const client = new TelegramClient(new StringSession(session), apiId, apiHash, {
-    connectionRetries: 1,
-    requestRetries: 1,
-    timeout: 15000,
-    deviceModel: "DzAds AI Server",
-  });
-
+  let client: TelegramClientType | undefined;
   try {
+    // Building the client is inside the try on purpose: a malformed TELEGRAM_SESSION must fall back
+    // to the simulation like any other connection problem, not crash the request.
+    const { TelegramClient } = await import("telegram");
+    const { StringSession } = await import("telegram/sessions/index.js");
+    client = new TelegramClient(new StringSession(session), apiId, apiHash, {
+      connectionRetries: 1,
+      requestRetries: 1,
+      timeout: 15000,
+      deviceModel: "DzAds AI Server",
+    });
     await client.connect();
     if (!(await client.checkAuthorization())) {
       await client.disconnect();
@@ -94,7 +99,7 @@ export async function getTelegramPulse(): Promise<TelegramPulse> {
     };
   } catch (err: any) {
     try {
-      await client.disconnect();
+      await client?.disconnect();
     } catch {
       // ignore disconnect errors
     }

@@ -18,7 +18,36 @@ model ApiSettings {
   snapAdsToken            String?  @map("snap_ads_token")
   snapAccountId           String?  @map("snap_account_id")
   geminiApiKey            String?  @map("gemini_api_key")
-  workspaceName           String   @default("E-com DZ Workspace") @map("workspace_name")
+  /// the service that makes the images: gemini (default), openai, fal, cloudflare or pollinations (src/lib/imageProviders.ts)
+  imageProvider           String   @default("gemini") @map("image_provider")
+  openaiApiKey            String?  @map("openai_api_key")
+  falApiKey               String?  @map("fal_api_key")
+  cloudflareAccountId     String?  @map("cloudflare_account_id")
+  cloudflareApiToken      String?  @map("cloudflare_api_token")
+  /// one Pollinations key for its images and its voices (encrypted)
+  pollinationsApiKey      String?  @map("pollinations_api_key")
+  /// the voice that reads the videos' voice-over: elevenlabs (default) or pollinations (src/lib/voiceProviders.ts),
+  /// and the voice chosen there (null = the service's first voice)
+  voiceProvider           String   @default("elevenlabs") @map("voice_provider")
+  voiceId                 String?  @map("voice_id")
+  elevenlabsApiKey        String?  @map("elevenlabs_api_key")
+  /// the service that films the AI video scenes: gemini (default), huggingface, pollinations, fal or higgsfield (src/lib/videoProviders.ts),
+  /// and the model chosen there (null = the service's default)
+  videoProvider           String   @default("gemini") @map("video_provider")
+  videoModel              String?  @map("video_model")
+  /// Higgsfield ("key id:secret") and Hugging Face (free Spaces) credentials for the video services (encrypted)
+  higgsfieldApiKey        String?  @map("higgsfield_api_key")
+  huggingfaceApiKey       String?  @map("huggingface_api_key")
+  /// the AI that writes the texts: gemini (default), openai, anthropic, mistral, deepseek, xai or openrouter
+  /// (src/lib/textEngines.ts), and the model chosen there (null = the engine's default)
+  textProvider            String   @default("gemini") @map("text_provider")
+  textModel               String?  @map("text_model")
+  anthropicApiKey         String?  @map("anthropic_api_key")
+  mistralApiKey           String?  @map("mistral_api_key")
+  deepseekApiKey          String?  @map("deepseek_api_key")
+  xaiApiKey               String?  @map("xai_api_key")
+  openrouterApiKey        String?  @map("openrouter_api_key")
+  workspaceName         String   @default("E-com DZ Workspace") @map("workspace_name")
   customApiToken          String?  @map("custom_api_token")
   updatedAt               DateTime @updatedAt @map("updated_at")
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -142,15 +171,131 @@ model User {
   paymentProof       String?             @map("payment_proof")
   paymentSubmittedAt DateTime?           @map("payment_submitted_at")
   planDays           Int?                @map("plan_days")
+  /// points for the AI on the platform's Gemini key (see src/lib/credits.ts)
+  credits            Int                 @default(0)
   apiSettings        ApiSettings?
+  creditPurchases    CreditPurchase[]
+  creditEntries      CreditEntry[]
   chatSessions       ChatSession[]
   emailOtps          EmailOtp[]
   generationHistory  GenerationHistory[]
   lpSessions         LpSession[]
   productCatalog     ProductCatalog[]
   userPreferences    UserPreferences?
+  projects           Project[]
+  assets             Asset[]
+  projectOutputs     ProjectOutput[]
+  brandKit           BrandKit?
+  metaConnection     MetaConnection?
 
   @@map("users")
+}
+
+/// A campaign: one product, its brief and photos, and everything generated from them.
+model Project {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  name        String
+  productName String          @default("") @map("product_name")
+  description String          @default("")
+  audience    String          @default("")
+  /// sales | leads | traffic | awareness
+  objective   String          @default("sales")
+  tone        String          @default("")
+  /// facebook, instagram, tiktok, snapchat, web
+  platforms   String[]        @default([])
+  /// language of the generated copy: ar | fr | en
+  language    String          @default("ar")
+  price       String          @default("")
+  /// draft | archived
+  status      String          @default("draft")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets      Asset[]
+  outputs     ProjectOutput[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("projects")
+}
+
+/// A stored file (product photo, logo, ad creative, exported page). Served only to its owner.
+model Asset {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  projectId String?  @map("project_id")
+  /// product | logo | creative | ai_image | landing | other
+  kind      String
+  name      String
+  mimeType  String   @map("mime_type")
+  size      Int
+  width     Int?
+  height    Int?
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([projectId])
+  @@map("assets")
+}
+
+/// One generated version of a campaign output (landing page, video script, ad pack, Meta campaign).
+model ProjectOutput {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  /// landing | video | ads | meta_campaign
+  kind      String
+  version   Int
+  data      Json
+  /// bytes of data as sent, counted against the account's storage quota
+  size      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, kind, version])
+  @@index([projectId, kind])
+  @@map("project_outputs")
+}
+
+/// The brand context reused by every generation.
+model BrandKit {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  brandName    String   @default("") @map("brand_name")
+  logoAssetId  String?  @map("logo_asset_id")
+  colors       String[] @default([])
+  headingFont  String   @default("") @map("heading_font")
+  bodyFont     String   @default("") @map("body_font")
+  tone         String   @default("")
+  audience     String   @default("")
+  instructions String   @default("")
+  styles       String[] @default([])
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("brand_kits")
+}
+
+/// A Meta (Facebook) login granted through OAuth. The token is encrypted at rest and never sent to the browser.
+model MetaConnection {
+  id           String    @id @default(uuid())
+  userId       String    @unique @map("user_id")
+  metaUserId   String    @map("meta_user_id")
+  metaUserName String    @default("") @map("meta_user_name")
+  accessToken  String    @map("access_token")
+  expiresAt    DateTime? @map("expires_at")
+  scopes       String[]  @default([])
+  adAccountId  String?   @map("ad_account_id")
+  pageId       String?   @map("page_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("meta_connections")
 }
 
 model PaymentMethod {
@@ -216,8 +361,61 @@ model PlatformConfig {
   adminEmail       String   @default("")
   adminTelegram    String   @default("")
   whatsappNumber   String   @default("")
+  /// the platform's own Gemini key (encrypted), used for sellers who pay in points instead of bringing a key
+  platformGeminiKey     String? @map("platform_gemini_key")
+  /// points per 5 000 tokens of text, per image, per second of AI video
+  creditTextCost        Int     @default(1) @map("credit_text_cost")
+  creditImageCost       Int     @default(5) @map("credit_image_cost")
+  creditVideoSecondCost Int     @default(8) @map("credit_video_second_cost")
+  /// [{ id, points, price }]; null means the default packs
+  creditPacks           Json?   @map("credit_packs")
 
   @@map("platform_config")
+}
+
+/// A pack of points a seller paid for outside the app; an admin approves it after checking the proof.
+model CreditPurchase {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  packId    String    @map("pack_id")
+  points    Int
+  price     Int
+  method    String
+  proof     String
+  status    String    @default("pending")
+  createdAt DateTime  @default(now()) @map("created_at")
+  decidedAt DateTime? @map("decided_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("credit_purchases")
+}
+
+/// Every change to a seller's points: purchases, admin grants, AI use and refunds (the balance is users.credits).
+model CreditEntry {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  delta     Int
+  reason    String
+  ref       String?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  /// one entry per reason and reference: a purchase is credited once, a call is refunded once
+  @@unique([reason, ref])
+  @@map("credit_entries")
+}
+
+/// Request counts for the sign-in rate limits, shared by every server instance (src/lib/rateLimitStore.ts).
+/// The key is a hash: it never holds an address or an e-mail.
+model RateLimitHit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at")
+
+  @@map("rate_limit_hits")
 }
 
 model Guide {

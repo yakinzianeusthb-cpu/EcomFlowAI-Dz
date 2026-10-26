@@ -23,6 +23,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { fileToUploadDataUrl } from '../lib/imageCompress';
 import { catalogApi, CatalogProduct } from '../services/api';
 
 interface Product {
@@ -42,43 +43,6 @@ interface Product {
   confRate: number;
   delivRate: number;
 }
-
-const initialProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Smart Watch DZ-1 Ultra',
-    category: 'Electronique',
-    purchasePrice: 2500,
-    sellingPrice: 5900,
-    targetCPA: 4.5,
-    stock: 45,
-    status: 'active',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400',
-    countries: 'DZ',
-    description: 'Montre connectée haute performance.',
-    sales: 124,
-    euroRate: 220,
-    confRate: 0.85,
-    delivRate: 0.60
-  },
-  {
-    id: '2',
-    name: 'Diffuseur Huiles Essentielles',
-    category: 'Maison',
-    purchasePrice: 1200,
-    sellingPrice: 3500,
-    targetCPA: 3.2,
-    stock: 8,
-    status: 'low_stock',
-    image: 'https://images.unsplash.com/photo-1570942872129-14356da3df75?auto=format&fit=crop&q=80&w=400',
-    countries: 'DZ',
-    description: 'Ambiance zen pour votre maison.',
-    sales: 89,
-    euroRate: 220,
-    confRate: 0.80,
-    delivRate: 0.65
-  }
-];
 
 const AVAILABLE_COUNTRIES = [
   { code: 'DZ', name: 'Algérie', flag: '🇩🇿' },
@@ -126,9 +90,10 @@ const productToApiPayload = (product: Product): Partial<CatalogProduct> => ({
 });
 
 export default function ProductCatalog() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Only the seller's own products: no sample products dressed up as their inventory.
+  const [products, setProducts] = useState<Product[]>([]);
 
-  // Load products from the server API on mount (fall back silently to seed data).
+  // Load products from the server API on mount.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -373,16 +338,16 @@ export default function ProductCatalog() {
       <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <div className="flex-1 space-y-4">
           <div className="flex items-center gap-3">
-             <div className="px-3 py-1 bg-dz-gold/10 text-dz-gold text-[9px] font-black uppercase tracking-[0.3em] rounded-full border border-dz-gold/20 flex items-center gap-2">
+             <div className="px-3 py-1 bg-dz-gold/10 text-dz-gold text-xs font-semibold rounded-full border border-dz-gold/20 flex items-center gap-2">
                 <Archive size={12} />
                 Gestion Inventaire
              </div>
-             <span className="text-white/20 text-[9px] font-black uppercase tracking-[0.3em] font-mono whitespace-nowrap">V1.5 DZ-HUB</span>
+             <span className="text-fg-faint text-xs font-semibold whitespace-nowrap">V1.5 DZ-HUB</span>
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter leading-none">
+          <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight leading-none">
             Catalogue <span className="text-dz-gold italic">Produits</span>
           </h1>
-          <p className="text-white/40 font-bold max-w-xl">
+          <p className="text-fg-muted font-bold max-w-xl">
             Gérez votre stock, analysez les performances de vos produits et préparez vos prochaines campagnes publicitaires sur le marché DZ.
           </p>
         </div>
@@ -391,7 +356,7 @@ export default function ProductCatalog() {
           {products.length > 0 && (
             <button 
               onClick={handleClearCatalog}
-              className="px-6 py-3.5 bg-white/[0.03] hover:bg-rose-500/10 text-white/50 hover:text-rose-500 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border border-white/10 active:scale-95 transition-all"
+              className="px-6 py-3.5 bg-fg/[0.03] hover:bg-rose-500/10 text-fg-muted hover:text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2 border border-fg/10 active:scale-95 transition-all"
             >
               <Trash2 size={16} /> 
               Vider
@@ -399,7 +364,7 @@ export default function ProductCatalog() {
           )}
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="px-6 py-3.5 bg-dz-gold hover:bg-dz-amber text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 shadow-xl shadow-dz-gold/20 active:scale-95 transition-all group"
+            className="px-6 py-3.5 bg-primary hover:bg-accent-hover text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xl shadow-dz-gold/20 active:scale-95 transition-all group"
           >
             <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform" /> 
             Ajouter un Produit
@@ -409,16 +374,16 @@ export default function ProductCatalog() {
 
       {/* Notifications de Stock */}
       {stockAlertProducts.length > 0 && (
-        <div className="glass-panel px-6 py-4 rounded-2xl border-rose-500/10 bg-rose-500/[0.01] flex flex-wrap items-center justify-between gap-4 shadow-lg shadow-black/10">
+        <div className="ui-panel px-6 py-4 rounded-2xl border-rose-500/10 bg-rose-500/[0.01] flex flex-wrap items-center justify-between gap-4 shadow-lg shadow-black/10">
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
               <AlertCircle size={14} className="animate-pulse" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white/90">
+              <p className="text-xs font-bold text-fg">
                 Alerte de Stock ({stockAlertProducts.length})
               </p>
-              <p className="text-[10px] text-white/40">Certains articles requièrent votre attention immédiate.</p>
+              <p className="text-xs text-fg-muted">Certains articles requièrent votre attention immédiate.</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -427,14 +392,14 @@ export default function ProductCatalog() {
                 key={p.id}
                 onClick={() => setPreviewProduct(p)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all hover:scale-102 active:scale-98",
+                  "px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all active:scale-98",
                   p.status === 'out_of_stock' 
                     ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/40" 
                     : "bg-dz-gold/10 border-dz-gold/20 text-dz-gold hover:bg-dz-gold/20 hover:border-dz-gold/40"
                 )}
               >
                 <span>{p.name}</span>
-                <span className="opacity-60 text-[9px] font-mono">
+                <span className="opacity-60 text-xs">
                   {p.status === 'out_of_stock' ? 'Rupture' : `${p.stock} unités`}
                 </span>
               </button>
@@ -444,17 +409,17 @@ export default function ProductCatalog() {
       )}
 
       {/* Toolbar */}
-      <div className="glass-panel p-6 rounded-[2rem] border-white/10 flex flex-col md:flex-row gap-6 items-center justify-between shadow-xl">
+      <div className="ui-panel p-6 rounded-2xl border-fg/10 flex flex-col md:flex-row gap-6 items-center justify-between shadow-xl">
         <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
            {/* Search */}
            <div className="relative w-full md:w-80 group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-dz-gold transition-colors" size={18} />
+              <Search className="absolute start-5 top-1/2 -translate-y-1/2 text-fg-faint group-focus-within:text-dz-gold transition-colors" size={18} />
               <input 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher un produit..."
-                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-14 pr-6 py-4 text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-dz-gold/30 transition-all placeholder:text-white/10 shadow-inner"
+                className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl ps-14 pe-6 py-4 text-fg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-dz-gold/30 transition-all placeholder:text-fg-faint shadow-inner"
               />
            </div>
 
@@ -465,10 +430,10 @@ export default function ProductCatalog() {
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
                   className={cn(
-                    "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap active:scale-95 border",
+                    "px-6 py-3 rounded-xl text-xs font-semibold transition-all whitespace-nowrap active:scale-95 border",
                     activeCategory === cat 
-                      ? "bg-dz-gold text-white border-dz-gold shadow-lg shadow-dz-gold/20" 
-                      : "bg-white/[0.02] border-white/5 text-white/30 hover:text-white hover:bg-white/5"
+                      ? "bg-primary text-white border-dz-gold shadow-lg shadow-dz-gold/20" 
+                      : "bg-fg/[0.02] border-fg/5 text-fg-faint hover:text-fg hover:bg-fg/5"
                   )}
                 >
                   {cat}
@@ -482,12 +447,12 @@ export default function ProductCatalog() {
       {sortedProducts.length > 0 ? (
         <div className="space-y-6">
           {/* Table Headers for sorting */}
-          <div className="hidden lg:grid grid-cols-12 gap-8 px-10 py-4 bg-white/5 rounded-2xl border border-white/10 items-center">
+          <div className="hidden lg:grid grid-cols-12 gap-8 px-10 py-4 bg-fg/5 rounded-2xl border border-fg/10 items-center">
             <button 
               onClick={() => handleSort('name')}
               className={cn(
-                "col-span-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors text-left",
-                sortConfig.key === 'name' ? "text-dz-gold" : "text-white/40 hover:text-white/60"
+                "col-span-3 flex items-center gap-2 text-xs font-semibold transition-colors text-start",
+                sortConfig.key === 'name' ? "text-dz-gold" : "text-fg-muted hover:text-fg-muted"
               )}
             >
               Nom
@@ -496,8 +461,8 @@ export default function ProductCatalog() {
             <button 
               onClick={() => handleSort('category')}
               className={cn(
-                "col-span-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors text-left",
-                sortConfig.key === 'category' ? "text-dz-gold" : "text-white/40 hover:text-white/60"
+                "col-span-2 flex items-center gap-2 text-xs font-semibold transition-colors text-start",
+                sortConfig.key === 'category' ? "text-dz-gold" : "text-fg-muted hover:text-fg-muted"
               )}
             >
               Catégorie
@@ -506,8 +471,8 @@ export default function ProductCatalog() {
             <button 
               onClick={() => handleSort('countries')}
               className={cn(
-                "col-span-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors text-left",
-                sortConfig.key === 'countries' ? "text-dz-gold" : "text-white/40 hover:text-white/60"
+                "col-span-2 flex items-center gap-2 text-xs font-semibold transition-colors text-start",
+                sortConfig.key === 'countries' ? "text-dz-gold" : "text-fg-muted hover:text-fg-muted"
               )}
             >
               Pays Cibles
@@ -516,8 +481,8 @@ export default function ProductCatalog() {
             <button 
               onClick={() => handleSort('sellingPrice')}
               className={cn(
-                "col-span-1.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors justify-center",
-                sortConfig.key === 'sellingPrice' ? "text-dz-gold" : "text-white/40 hover:text-white/60"
+                "col-span-1.5 flex items-center gap-2 text-xs font-semibold transition-colors justify-center",
+                sortConfig.key === 'sellingPrice' ? "text-dz-gold" : "text-fg-muted hover:text-fg-muted"
               )}
             >
               Prix Vente
@@ -526,8 +491,8 @@ export default function ProductCatalog() {
             <button 
               onClick={() => handleSort('stock')}
               className={cn(
-                "col-span-1.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors justify-center",
-                sortConfig.key === 'stock' ? "text-dz-gold" : "text-white/40 hover:text-white/60"
+                "col-span-1.5 flex items-center gap-2 text-xs font-semibold transition-colors justify-center",
+                sortConfig.key === 'stock' ? "text-dz-gold" : "text-fg-muted hover:text-fg-muted"
               )}
             >
               Stock
@@ -536,8 +501,8 @@ export default function ProductCatalog() {
             <button 
               onClick={() => handleSort('profit')}
               className={cn(
-                "col-span-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors justify-end",
-                sortConfig.key === 'profit' ? "text-dz-gold" : "text-white/40 hover:text-white/60"
+                "col-span-2 flex items-center gap-2 text-xs font-semibold transition-colors justify-end",
+                sortConfig.key === 'profit' ? "text-dz-gold" : "text-fg-muted hover:text-fg-muted"
               )}
             >
               Profit Est.
@@ -555,75 +520,75 @@ export default function ProductCatalog() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ delay: index * 0.05 }}
-                className="glass-card group border-white/5 hover:border-white/20 transition-all overflow-hidden"
+                className="ui-card group border-fg/5 hover:border-fg/20 transition-all overflow-hidden"
               >
                 {/* Product Image Wrapper */}
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img 
                     src={product.image} 
                     alt={product.name} 
-                    className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-80" />
                   
                   {/* Actions Overlay */}
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500">
+                  <div className="absolute top-4 end-4 flex flex-col gap-2 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                      <button 
                        onClick={() => setPreviewProduct(product)}
-                       className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-dz-gold hover:text-white transition-all"
+                       className="w-10 h-10 rounded-xl bg-fg/10 border border-fg/20 text-fg flex items-center justify-center hover:bg-primary-hover hover:text-white transition-all"
                      >
                         <Eye size={18} />
                      </button>
                      <button 
                        onClick={() => handleDeleteProduct(product.id)}
-                       className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-rose-500/80 hover:text-white transition-all"
+                       className="w-10 h-10 rounded-xl bg-fg/10 border border-fg/20 text-fg flex items-center justify-center hover:bg-rose-500/80 hover:text-fg transition-all"
                      >
                         <Trash2 size={18} />
                      </button>
                   </div>
 
-                  <div className="absolute bottom-4 left-4 flex flex-col gap-2">
+                  <div className="absolute bottom-4 start-4 flex flex-col gap-2">
                      <div className={cn(
-                       "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border backdrop-blur-md w-fit",
+                       "px-3 py-1 rounded-full text-xs font-semibold border w-fit",
                        getStatusColor(product.status)
                      )}>
                        {getStatusLabel(product.status)}
                      </div>
-                     <h3 className="text-lg font-black text-white truncate max-w-[200px] tracking-tight" dir="auto">{product.name}</h3>
+                     <h3 className="text-lg font-bold text-fg truncate max-w-[200px] tracking-tight" dir="auto">{product.name}</h3>
                   </div>
                 </div>
 
                 {/* Product Info */}
                 <div className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 gap-4 pb-4 border-b border-white/5">
+                  <div className="grid grid-cols-2 gap-4 pb-4 border-b border-fg/5">
                      <div className="space-y-1">
-                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Prix Vente</p>
-                        <p className="text-lg font-bold text-white font-mono">{product.sellingPrice.toLocaleString()} <span className="text-[10px] text-white/40">DA</span></p>
+                        <p className="text-xs font-semibold text-fg-faint">Prix Vente</p>
+                        <p className="text-lg font-bold text-fg">{product.sellingPrice.toLocaleString()} <span className="text-xs text-fg-muted">DA</span></p>
                      </div>
-                     <div className="space-y-1 text-right">
-                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Profit/U Est.</p>
+                     <div className="space-y-1 text-end">
+                        <p className="text-xs font-semibold text-fg-faint">Profit/U Est.</p>
                         <p className={cn(
-                          "text-lg font-black font-mono",
+                          "text-lg font-bold",
                           calculateProfit(product) > 0 ? "text-dz-emerald" : "text-rose-500"
                         )}>
-                          {calculateProfit(product).toLocaleString()} <span className="text-[10px] opacity-40">DA</span>
+                          {calculateProfit(product).toLocaleString()} <span className="text-xs opacity-40">DA</span>
                         </p>
                      </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                     <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
-                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Stock</p>
+                     <div className="p-2.5 rounded-xl bg-fg/[0.02] border border-fg/5">
+                        <p className="text-xs font-semibold text-fg-faint mb-1">Stock</p>
                         <div className="flex items-center gap-1.5">
-                           <Archive size={12} className={cn(product.stock <= 10 ? "text-dz-gold" : "text-white/20")} />
-                           <p className={cn("text-xs font-bold font-mono", product.stock <= 10 ? "text-dz-gold" : "text-white")}>{product.stock}</p>
+                           <Archive size={12} className={cn(product.stock <= 10 ? "text-dz-gold" : "text-fg-faint")} />
+                           <p className={cn("text-xs font-bold", product.stock <= 10 ? "text-dz-gold" : "text-fg")}>{product.stock}</p>
                         </div>
                      </div>
-                     <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
-                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">CPA Cible</p>
+                     <div className="p-2.5 rounded-xl bg-fg/[0.02] border border-fg/5">
+                        <p className="text-xs font-semibold text-fg-faint mb-1">CPA Cible</p>
                         <div className="flex items-center gap-1.5">
                            <TrendingUp size={12} className="text-dz-gold" />
-                           <p className="text-xs font-bold text-white font-mono">{product.targetCPA}€</p>
+                           <p className="text-xs font-bold text-fg">{product.targetCPA}€</p>
                         </div>
                      </div>
                   </div>
@@ -634,32 +599,32 @@ export default function ProductCatalog() {
                            const country = AVAILABLE_COUNTRIES.find(ac => ac.code === c.trim().toUpperCase());
                            if (!country) return null;
                            return (
-                              <div key={idx} className="flex items-center gap-1 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">
+                              <div key={idx} className="flex items-center gap-1 bg-fg/5 border border-fg/10 px-1.5 py-0.5 rounded text-xs font-semibold text-fg-muted">
                                  <span>{country.flag}</span>
                                  <span>{country.code}</span>
                               </div>
                            );
                         })}
-                        <div className="px-2 py-1 rounded bg-white/5 border border-white/10">
-                           <p className="text-[9px] font-black text-white/40 uppercase truncate max-w-[80px]">{product.category}</p>
+                        <div className="px-2 py-1 rounded bg-fg/5 border border-fg/10">
+                           <p className="text-xs font-semibold text-fg-muted truncate max-w-[80px]">{product.category}</p>
                         </div>
-                        <div className="w-1 h-1 rounded-full bg-white/10 shrink-0" />
+                        <div className="w-1 h-1 rounded-full bg-fg/10 shrink-0" />
                         <div className="flex items-center gap-1 shrink-0">
                            <ShoppingBag size={10} className="text-dz-emerald" />
-                           <p className="text-[10px] font-bold text-white">{product.sales}</p>
+                           <p className="text-xs font-bold text-fg">{product.sales}</p>
                         </div>
                      </div>
                      <div className="flex items-center gap-1.5">
                         <button 
                           onClick={() => setPreviewProduct(product)}
-                          className="p-2 text-white/20 hover:text-dz-gold transition-colors bg-white/5 hover:bg-dz-gold/10 rounded-lg border border-white/5"
+                          className="p-2 text-fg-faint hover:text-dz-gold transition-colors bg-fg/5 hover:bg-dz-gold/10 rounded-lg border border-fg/5"
                           title="Aperçu rapide"
                         >
                            <Eye size={16} />
                         </button>
                         <button 
                           onClick={() => handleDeleteProduct(product.id)}
-                          className="p-2 text-white/20 hover:text-rose-500 transition-colors bg-white/5 hover:bg-rose-500/10 rounded-lg border border-white/5"
+                          className="p-2 text-fg-faint hover:text-rose-500 transition-colors bg-fg/5 hover:bg-rose-500/10 rounded-lg border border-fg/5"
                         >
                            <Trash2 size={16} />
                         </button>
@@ -675,18 +640,18 @@ export default function ProductCatalog() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center py-24 glass-panel rounded-[3rem] border-white/5"
+        className="flex flex-col items-center justify-center py-24 ui-panel rounded-2xl border-fg/5"
       >
-          <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.03] border border-white/10 flex items-center justify-center text-white/10 mb-8 shadow-inner">
+          <div className="w-24 h-24 rounded-2xl bg-fg/[0.03] border border-fg/10 flex items-center justify-center text-fg-faint mb-8 shadow-inner">
              <Package size={48} />
           </div>
-          <h3 className="text-2xl font-black text-white uppercase tracking-widest mb-2">Catalogue Vide</h3>
-          <p className="text-white/30 font-bold text-center max-w-sm mb-8">
+          <h3 className="text-2xl font-semibold text-fg mb-2">Catalogue Vide</h3>
+          <p className="text-fg-faint font-bold text-center max-w-sm mb-8">
             Vous n'avez pas encore ajouté de produits. Commencez à construire votre inventaire dès maintenant.
           </p>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="px-10 py-4 bg-linear-to-tr from-dz-gold to-dz-amber text-white rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] shadow-2xl shadow-dz-gold/20 active:scale-95 transition-all flex items-center gap-3"
+            className="px-10 py-4 bg-primary text-white rounded-2xl font-semibold text-[12px] shadow-2xl shadow-dz-gold/20 active:scale-95 transition-all flex items-center gap-3"
           >
             <Plus size={20} strokeWidth={3} /> Créer mon premier produit
           </button>
@@ -703,27 +668,27 @@ export default function ProductCatalog() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/80"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-6xl glass-panel-heavy p-0 rounded-[3rem] border-white/10 shadow-2xl max-h-[95vh] overflow-hidden flex flex-col"
+              className="relative w-full max-w-6xl ui-panel-raised p-0 rounded-2xl border-fg/10 shadow-2xl max-h-[95vh] overflow-hidden flex flex-col"
             >
-              <div className="flex items-center justify-between p-8 border-b border-white/5 bg-white/[0.02]">
+              <div className="flex items-center justify-between p-8 border-b border-fg/5 bg-fg/[0.02]">
                 <div className="flex items-center gap-5">
-                   <div className="w-14 h-14 rounded-2xl bg-linear-to-tr from-dz-gold to-dz-amber text-white flex items-center justify-center shadow-lg shadow-dz-gold/20">
+                   <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-dz-gold/20">
                       <Plus size={32} strokeWidth={3} />
                    </div>
                    <div>
-                      <h2 className="text-3xl font-black text-white tracking-tighter">Nouveau Produit</h2>
-                      <p className="text-[10px] uppercase font-black text-dz-gold tracking-[0.3em]">Configuration Catalogue Pro</p>
+                      <h2 className="text-3xl font-bold text-fg tracking-tighter">Nouveau Produit</h2>
+                      <p className="text-xs font-semibold text-dz-gold">Configuration Catalogue Pro</p>
                    </div>
                 </div>
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all text-white/50 hover:text-white"
+                  className="w-12 h-12 flex items-center justify-center bg-fg/5 hover:bg-fg/10 rounded-2xl transition-all text-fg-muted hover:text-fg"
                 >
                   <Plus size={24} className="rotate-45" />
                 </button>
@@ -734,10 +699,10 @@ export default function ProductCatalog() {
                   {/* Left Column: Media & Primary Info */}
                   <div className="lg:col-span-4 space-y-8">
                      <div className="space-y-4">
-                        <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <label className="text-xs font-semibold text-fg-muted flex items-center gap-2">
                            <Camera size={14} className="text-dz-gold" /> Visuel du Produit
                         </label>
-                        <div className="relative aspect-square rounded-[2rem] bg-white/[0.02] border-2 border-dashed border-white/10 overflow-hidden flex flex-col items-center justify-center group shadow-inner">
+                        <div className="relative aspect-square rounded-2xl bg-fg/[0.02] border-2 border-dashed border-fg/10 overflow-hidden flex flex-col items-center justify-center group shadow-inner">
                            {newProduct.image ? (
                              <>
                                <img src={newProduct.image} className="w-full h-full object-cover" alt="Preview" />
@@ -745,14 +710,14 @@ export default function ProductCatalog() {
                                  <button 
                                    type="button"
                                    onClick={() => document.getElementById('image-upload')?.click()}
-                                   className="px-4 py-2 bg-dz-gold text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl"
+                                   className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-semibold shadow-xl"
                                  >
                                    Changer
                                  </button>
                                  <button 
                                    type="button"
                                    onClick={() => setNewProduct({...newProduct, image: ''})}
-                                   className="px-4 py-2 bg-rose-500/20 text-rose-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-rose-500/30"
+                                   className="px-4 py-2 bg-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold border border-rose-500/30"
                                  >
                                    Supprimer
                                  </button>
@@ -762,13 +727,13 @@ export default function ProductCatalog() {
                              <button
                                type="button"
                                onClick={() => document.getElementById('image-upload')?.click()}
-                               className="text-center p-8 w-full h-full flex flex-col items-center justify-center hover:bg-white/[0.02] transition-colors"
+                               className="text-center p-8 w-full h-full flex flex-col items-center justify-center hover:bg-fg/[0.02] transition-colors"
                              >
-                               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4 text-white/20 group-hover:text-dz-gold transition-colors">
+                               <div className="w-16 h-16 rounded-2xl bg-fg/5 flex items-center justify-center mx-auto mb-4 text-fg-faint group-hover:text-dz-gold transition-colors">
                                   <Camera size={32} />
                                </div>
-                               <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1 group-hover:text-white transition-colors">Cliquer pour ajouter</p>
-                               <p className="text-[8px] font-bold text-white/10">JPG, PNG, WEBP</p>
+                               <p className="text-xs font-semibold text-fg-faint mb-1 group-hover:text-fg transition-colors">Cliquer pour ajouter</p>
+                               <p className="text-xs font-bold text-fg-faint">JPG, PNG, WEBP</p>
                              </button>
                            )}
                            <input 
@@ -776,15 +741,14 @@ export default function ProductCatalog() {
                              type="file"
                              accept="image/*"
                              className="hidden"
-                             onChange={(e) => {
+                             onChange={async (e) => {
                                const file = e.target.files?.[0];
-                               if (file) {
-                                 const reader = new FileReader();
-                                 reader.onloadend = () => {
-                                   setNewProduct({...newProduct, image: reader.result as string});
-                                 };
-                                 reader.readAsDataURL(file);
-                               }
+                               if (!file) return;
+                               try {
+                                 // Catalog images are stored with the product, so keep them small.
+                                 const image = await fileToUploadDataUrl(file, { maxDimension: 1200 });
+                                 setNewProduct((prev) => ({ ...prev, image }));
+                               } catch { /* unreadable file: keep the current image */ }
                              }}
                            />
                         </div>
@@ -793,12 +757,12 @@ export default function ProductCatalog() {
                           value={newProduct.image}
                           onChange={(e) => setNewProduct({...newProduct, image: e.target.value})}
                           placeholder="Coller l'URL de l'image ici..."
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all text-xs font-mono shadow-inner"
+                          className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl px-6 py-4 text-fg focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all text-xs shadow-inner"
                         />
                      </div>
 
                      <div className="space-y-4">
-                        <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <label className="text-xs font-semibold text-fg-muted flex items-center gap-2">
                            <Layers size={14} className="text-dz-gold" /> Catégorisation
                         </label>
                         <div className="grid grid-cols-2 gap-3">
@@ -808,10 +772,10 @@ export default function ProductCatalog() {
                                key={cat}
                                onClick={() => setNewProduct({...newProduct, category: cat})}
                                className={cn(
-                                 "px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                                 "px-4 py-3 rounded-xl text-xs font-semibold border transition-all",
                                  newProduct.category === cat 
                                    ? "bg-dz-gold/10 border-dz-gold text-dz-gold shadow-lg shadow-dz-gold/5" 
-                                   : "bg-white/[0.02] border-white/5 text-white/30 hover:bg-white/5"
+                                   : "bg-fg/[0.02] border-fg/5 text-fg-faint hover:bg-fg/5"
                                )}
                              >
                                {cat}
@@ -821,46 +785,46 @@ export default function ProductCatalog() {
                      </div>
 
                      {/* Profitability Quick Preview */}
-                     <div className="p-6 rounded-[2rem] bg-linear-to-br from-white/[0.05] to-transparent border border-white/10 space-y-4 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                     <div className="p-6 rounded-2xl bg-linear-to-br from-fg/[0.05] to-transparent border border-fg/10 space-y-4 relative overflow-hidden group">
+                        <div className="absolute top-0 end-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                            <Calculator size={48} />
                         </div>
-                        <h4 className="text-[11px] font-black text-dz-gold uppercase tracking-[0.2em] flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-dz-gold flex items-center gap-2">
                            <Coins size={14} /> Prévision Profit (V1)
                         </h4>
                         <div className="space-y-4 relative z-10">
                            <div className="flex items-end justify-between">
-                              <p className="text-[10px] font-black text-white/30 uppercase">Profit Net /U</p>
+                              <p className="text-xs font-semibold text-fg-faint">Profit Net /U</p>
                               <p className={cn(
-                                "text-2xl font-black font-mono tracking-tighter",
+                                "text-2xl font-bold tracking-tighter",
                                 profitability.profit > 0 ? "text-dz-emerald" : "text-rose-500"
                               )}>
                                 {Math.round(profitability.profit).toLocaleString()} <span className="text-xs font-bold opacity-40">DA</span>
                               </p>
                            </div>
                            
-                           <div className="grid grid-cols-2 gap-4 py-3 border-y border-white/5">
+                           <div className="grid grid-cols-2 gap-4 py-3 border-y border-fg/5">
                               <div>
-                                 <p className="text-[8px] font-black text-white/20 uppercase mb-1">Confirmation</p>
-                                 <p className="text-sm font-bold text-white font-mono">{(profitability.confRate * 100).toFixed(0)}%</p>
+                                 <p className="text-xs font-semibold text-fg-faint mb-1">Confirmation</p>
+                                 <p className="text-sm font-bold text-fg">{(profitability.confRate * 100).toFixed(0)}%</p>
                               </div>
-                              <div className="text-right">
-                                 <p className="text-[8px] font-black text-white/20 uppercase mb-1">Livraison</p>
-                                 <p className="text-sm font-bold text-white font-mono">{(profitability.delivRate * 100).toFixed(0)}%</p>
+                              <div className="text-end">
+                                 <p className="text-xs font-semibold text-fg-faint mb-1">Livraison</p>
+                                 <p className="text-sm font-bold text-fg">{(profitability.delivRate * 100).toFixed(0)}%</p>
                               </div>
                            </div>
 
                            <div className="grid grid-cols-2 gap-4 pt-2">
                               <div>
-                                 <p className="text-[9px] font-black text-white/30 uppercase mb-1">Marge %</p>
-                                 <p className="text-lg font-black text-white font-mono">{profitability.margin.toFixed(1)}%</p>
+                                 <p className="text-xs font-semibold text-fg-faint mb-1">Marge %</p>
+                                 <p className="text-lg font-bold text-fg">{profitability.margin.toFixed(1)}%</p>
                               </div>
                               <div>
-                                 <p className="text-[9px] font-black text-white/30 uppercase mb-1">E-ROAS</p>
-                                 <p className="text-lg font-black text-dz-gold font-mono">{profitability.roas.toFixed(2)}x</p>
+                                 <p className="text-xs font-semibold text-fg-faint mb-1">E-ROAS</p>
+                                 <p className="text-lg font-bold text-dz-gold">{profitability.roas.toFixed(2)}x</p>
                               </div>
                            </div>
-                           <p className="text-[8px] font-bold text-white/10 uppercase tracking-[0.1em] pt-2 text-center border-t border-white/5">Calculé sur 1€ = {profitability.euroRate} DA</p>
+                           <p className="text-xs font-bold text-fg-faint pt-2 text-center border-t border-fg/5">Calculé sur 1€ = {profitability.euroRate} DA</p>
                         </div>
                      </div>
                   </div>
@@ -871,16 +835,16 @@ export default function ProductCatalog() {
                         <div className="grid grid-cols-1 gap-6">
                            <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                 <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Nom Complet</label>
+                                 <label className="text-xs font-semibold text-fg-muted">Nom Complet</label>
                                  <button 
                                    type="button"
                                    onClick={handleGenerateWithAI}
                                    disabled={isGenerating}
                                    className={cn(
-                                     "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                     "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
                                      isGenerating 
-                                       ? "bg-white/5 text-white/20 cursor-not-allowed" 
-                                       : "bg-dz-gold/10 text-dz-gold hover:bg-dz-gold hover:text-white border border-dz-gold/20"
+                                       ? "bg-fg/5 text-fg-faint cursor-not-allowed" 
+                                       : "bg-dz-gold/10 text-dz-gold hover:bg-primary-hover hover:text-white border border-dz-gold/20"
                                    )}
                                  >
                                    <RefreshCcw size={12} className={cn(isGenerating && "animate-spin")} />
@@ -895,16 +859,16 @@ export default function ProductCatalog() {
                                    value={newProduct.name}
                                    onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
                                    placeholder="Nom du produit..."
-                                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 text-white focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all font-bold placeholder:text-white/10 pl-14"
+                                   className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl px-6 py-5 text-fg focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all font-bold placeholder:text-fg-faint ps-14"
                                  />
-                                 <Tag className="absolute left-6 top-1/2 -translate-y-1/2 text-dz-gold" size={18} />
+                                 <Tag className="absolute start-6 top-1/2 -translate-y-1/2 text-dz-gold" size={18} />
                               </div>
                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
-                              <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Prix d'achat (DA)</label>
+                              <label className="text-xs font-semibold text-fg-muted">Prix d'achat (DA)</label>
                               <div className="relative">
                                  <input 
                                    required
@@ -912,13 +876,13 @@ export default function ProductCatalog() {
                                    value={newProduct.purchasePrice}
                                    onChange={(e) => setNewProduct({...newProduct, purchasePrice: e.target.value})}
                                    placeholder="0"
-                                   className="w-full bg-dz-emerald/5 border border-dz-emerald/10 rounded-2xl px-6 py-5 text-dz-emerald focus:outline-none focus:ring-2 focus:ring-dz-emerald/50 transition-all font-mono pl-14 shadow-inner"
+                                   className="w-full bg-dz-emerald/5 border border-dz-emerald/10 rounded-2xl px-6 py-5 text-dz-emerald focus:outline-none focus:ring-2 focus:ring-dz-emerald/50 transition-all ps-14 shadow-inner"
                                  />
-                                 <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 text-dz-emerald" size={18} />
+                                 <DollarSign className="absolute start-6 top-1/2 -translate-y-1/2 text-dz-emerald" size={18} />
                               </div>
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Prix de vente (DA)</label>
+                              <label className="text-xs font-semibold text-fg-muted">Prix de vente (DA)</label>
                               <div className="relative">
                                  <input 
                                    required
@@ -926,16 +890,16 @@ export default function ProductCatalog() {
                                    value={newProduct.sellingPrice}
                                    onChange={(e) => setNewProduct({...newProduct, sellingPrice: e.target.value})}
                                    placeholder="0"
-                                   className="w-full bg-dz-gold/5 border border-dz-gold/10 rounded-2xl px-6 py-5 text-dz-gold focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all font-mono pl-14 shadow-inner"
+                                   className="w-full bg-dz-gold/5 border border-dz-gold/10 rounded-2xl px-6 py-5 text-dz-gold focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all ps-14 shadow-inner"
                                  />
-                                 <TrendingUp className="absolute left-6 top-1/2 -translate-y-1/2 text-dz-gold" size={18} />
+                                 <TrendingUp className="absolute start-6 top-1/2 -translate-y-1/2 text-dz-gold" size={18} />
                               </div>
                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-6">
                            <div className="space-y-2">
-                              <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Taux Euro (DA)</label>
+                              <label className="text-xs font-semibold text-fg-muted">Taux Euro (DA)</label>
                               <div className="relative">
                                  <input 
                                    required
@@ -943,16 +907,16 @@ export default function ProductCatalog() {
                                    value={newProduct.euroRate}
                                    onChange={(e) => setNewProduct({...newProduct, euroRate: e.target.value})}
                                    placeholder="220"
-                                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 text-white focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all font-mono pl-14 shadow-inner"
+                                   className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl px-6 py-5 text-fg focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all ps-14 shadow-inner"
                                  />
-                                 <Coins className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                                 <Coins className="absolute start-6 top-1/2 -translate-y-1/2 text-fg-faint" size={18} />
                               </div>
                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
-                              <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Stock actuel</label>
+                              <label className="text-xs font-semibold text-fg-muted">Stock actuel</label>
                               <div className="relative">
                                  <input 
                                    required
@@ -960,20 +924,20 @@ export default function ProductCatalog() {
                                    value={newProduct.stock}
                                    onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
                                    placeholder="Unités"
-                                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 text-white focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all font-mono pl-14 shadow-inner"
+                                   className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl px-6 py-5 text-fg focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all ps-14 shadow-inner"
                                  />
-                                 <Archive className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                                 <Archive className="absolute start-6 top-1/2 -translate-y-1/2 text-fg-faint" size={18} />
                               </div>
                            </div>
                            <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                 <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">CPA Cible (€)</label>
+                                 <label className="text-xs font-semibold text-fg-muted">CPA Cible (€)</label>
                                  {(newProduct.purchasePrice && newProduct.sellingPrice) && (
                                    <button 
                                      type="button"
                                      onClick={handleGenerateWithAI}
                                      disabled={isGenerating}
-                                     className="text-[9px] font-black text-dz-gold uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1"
+                                     className="text-xs font-semibold text-dz-gold hover:text-fg transition-colors flex items-center gap-1"
                                    >
                                      <Coins size={10} /> Suggérer
                                    </button>
@@ -987,15 +951,15 @@ export default function ProductCatalog() {
                                    value={newProduct.targetCPA}
                                    onChange={(e) => setNewProduct({...newProduct, targetCPA: e.target.value})}
                                    placeholder="Max CPA"
-                                   className="w-full bg-linear-to-r from-rose-500/10 to-transparent border border-rose-500/20 rounded-2xl px-6 py-5 text-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all font-mono pl-14 shadow-inner"
+                                   className="w-full bg-linear-to-r from-rose-500/10 to-transparent border border-rose-500/20 rounded-2xl px-6 py-5 text-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all ps-14 shadow-inner"
                                  />
-                                 <AlertCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-rose-500" size={18} />
+                                 <AlertCircle className="absolute start-6 top-1/2 -translate-y-1/2 text-rose-500" size={18} />
                               </div>
                            </div>
                         </div>
 
                         <div className="space-y-4">
-                           <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Pays cibles</label>
+                           <label className="text-xs font-semibold text-fg-muted">Pays cibles</label>
                            <div className="flex flex-wrap gap-3 mb-6">
                               {AVAILABLE_COUNTRIES.map((ct) => (
                                 <button
@@ -1005,26 +969,26 @@ export default function ProductCatalog() {
                                   className={cn(
                                     "px-4 py-3 rounded-2xl border transition-all flex items-center gap-2 group active:scale-95",
                                     newProduct.countries.includes(ct.code)
-                                      ? "bg-dz-gold/10 border-dz-gold text-white shadow-lg shadow-dz-gold/5"
-                                      : "bg-white/[0.02] border-white/10 text-white/30 hover:bg-white/5 hover:border-white/20"
+                                      ? "bg-dz-gold/10 border-dz-gold text-fg shadow-lg shadow-dz-gold/5"
+                                      : "bg-fg/[0.02] border-fg/10 text-fg-faint hover:bg-fg/5 hover:border-fg/20"
                                   )}
                                 >
                                   <span className="text-xl group-hover:scale-110 transition-transform">{ct.flag}</span>
-                                  <span className="text-[10px] font-black uppercase tracking-widest">{ct.code}</span>
+                                  <span className="text-xs font-semibold">{ct.code}</span>
                                   {newProduct.countries.includes(ct.code) && (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-dz-gold animate-pulse" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                   )}
                                 </button>
                               ))}
                            </div>
-                           <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Description du Produit</label>
+                           <label className="text-xs font-semibold text-fg-muted">Description du Produit</label>
                            <textarea 
                              dir="auto"
                              value={newProduct.description}
                              onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
                              placeholder="Décrivez les points forts du produit (USP, caractéristiques techniques...)"
                              rows={6}
-                             className="w-full bg-white/[0.03] border border-white/10 rounded-3xl px-6 py-5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all resize-none shadow-inner"
+                             className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl px-6 py-5 text-fg text-sm focus:outline-none focus:ring-2 focus:ring-dz-gold/50 transition-all resize-none shadow-inner"
                            />
                         </div>
                      </div>
@@ -1032,15 +996,15 @@ export default function ProductCatalog() {
                 </form>
               </div>
 
-              <div className="p-8 border-t border-white/5 bg-white/[0.02] flex items-center gap-6">
+              <div className="p-8 border-t border-fg/5 bg-fg/[0.02] flex items-center gap-6">
                 <div className="hidden lg:flex items-center gap-6">
                    <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-dz-emerald/10 text-dz-emerald flex items-center justify-center border border-dz-emerald/20">
                          <Percent size={18} />
                       </div>
                       <div className="leading-tight">
-                         <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Score Profit</p>
-                         <p className="text-sm font-black text-white font-mono">{profitability.margin > 30 ? 'Excellent' : profitability.margin > 15 ? 'Bon' : 'Faible'}</p>
+                         <p className="text-xs font-semibold text-fg-faint">Score Profit</p>
+                         <p className="text-sm font-bold text-fg">{profitability.margin > 30 ? 'Excellent' : profitability.margin > 15 ? 'Bon' : 'Faible'}</p>
                       </div>
                    </div>
                 </div>
@@ -1048,7 +1012,7 @@ export default function ProductCatalog() {
                 <button 
                   type="submit"
                   form="product-form"
-                  className="flex-1 py-6 bg-linear-to-tr from-dz-gold to-dz-amber text-white rounded-[1.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-dz-gold/20 active:scale-[0.99] transition-all flex items-center justify-center gap-4 group border border-white/10"
+                  className="flex-1 py-6 bg-primary text-white rounded-2xl font-semibold text-sm shadow-2xl shadow-dz-gold/20 active:scale-[0.99] transition-all flex items-center justify-center gap-4 group border border-fg/10"
                 >
                   <Archive size={24} strokeWidth={3} className="group-hover:-translate-y-1 transition-transform" />
                   Valider et Ajouter au Catalogue
@@ -1067,30 +1031,30 @@ export default function ProductCatalog() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setPreviewProduct(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/80"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-4xl bg-[#0a0a0a] rounded-[3rem] border border-white/10 overflow-hidden shadow-2xl flex flex-col md:flex-row"
+              className="relative w-full max-w-4xl bg-[#0a0a0a] rounded-2xl border border-fg/10 overflow-hidden shadow-2xl flex flex-col md:flex-row"
             >
               {/* Product Image Section */}
-              <div className="w-full md:w-1/2 aspect-square relative group bg-neutral-900">
+              <div className="w-full md:w-1/2 aspect-square relative group bg-surface">
                 <img 
                   src={previewProduct.image} 
                   alt={previewProduct.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute top-8 left-8 flex flex-wrap gap-2">
+                <div className="absolute top-8 start-8 flex flex-wrap gap-2">
                   <div className={cn(
-                    "px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest backdrop-blur-xl",
+                    "px-4 py-2 rounded-full border text-xs font-semibold",
                     getStatusColor(previewProduct.status)
                   )}>
                     {getStatusLabel(previewProduct.status)}
                   </div>
-                  <div className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-white text-[10px] font-black uppercase tracking-widest backdrop-blur-xl">
+                  <div className="px-4 py-2 rounded-full border border-fg/10 bg-fg/5 text-fg text-xs font-semibold">
                     {previewProduct.category}
                   </div>
                 </div>
@@ -1100,15 +1064,15 @@ export default function ProductCatalog() {
               <div className="w-full md:w-1/2 p-10 flex flex-col">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-3xl font-black text-white tracking-tighter mb-2" dir="auto">{previewProduct.name}</h2>
+                    <h2 className="text-3xl font-bold text-fg tracking-tighter mb-2" dir="auto">{previewProduct.name}</h2>
                     <div className="flex flex-wrap gap-2">
                        {previewProduct.countries?.split(',').map((c, idx) => {
                          const country = AVAILABLE_COUNTRIES.find(ac => ac.code === c.trim().toUpperCase());
                          if (!country) return null;
                          return (
-                           <div key={idx} className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
+                           <div key={idx} className="flex items-center gap-2 bg-fg/5 border border-fg/10 px-3 py-1.5 rounded-xl">
                              <span className="text-xl">{country.flag}</span>
-                             <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{country.code}</span>
+                             <span className="text-xs font-semibold text-fg-muted">{country.code}</span>
                            </div>
                          );
                        })}
@@ -1116,45 +1080,45 @@ export default function ProductCatalog() {
                   </div>
                   <button 
                     onClick={() => setPreviewProduct(null)}
-                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                    className="p-2 rounded-full bg-fg/5 hover:bg-fg/10 text-fg-muted hover:text-fg transition-all"
                   >
                     <X size={20} />
                   </button>
                 </div>
 
-                <div className="flex-1 space-y-8 overflow-y-auto max-h-[400px] pr-4 custom-scrollbar mb-8">
+                <div className="flex-1 space-y-8 overflow-y-auto max-h-[400px] pe-4 custom-scrollbar mb-8">
                   <div className="space-y-4">
-                    <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Description du Produit</p>
-                    <p className="text-white/60 leading-relaxed text-sm" dir="auto">{previewProduct.description}</p>
+                    <p className="text-xs font-semibold text-fg-muted">Description du Produit</p>
+                    <p className="text-fg-muted leading-relaxed text-sm" dir="auto">{previewProduct.description}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Prix de Vente</p>
-                      <p className="text-3xl font-black text-white font-mono tracking-tighter">
-                        {previewProduct.sellingPrice.toLocaleString()}<span className="text-xs text-white/30 ml-2">DA</span>
+                      <p className="text-xs font-semibold text-fg-muted">Prix de Vente</p>
+                      <p className="text-3xl font-bold text-fg tracking-tighter">
+                        {previewProduct.sellingPrice.toLocaleString()}<span className="text-xs text-fg-faint ms-2">DA</span>
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Coût Achat</p>
-                      <p className="text-3xl font-black text-white/60 font-mono tracking-tighter">
-                        {previewProduct.purchasePrice.toLocaleString()}<span className="text-xs text-white/20 ml-2">DA</span>
+                      <p className="text-xs font-semibold text-fg-muted">Coût Achat</p>
+                      <p className="text-3xl font-bold text-fg-muted tracking-tighter">
+                        {previewProduct.purchasePrice.toLocaleString()}<span className="text-xs text-fg-faint ms-2">DA</span>
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                      <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Stock</p>
-                      <p className={cn("text-lg font-black font-mono", previewProduct.stock <= 10 ? "text-dz-gold" : "text-white")}>{previewProduct.stock}</p>
+                    <div className="p-4 rounded-2xl bg-fg/[0.03] border border-fg/5 space-y-1">
+                      <p className="text-xs font-semibold text-fg-faint">Stock</p>
+                      <p className={cn("text-lg font-bold", previewProduct.stock <= 10 ? "text-dz-gold" : "text-fg")}>{previewProduct.stock}</p>
                     </div>
-                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                      <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Ventes</p>
-                      <p className="text-lg font-black text-dz-emerald font-mono">{previewProduct.sales}</p>
+                    <div className="p-4 rounded-2xl bg-fg/[0.03] border border-fg/5 space-y-1">
+                      <p className="text-xs font-semibold text-fg-faint">Ventes</p>
+                      <p className="text-lg font-bold text-dz-emerald">{previewProduct.sales}</p>
                     </div>
-                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                      <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Profit Est.</p>
-                      <p className={cn("text-lg font-black font-mono", calculateProfit(previewProduct) > 0 ? "text-dz-emerald" : "text-rose-500")}>
+                    <div className="p-4 rounded-2xl bg-fg/[0.03] border border-fg/5 space-y-1">
+                      <p className="text-xs font-semibold text-fg-faint">Profit Est.</p>
+                      <p className={cn("text-lg font-bold", calculateProfit(previewProduct) > 0 ? "text-dz-emerald" : "text-rose-500")}>
                         {calculateProfit(previewProduct)}
                       </p>
                     </div>
@@ -1169,13 +1133,13 @@ export default function ProductCatalog() {
                         setPreviewProduct(null);
                       }
                     }}
-                    className="flex-1 bg-rose-500/10 border border-rose-500/20 py-5 rounded-2xl text-rose-500 font-black uppercase tracking-[0.3em] text-xs hover:bg-rose-500 hover:text-white transition-all active:scale-95"
+                    className="flex-1 bg-rose-500/10 border border-rose-500/20 py-5 rounded-2xl text-rose-500 font-semibold text-xs hover:bg-rose-500 hover:text-white transition-all active:scale-95"
                   >
                     Supprimer
                   </button>
                   <button 
                     onClick={() => setPreviewProduct(null)}
-                    className="flex-[2] bg-dz-gold py-5 rounded-2xl text-black font-black uppercase tracking-[0.3em] text-xs hover:bg-white transition-all shadow-xl shadow-dz-gold/20"
+                    className="flex-[2] bg-primary py-5 rounded-2xl text-white font-semibold text-xs hover:bg-white transition-all shadow-xl shadow-dz-gold/20"
                   >
                     Fermer
                   </button>

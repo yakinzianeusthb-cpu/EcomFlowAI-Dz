@@ -84,17 +84,17 @@ export default function DarjaAdGenerator() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-emerald-500/20 rounded-lg">
-          <Megaphone className="w-6 h-6 text-emerald-400" />
+        <div className="p-2 bg-dz-emerald/20 rounded-lg">
+          <Megaphone className="w-6 h-6 text-dz-emerald" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-white">Générateur Ads Darja</h2>
-          <p className="text-gray-400">Texte pub en mélange Darja/Français pour un maximum de conversion</p>
+          <h2 className="text-2xl font-bold text-fg">Générateur Ads Darja</h2>
+          <p className="text-fg-muted">Texte pub en mélange Darja/Français pour un maximum de conversion</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <div className="glass-card p-6 space-y-6">
+        <div className="ui-card p-6 space-y-6">
           {error && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
@@ -103,23 +103,23 @@ export default function DarjaAdGenerator() {
             >
               <button 
                 onClick={() => setError(null)}
-                className="absolute top-2 right-2 opacity-20 hover:opacity-100 transition-opacity"
+                className="absolute top-2 end-2 opacity-20 hover:opacity-100 transition-opacity"
               >
                 <X size={14} />
               </button>
-              <p className="pr-6">{error}</p>
+              <p className="pe-6">{error}</p>
             </motion.div>
           )}
 
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
+            <div className="p-1.5 bg-dz-emerald/10 rounded-lg text-dz-emerald">
               <Sparkles size={18} />
             </div>
-            <h2 className="text-lg font-bold text-white">Configuration de l'Ad</h2>
+            <h2 className="text-lg font-bold text-fg">Configuration de l'Ad</h2>
           </div>
           <PromptField
             label="Nom du Produit / Prompt"
-            icon={<Package size={12} className="text-emerald-500" />}
+            icon={<Package size={12} className="text-dz-emerald" />}
             value={productName}
             onChange={setProductName}
             placeholder="Ex: Hachoir Manuel, Robot de cuisine électrique..."
@@ -127,18 +127,18 @@ export default function DarjaAdGenerator() {
           />
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/30 mb-2 flex items-center gap-2">
-              <MegaphoneIcon size={10} className="text-emerald-500" />
+            <label className="block text-xs font-semibold text-fg-faint mb-2 flex items-center gap-2">
+              <MegaphoneIcon size={10} className="text-dz-emerald" />
               Plateforme Cible
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setPlatform('facebook')}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all text-xs font-black uppercase tracking-widest",
+                  "flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all text-xs font-semibold",
                   platform === 'facebook' 
-                    ? "bg-emerald-600/20 border-emerald-500 text-white shadow-xl shadow-emerald-600/20" 
-                    : "bg-white/[0.03] border-white/10 text-white/40 hover:bg-white/10 hover:text-white"
+                    ? "bg-dz-emerald/20 border-dz-emerald text-fg shadow-xl shadow-dz-emerald/20" 
+                    : "bg-fg/[0.03] border-fg/10 text-fg-muted hover:bg-fg/10 hover:text-fg"
                 )}
               >
                 <Facebook className="w-4 h-4" />
@@ -149,8 +149,8 @@ export default function DarjaAdGenerator() {
                 className={cn(
                   "flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
                   platform === 'tiktok' 
-                    ? "bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20" 
-                    : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                    ? "bg-primary border-dz-emerald text-white shadow-lg shadow-dz-emerald/20" 
+                    : "bg-fg/5 border-fg/10 text-fg-muted hover:bg-fg/10"
                 )}
               >
                 <Smartphone className="w-4 h-4" />
@@ -160,38 +160,38 @@ export default function DarjaAdGenerator() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/30 mb-2 flex items-center gap-2">
-               <Mic2 size={10} className="text-emerald-500" />
+            <label className="block text-xs font-semibold text-fg-faint mb-2 flex items-center gap-2">
+               <Mic2 size={10} className="text-dz-emerald" />
                Ton de la Publicité
             </label>
             <select
               value={tone}
               onChange={(e) => setTone(e.target.value)}
-              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 appearance-none transition-all"
+              className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl px-5 py-4 text-fg focus:outline-none focus:ring-2 focus:ring-dz-emerald/30 appearance-none transition-all"
             >
-              <option value="Persuasif/Vendeur" className="bg-slate-900">Persuasif & Vendeur</option>
-              <option value="Urgent" className="bg-slate-900">Urgent (Stock limité)</option>
-              <option value="Informatif" className="bg-slate-900">Informatif (Détails techniques)</option>
-              <option value="Émotionnel" className="bg-slate-900">Émotionnel (Bénéfice style de vie)</option>
-              <option value="Humoristique" className="bg-slate-900">Humoristique (Darija fun)</option>
+              <option value="Persuasif/Vendeur" className="bg-surface">Persuasif & Vendeur</option>
+              <option value="Urgent" className="bg-surface">Urgent (Stock limité)</option>
+              <option value="Informatif" className="bg-surface">Informatif (Détails techniques)</option>
+              <option value="Émotionnel" className="bg-surface">Émotionnel (Bénéfice style de vie)</option>
+              <option value="Humoristique" className="bg-surface">Humoristique (Darija fun)</option>
             </select>
           </div>
 
           <PromptField
             label="Mots-clés / Consignes Spéciales"
-            icon={<Sparkles size={12} className="text-emerald-500" />}
+            icon={<Sparkles size={12} className="text-dz-emerald" />}
             value={keywords}
             onChange={setKeywords}
             placeholder="Ex: premium, livraison gratuite, promo, livraison 58 wilayas..."
             badgeText="OPTIONNEL"
           />
 
-          <div className="space-y-4 pt-4 border-t border-white/5">
+          <div className="space-y-4 pt-4 border-t border-fg/5">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 bg-emerald-500/10 rounded-lg text-emerald-400">
+              <div className="p-1 bg-dz-emerald/10 rounded-lg text-dz-emerald">
                 <Layout size={14} />
               </div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Format de l'image (AI)</label>
+              <label className="text-xs font-semibold text-fg-muted">Format de l'image (AI)</label>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -207,12 +207,12 @@ export default function DarjaAdGenerator() {
                     onClick={() => setAspectRatio(ratio.id)}
                     className={`p-2 rounded-xl flex flex-col items-center gap-1.5 transition-all border ${
                       aspectRatio === ratio.id
-                        ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                        ? 'bg-primary border-dz-emerald text-white shadow-lg shadow-dz-emerald/20'
+                        : 'bg-fg/5 border-fg/10 text-fg-muted hover:bg-fg/10'
                     }`}
                   >
                     <Icon size={14} />
-                    <span className="text-[9px] font-black">{ratio.id}</span>
+                    <span className="text-xs font-semibold">{ratio.id}</span>
                   </button>
                 );
               })}
@@ -222,7 +222,7 @@ export default function DarjaAdGenerator() {
           <button
             onClick={handleGenerate}
             disabled={isLoading || !productName}
-            className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all shadow-2xl shadow-emerald-600/30 active:scale-[0.98]"
+            className="w-full py-5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white rounded-2xl font-semibold text-xs flex items-center justify-center gap-3 transition-all shadow-2xl shadow-dz-emerald/30 active:scale-[0.98]"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -242,13 +242,13 @@ export default function DarjaAdGenerator() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="glass-card p-6 relative group"
+                className="ui-card p-6 relative group"
               >
                 <button
                   onClick={copyToClipboard}
-                  className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 transition-all opacity-0 group-hover:opacity-100"
+                  className="absolute top-4 end-4 p-2 bg-fg/5 hover:bg-fg/10 rounded-lg text-fg-muted transition-all opacity-0 group-hover:opacity-100"
                 >
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-dz-emerald" /> : <Copy className="w-4 h-4" />}
                 </button>
                 <div className="prose prose-invert prose-sm max-w-none markdown-body">
                   {(() => {
@@ -257,20 +257,20 @@ export default function DarjaAdGenerator() {
                       return (
                         <div className="space-y-4">
                           {data.visuals.map((v: any, i: number) => (
-                            <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                            <div key={i} className="p-4 bg-fg/5 border border-fg/10 rounded-xl space-y-3">
                               <div className="flex justify-between items-start">
-                                <span className="text-[10px] font-bold text-emerald-400 uppercase">{v.narrativeRole || v.step || `Variation ${i + 1}`}</span>
+                                <span className="text-xs font-bold text-dz-emerald">{v.narrativeRole || v.step || `Variation ${i + 1}`}</span>
                               </div>
-                              {v.title && <h4 className="text-white font-bold text-sm">{v.title}</h4>}
-                              {v.textOverlay?.headline && <p className="text-xs text-indigo-300 italic">{v.textOverlay.headline}</p>}
-                              {v.marketingAngle && <p className="text-[10px] text-gray-400">{v.marketingAngle}</p>}
+                              {v.title && <h4 className="text-fg font-bold text-sm">{v.title}</h4>}
+                              {v.textOverlay?.headline && <p className="text-xs text-dz-emerald italic">{v.textOverlay.headline}</p>}
+                              {v.marketingAngle && <p className="text-xs text-fg-muted">{v.marketingAngle}</p>}
                               
                               {v.prompt && (
                                 <button 
                                   onClick={() => {
                                     navigator.clipboard.writeText(v.prompt);
                                   }}
-                                  className="mt-2 text-[10px] text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all"
+                                  className="mt-2 text-xs text-dz-emerald bg-dz-emerald/10 hover:bg-dz-emerald/20 border border-dz-emerald/20 px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all"
                                 >
                                   <Copy size={12} /> Copier le Prompt AI
                                 </button>
@@ -285,7 +285,7 @@ export default function DarjaAdGenerator() {
                 </div>
               </motion.div>
             ) : (
-              <div className="h-64 bg-white/5 backdrop-blur-md border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center p-8 text-center text-gray-500">
+              <div className="h-64 bg-fg/5 border border-dashed border-fg/10 rounded-2xl flex flex-col items-center justify-center p-8 text-center text-fg-faint">
                 <Megaphone className="w-12 h-12 mb-4 opacity-20" />
                 <p>Vos variations publicitaires apparaîtront ici. Soyez créatifs !</p>
               </div>

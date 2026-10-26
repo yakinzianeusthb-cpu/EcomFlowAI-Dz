@@ -6,10 +6,12 @@ import GoogleG from '../components/GoogleG';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
+import { useDocumentMeta } from '../lib/useDocumentMeta';
 
 export default function LoginPage() {
   const { loginWithEmail, login } = useAuth();
   const { t } = useLanguage();
+  useDocumentMeta({ title: t('metaTitleLogin', 'Connexion — EcomFlow AI') });
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resetSuccess = searchParams.get('reset') === '1';
@@ -71,7 +73,7 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-[12.5px] text-emerald-300 mb-4"
+          className="rounded-xl border border-dz-emerald/30 bg-dz-emerald/10 px-3.5 py-2.5 text-[12.5px] text-dz-emerald mb-4"
         >
           {t('fpResetSuccess', 'Mot de passe réinitialisé ! Connecte-toi avec ton nouveau mot de passe.')}
         </motion.div>
@@ -86,7 +88,7 @@ export default function LoginPage() {
         key={shakeKey}
       >
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+          <label className="block text-xs text-fg-muted mb-1.5">
             {t('authEmail', 'Adresse email')}
           </label>
           <input
@@ -106,7 +108,7 @@ export default function LoginPage() {
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] font-mono uppercase tracking-widest text-white/40">
+            <label className="text-xs text-fg-muted">
               {t('authPassword', 'Mot de passe')}
             </label>
             <Link to="/forgot-password" className="text-[12px] font-semibold text-dz-emerald hover:text-dz-gold transition-colors">
@@ -120,12 +122,12 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className={`input-dz pr-10 ${errors.password ? 'border-rose-500/60 focus:border-rose-500/60 focus:ring-rose-500/10' : ''}`}
+              className={`input-dz pe-10 ${errors.password ? 'border-rose-500/60 focus:border-rose-500/60 focus:ring-rose-500/10' : ''}`}
             />
             <button
               type="button"
               onClick={() => setShowPw((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors cursor-pointer"
+              className="absolute end-3 top-1/2 -translate-y-1/2 text-fg-faint hover:text-fg transition-colors cursor-pointer"
               tabIndex={-1}
               aria-label={showPw ? t('authHidePw', 'Masquer') : t('authShowPw', 'Afficher')}
             >
@@ -152,10 +154,10 @@ export default function LoginPage() {
           {submitting ? t('authPleaseWait', 'Envoi du code…') : t('authLoginBtn', 'Se connecter')}
         </button>
 
-        <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-widest text-white/25">
-          <span className="h-px flex-1 bg-white/10" />
+        <div className="flex items-center gap-3 text-xs text-fg-faint">
+          <span className="h-px flex-1 bg-fg/10" />
           {t('authOr', 'ou')}
-          <span className="h-px flex-1 bg-white/10" />
+          <span className="h-px flex-1 bg-fg/10" />
         </div>
 
         <button

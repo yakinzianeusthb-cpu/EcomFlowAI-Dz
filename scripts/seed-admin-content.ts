@@ -54,37 +54,8 @@ async function main() {
     console.log(`+ ${m.code} — créé`);
   }
 
-  // ---- Announcement seed ---------------------------------------------------
-  const announcementCount = await prisma.announcement.count();
-  if (announcementCount === 0) {
-    await prisma.announcement.create({
-      data: {
-        title: "🎁 Offre Spéciale : 7 Jours d'Essai Gratuit !",
-        message: "Profitez de 7 jours d'accès gratuit et illimité à tous nos outils IA e-commerce pour tester et booster vos ventes dès aujourd'hui. Pour en profiter, contactez-nous sur WhatsApp !",
-        emoji: "🎁",
-        kind: "promo",
-        active: true,
-      },
-    });
-    console.log(`+ Annonce 7 jours d'essai gratuit créée`);
-  }
-
-  // ---- Guides seed --------------------------------------------------------
-  const guideCount = await prisma.guide.count();
-  if (guideCount === 0) {
-    await prisma.guide.createMany({
-      data: [
-        {
-          title: "Guide complet : Créer des publicités e-commerce performantes avec l'IA",
-          youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-          description: "Tutoriel pas à pas pour générer vos scripts vidéo et landing pages en moins de 2 minutes.",
-          active: true,
-          sortOrder: 0,
-        },
-      ],
-    });
-    console.log(`+ Guides vidéo de démonstration créés`);
-  }
+  // No announcement or guide is seeded: the dashboard already shows a translated free-trial offer, and guides are
+  // real tutorial videos the admin adds in /admin.
 
   // ---- Admin bootstrap -----------------------------------------------------
   // There is intentionally NO public endpoint that grants admin rights.

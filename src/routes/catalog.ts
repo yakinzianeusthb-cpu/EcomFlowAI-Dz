@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, SessionPayload } from "../lib/session";
+import { SessionPayload } from "../lib/session";
+import { requireAuth } from "../lib/requireAuth";
 
 const router = Router();
 

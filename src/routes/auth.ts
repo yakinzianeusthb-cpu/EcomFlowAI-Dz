@@ -1,16 +1,23 @@
+import { validateProof } from "../lib/paymentProof";
 import crypto from "crypto";
 import express, { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { createRateLimiter } from "../lib/rateLimit";
+import { postgresRateLimitStore } from "../lib/rateLimitStore";
+import { requireAuth } from "../lib/requireAuth";
+import { publicCache } from "../lib/cache";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { sendOtpEmail, sendContactEmail } from "../lib/email";
+import { isPlanActive } from "../lib/access";
+import { isEmailAddress } from "../lib/emailAddress";
 import { issueOtp, verifyOtpCode, OtpRateLimitedError } from "../lib/otp";
 import {
   clearSessionCookie,
   getCurrentUser,
   parseCookies,
-  requireAuth,
+  passwordStamp,
   SessionPayload,
+  sessionMatchesAccount,
   setSessionCookie,
   signResetToken,
   signSession,
@@ -33,6 +40,7 @@ const STATE_COOKIE = "dzads_oauth_state";
 const STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
 // ---- Rate limiters (brute-force protection) --------------------------------
+// Counted in Postgres so every server instance shares them (see rateLimitStore.ts); in memory if that fails.
 const ipKey = (req: express.Request) =>
   req.ip || req.socket?.remoteAddress || "unknown";
 const authLimiter = createRateLimiter({
@@ -40,24 +48,36 @@ const authLimiter = createRateLimiter({
   max: 10,
   keyFn: ipKey,
   message: "Trop de tentatives. Réessaie dans 15 minutes.",
+  store: postgresRateLimitStore("auth-login"),
 });
 const registerLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 5,
   keyFn: ipKey,
   message: "Trop de comptes créés depuis cette adresse. Réessaie plus tard.",
+  store: postgresRateLimitStore("auth-register"),
 });
 const otpVerifyLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  keyFn: (req) => `${ipKey(req)}|${String(req.body?.email || "").toLowerCase()}`,
+  keyFn: (req) => `${ipKey(req)}|${String(req.body?.email || "").toLowerCase().slice(0, 254)}`,
   message: "Trop de codes essayés. Réessaie dans 15 minutes.",
+  store: postgresRateLimitStore("auth-otp-verify"),
+});
+// Each contact message is an e-mail to the admin: a few per hour per account is plenty.
+const contactLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  keyFn: (req) => (req.user as SessionPayload | undefined)?.sub ?? ipKey(req),
+  message: "Trop de messages envoyés. Réessaie dans une heure.",
+  store: postgresRateLimitStore("contact"),
 });
 const resendLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 5,
   keyFn: ipKey,
   message: "Trop de demandes de code. Réessaie dans une minute.",
+  store: postgresRateLimitStore("auth-resend"),
 });
 
 export function getGoogleConfigured() {
@@ -79,9 +99,15 @@ function getGoogleAuthURL(state: string): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
-async function exchangeCodeForProfile(
-  code: string,
-): Promise<{ email: string; name: string; avatar?: string }> {
+interface GoogleProfile {
+  email: string;
+  name: string;
+  avatar?: string;
+  /** false when Google says it has not verified this e-mail address */
+  verified: boolean;
+}
+
+async function exchangeCodeForProfile(code: string): Promise<GoogleProfile> {
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -101,21 +127,41 @@ async function exchangeCodeForProfile(
   });
   if (!infoRes.ok) throw new Error("Failed to fetch Google user info");
   const info = await infoRes.json();
-  return { email: info.email, name: info.name || info.email, avatar: info.picture };
+  return { email: info.email, name: info.name || info.email, avatar: info.picture, verified: info.verified_email !== false };
 }
 
 // ---------------------------------------------------------------------------
 // Prisma-backed user upsert
 // ---------------------------------------------------------------------------
+/**
+ * The account for a Google sign-in, created on first use. Google has verified the address, so the account's e-mail
+ * is marked verified too: otherwise a sign-up form could still set a password on it.
+ */
 async function upsertUser(profile: { email: string; name: string; avatar?: string }) {
-  return prisma.user.upsert({
-    where: { email: profile.email.toLowerCase() },
+  const email = profile.email.toLowerCase();
+  const user = await prisma.user.upsert({
+    where: { email },
     create: {
-      email: profile.email,
+      email,
       name: profile.name || profile.email,
       avatarUrl: profile.avatar,
+      emailVerifiedAt: new Date(),
     },
     update: { name: profile.name || undefined, avatarUrl: profile.avatar || undefined },
+  });
+  if (user.emailVerifiedAt) return user;
+  return prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+}
+
+/** The session for an account, stamped with its current password so a later password change ends it. */
+function sessionFor(user: { id: string; email: string; name: string; avatarUrl: string | null; passwordHash: string | null }, extra?: { mock: true }) {
+  return signSession({
+    sub: user.id,
+    email: user.email,
+    name: user.name,
+    avatar: user.avatarUrl ?? undefined,
+    pw: passwordStamp(user.passwordHash),
+    ...extra,
   });
 }
 
@@ -134,14 +180,7 @@ router.get("/api/auth/google", async (req, res) => {
         return res.status(503).send("Authentification Google non configurée.");
       }
       const user = await upsertUser({ email: "demo@dzads.ai", name: "Ahmed (Demo)" });
-      const token = signSession({
-        sub: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatarUrl ?? undefined,
-        mock: true,
-      });
-      setSessionCookie(res, token);
+      setSessionCookie(res, sessionFor(user, { mock: true }));
       return res.redirect("/");
     }
 
@@ -168,15 +207,14 @@ router.get("/api/auth/google/callback", async (req, res) => {
   }
   try {
     const profile = await exchangeCodeForProfile(code);
+    // An address Google has not verified could belong to someone else: it must not open (or join) an account.
+    if (!profile.verified) {
+      console.error("OAuth callback refused: Google has not verified this e-mail address");
+      return res.status(400).send("Échec de la connexion Google. Réessayez.");
+    }
     const user = await upsertUser(profile);
-    const token = signSession({
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-      avatar: user.avatarUrl ?? undefined,
-    });
     res.clearCookie(STATE_COOKIE, { path: "/" });
-    setSessionCookie(res, token);
+    setSessionCookie(res, sessionFor(user));
     return res.redirect("/");
   } catch (err: any) {
     console.error("OAuth callback error:", err);
@@ -188,15 +226,20 @@ router.get("/api/auth/google/callback", async (req, res) => {
 // Email / password authentication with 6-digit OTP verification
 // ---------------------------------------------------------------------------
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function rateLimitError(err: unknown): boolean {
   return err instanceof OtpRateLimitedError;
 }
 
-/** Strips sensitive fields (password hash) before sending a user to the client. */
-function publicUser<T extends { passwordHash?: string | null }>(user: T) {
-  const { passwordHash: _passwordHash, ...safe } = user;
+/**
+ * The user columns never sent to the browser: the password hash, and the payment proof (an image or PDF of up to
+ * 5 MB that only the admin pages show; read through their own routes).
+ */
+const PRIVATE_USER_FIELDS = { passwordHash: true, paymentProof: true } as const;
+
+/** Strips the private fields (see PRIVATE_USER_FIELDS) before sending a user to the client. */
+function publicUser<T extends object>(user: T): Omit<T, keyof typeof PRIVATE_USER_FIELDS> {
+  const { passwordHash: _passwordHash, paymentProof: _paymentProof, ...safe } = user as T & { passwordHash?: unknown; paymentProof?: unknown };
   return safe;
 }
 
@@ -211,7 +254,7 @@ router.post("/api/auth/register", registerLimiter, async (req, res) => {
     if (!displayName) {
       return res.status(400).json({ error: "Le nom est requis." });
     }
-    if (!EMAIL_RE.test(normalizedEmail)) {
+    if (!isEmailAddress(normalizedEmail)) {
       return res.status(400).json({ error: "Adresse email invalide." });
     }
     if (typeof password !== "string" || password.length < 8) {
@@ -223,7 +266,9 @@ router.post("/api/auth/register", registerLimiter, async (req, res) => {
     const existing = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
-    if (existing && existing.emailVerifiedAt) {
+    // A verified account, or one opened with Google (sign-up always sets a password; Google accounts made before
+    // they were marked verified have none), is never touched here: a sign-up form must not change its password.
+    if (existing && (existing.emailVerifiedAt || !existing.passwordHash)) {
       // Enumeration-safe: same response as a fresh signup, but nothing is
       // created or sent. The user will just log in instead.
       return res.status(201).json({
@@ -349,15 +394,9 @@ router.post("/api/auth/verify-otp", otpVerifyLimiter, async (req, res) => {
       });
     }
 
-    const token = signSession({
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-      avatar: user.avatarUrl ?? undefined,
-    });
-    setSessionCookie(res, token);
+    setSessionCookie(res, sessionFor(user));
 
-    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+    const fresh = await prisma.user.findUnique({ where: { id: user.id }, omit: PRIVATE_USER_FIELDS });
     return res.json({ user: publicUser(fresh!) });
   } catch (err: any) {
     console.error("Verify OTP error:", err);
@@ -414,8 +453,10 @@ router.post("/api/auth/resend-otp", resendLimiter, async (req, res) => {
 router.get("/api/auth/me", async (req, res) => {
   const session = getCurrentUser(req);
   if (!session) return res.status(401).json({ user: null });
-  const user = await prisma.user.findUnique({ where: { id: session.sub } });
-  if (!user) return res.status(401).json({ user: null });
+  // the private columns are not even read: the payment proof alone can weigh megabytes, on every page load
+  const user = await prisma.user.findUnique({ where: { id: session.sub }, omit: { paymentProof: true } });
+  // a session opened before the password last changed is over (same rule as requireAuth)
+  if (!user || !sessionMatchesAccount(session, user)) return res.status(401).json({ user: null });
   return res.json({ user: publicUser(user), isMock: Boolean(session.mock) });
 });
 
@@ -432,10 +473,11 @@ router.post("/api/auth/plan", requireAuth, async (req, res) => {
 
   const current = await prisma.user.findUnique({
     where: { id: session.sub },
-    select: { planStatus: true },
+    select: { planStatus: true, planExpiresAt: true },
   });
-  // Never downgrade/lock an already-active subscription by re-selecting.
-  if (current?.planStatus === "active") {
+  // Never downgrade/lock a live subscription by re-selecting. A plan that has run out is not live,
+  // so its owner can pick a plan again to renew.
+  if (isPlanActive(current)) {
     return res.status(400).json({ error: "Un plan est déjà actif." });
   }
 
@@ -446,6 +488,7 @@ router.post("/api/auth/plan", requireAuth, async (req, res) => {
       planStatus: "pending",
       planSelectedAt: new Date(),
     },
+    omit: PRIVATE_USER_FIELDS,
   });
   res.json({ user: publicUser(user) });
 });
@@ -457,7 +500,7 @@ router.post("/api/auth/logout", (req, res) => {
 });
 
 // GET /api/config — public config (admin payment contacts), DB-backed with env fallback.
-router.get("/api/config", async (_req, res) => {
+router.get("/api/config", publicCache(), async (_req, res) => {
   try {
     const cfg = await prisma.platformConfig.findUnique({ where: { id: 'singleton' } });
     res.json({
@@ -472,7 +515,7 @@ router.get("/api/config", async (_req, res) => {
 });
 
 // POST /api/contact — send a contact form message to the admin by email.
-router.post("/api/contact", requireAuth, async (req, res) => {
+router.post("/api/contact", requireAuth, contactLimiter, async (req, res) => {
   try {
     const b = req.body || {};
     const name = typeof b.name === "string" ? b.name.trim() : "";
@@ -483,7 +526,7 @@ router.post("/api/contact", requireAuth, async (req, res) => {
     if (!name || name.length > 120) {
       return res.status(400).json({ error: "Nom invalide." });
     }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 128) {
+    if (!email || email.length > 128 || !isEmailAddress(email)) {
       return res.status(400).json({ error: "Email invalide." });
     }
     if (!subject || subject.length > 120) {
@@ -569,7 +612,7 @@ router.post("/api/auth/verify-reset-otp", otpVerifyLimiter, async (req, res) => 
     const ok = await verifyOtpCode(user.id, code, { reasons: ["password_reset"] });
     if (!ok) return res.status(400).json({ error: "Code invalide ou expiré." });
 
-    const resetToken = signResetToken(user.email);
+    const resetToken = signResetToken(user.email, user.passwordHash);
     return res.json({ ok: true, email: normalized, resetToken, expiresInSec: 600 });
   } catch (err: any) {
     console.error("verify-reset-otp error:", err);
@@ -595,7 +638,11 @@ router.post("/api/auth/reset-password", async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email: normalized } });
     if (!user) return res.status(400).json({ error: "Utilisateur introuvable." });
+    // the token works once: after this reset the password is different, so its stamp no longer matches
+    if (payload.pw !== undefined && payload.pw !== passwordStamp(user.passwordHash))
+      return res.status(400).json({ error: "Lien expiré ou invalide. Recommence." });
 
+    // The new password also ends every session opened with the old one (see sessionMatchesAccount).
     await prisma.user.update({
       where: { id: user.id },
       data: { passwordHash: hashPassword(password) },
@@ -609,27 +656,6 @@ router.post("/api/auth/reset-password", async (req, res) => {
 });
 
 // POST /api/user/payment-proof — submit payment proof
-const MAX_PROOF_BYTES = 5 * 1024 * 1024; // 5 MB decoded
-const PROOF_MIME = /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/i;
-
-function validateProof(
-  proof: unknown,
-): { ok: true; dataUrl: string } | { ok: false; error: string } {
-  if (proof == null || proof === "") return { ok: true, dataUrl: "" };
-  if (typeof proof !== "string" || !proof.startsWith("data:")) {
-    return { ok: false, error: "Preuve invalide." };
-  }
-  const header = proof.match(/^data:([^;]+);base64,/);
-  if (!header || !PROOF_MIME.test(header[1])) {
-    return { ok: false, error: "Format de preuve non supporté (image ou PDF)." };
-  }
-  const approxBytes = Math.ceil(((proof.length - header[0].length) * 3) / 4);
-  if (approxBytes > MAX_PROOF_BYTES) {
-    return { ok: false, error: "La preuve dépasse 5 Mo." };
-  }
-  return { ok: true, dataUrl: proof };
-}
-
 router.post("/api/user/payment-proof", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.sub;

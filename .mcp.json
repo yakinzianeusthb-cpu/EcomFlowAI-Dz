@@ -1,13 +1,3 @@
 {
-  "mcpServers": {
-    "vercel": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@vercel/mcp"
-      ],
-      "env": {}
-    }
-  }
+  "mcpServers": {}
 }

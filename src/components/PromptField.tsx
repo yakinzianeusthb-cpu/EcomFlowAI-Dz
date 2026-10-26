@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { RotateCcw, Eye, EyeOff, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useId, useState } from 'react';
+import { RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import { cn } from '../lib/utils';
 
 interface PromptFieldProps {
@@ -24,6 +24,8 @@ interface PromptFieldProps {
   showTooltip?: string;
 }
 
+const ICON_BUTTON = 'grid size-7 place-items-center rounded-md transition-colors';
+
 export default function PromptField({
   id,
   label,
@@ -40,142 +42,83 @@ export default function PromptField({
   allowClear = true,
   allowHide = true,
   defaultHidden = false,
-  clearTooltip = "تصفير (مسح) الخانة",
-  hideTooltip = "إخفاء / طي الخانة",
-  showTooltip = "إظهار الخانة"
+  clearTooltip,
+  hideTooltip,
+  showTooltip,
 }: PromptFieldProps) {
+  const { t } = useLanguage();
   const [isHidden, setIsHidden] = useState(defaultHidden);
+  const generatedId = useId();
+  const inputId = `${id ?? generatedId}-input`;
 
-  const handleClear = () => {
-    onChange('');
-  };
+  const clearLabel = clearTooltip ?? t('pfClear', 'Effacer le champ');
+  const toggleLabel = isHidden ? (showTooltip ?? t('pfShow', 'Afficher le champ')) : (hideTooltip ?? t('pfHide', 'Masquer le champ'));
 
-  const toggleHide = () => {
-    setIsHidden(!isHidden);
-  };
+  const fieldClass = cn('input-dz w-full', dir === 'rtl' && 'font-arabic text-end');
 
   return (
-    <div className={cn("space-y-2 group/prompt-field", className)} id={id}>
-      {/* Field Header Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-          {icon && <span className="shrink-0 text-dz-emerald">{icon}</span>}
-          <label className="text-[10px] font-black uppercase tracking-widest text-white/60 font-arabic leading-snug">
+    <div className={cn('space-y-2', className)} id={id}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          {icon && <span className="shrink-0 text-primary-ink">{icon}</span>}
+          <label htmlFor={inputId} className="text-xs font-semibold leading-snug text-fg-muted">
             {label}
           </label>
           {badgeText && (
-            <span className="text-[9px] font-black uppercase tracking-wider bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-dz-gold shrink-0">
-              {badgeText}
-            </span>
+            <span className="shrink-0 rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold text-primary-ink">{badgeText}</span>
           )}
         </div>
 
-        {/* Action Buttons for Hide and Clear */}
-        <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-xl p-0.5 sm:p-1 shadow-sm ml-auto">
+        <div className="flex shrink-0 items-center gap-0.5">
           {allowClear && (
             <button
               type="button"
-              onClick={handleClear}
+              onClick={() => onChange('')}
               disabled={!value}
-              className={cn(
-                "p-1 sm:p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-bold cursor-pointer active:scale-90",
-                value 
-                  ? "text-white/60 hover:text-rose-400 hover:bg-rose-500/10" 
-                  : "text-white/20 cursor-not-allowed"
-              )}
-              title={clearTooltip}
+              title={clearLabel}
+              aria-label={clearLabel}
+              className={cn(ICON_BUTTON, value ? 'text-fg-muted hover:bg-danger/10 hover:text-danger-ink' : 'cursor-not-allowed text-fg-faint/50')}
             >
-              <RotateCcw size={12} className={cn(value && "group-hover/prompt-field:rotate-[-45deg] transition-transform")} />
-              <span className="text-[9px] hidden sm:inline font-mono">تصفير</span>
+              <RotateCcw size={14} />
             </button>
           )}
-
           {allowHide && (
             <button
               type="button"
-              onClick={toggleHide}
-              className={cn(
-                "p-1 sm:p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-bold cursor-pointer active:scale-90",
-                isHidden 
-                  ? "bg-dz-amber/20 text-dz-amber border border-dz-amber/30" 
-                  : "text-white/60 hover:text-dz-emerald hover:bg-dz-emerald/10"
-              )}
-              title={isHidden ? showTooltip : hideTooltip}
+              onClick={() => setIsHidden((h) => !h)}
+              title={toggleLabel}
+              aria-label={toggleLabel}
+              aria-pressed={isHidden}
+              className={cn(ICON_BUTTON, isHidden ? 'bg-warning/15 text-warning-ink' : 'text-fg-muted hover:bg-surface-2 hover:text-fg')}
             >
-              {isHidden ? <EyeOff size={12} /> : <Eye size={12} />}
-              <span className="text-[9px] hidden sm:inline font-mono">
-                {isHidden ? "إظهار" : "إخفاء"}
-              </span>
+              {isHidden ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
           )}
         </div>
       </div>
 
-      {/* Input / Textarea Content or Collapsed State */}
-      <AnimatePresence mode="wait">
-        {isHidden ? (
-          <motion.div
-            key="hidden-placeholder"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="p-2.5 px-3 bg-black/40 border border-dashed border-white/10 rounded-2xl flex items-center justify-between text-xs text-white/40"
-          >
-            <span className="flex items-center gap-2 italic text-[11px]">
-              <EyeOff size={13} className="text-dz-amber shrink-0" />
-              <span>الخانة مخفية حالياً ({value ? `${value.slice(0, 25)}...` : 'فارغة'})</span>
+      {isHidden ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-line bg-surface-2 px-3 py-2.5 text-xs text-fg-muted">
+          <span className="flex min-w-0 items-center gap-2 italic">
+            <EyeOff size={13} className="shrink-0 text-warning-ink" />
+            <span className="truncate">
+              {t('pfHiddenNow', 'Champ masqué')} ({value ? `${value.slice(0, 25)}…` : t('pfEmpty', 'vide')})
             </span>
-            <button
-              type="button"
-              onClick={toggleHide}
-              className="text-[10px] font-black text-dz-emerald hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <Sparkles size={11} />
-              إظهار البرومبت
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="field-content"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="relative"
-          >
-            {isTextArea ? (
-              <textarea
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                rows={rows}
-                dir={dir}
-                className={cn(
-                  "input-dz resize-none w-full transition-all",
-                  dir === 'rtl' && "font-arabic text-right"
-                )}
-              />
-            ) : (
-              <input
-                type="text"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                dir={dir}
-                className={cn(
-                  "input-dz w-full transition-all",
-                  dir === 'rtl' && "font-arabic text-right"
-                )}
-              />
-            )}
-
-            {helpText && (
-              <p className="text-[10px] text-white/40 mt-1 pl-1 italic">
-                {helpText}
-              </p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </span>
+          <button type="button" onClick={() => setIsHidden(false)} className="shrink-0 font-semibold text-primary-ink hover:underline">
+            {t('pfShowShort', 'Afficher')}
+          </button>
+        </div>
+      ) : (
+        <div>
+          {isTextArea ? (
+            <textarea id={inputId} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} dir={dir} className={cn(fieldClass, 'resize-none')} />
+          ) : (
+            <input id={inputId} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} dir={dir} className={fieldClass} />
+          )}
+          {helpText && <p className="mt-1 ps-1 text-xs italic text-fg-muted">{helpText}</p>}
+        </div>
+      )}
     </div>
   );
 }
